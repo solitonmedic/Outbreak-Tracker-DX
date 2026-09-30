@@ -54,9 +54,50 @@ jobs:
           & $batch
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Download LÖVE 11.5 x64 runtime
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'love-11.5-win64.zip'
+          $runtimeDirectory = Join-Path $env:RUNNER_TEMP 'love-11.5-win64'
+          Invoke-WebRequest `
+            -Uri 'https://github.com/love2d/love/releases/download/11.5/love-11.5-win64.zip' `
+            -OutFile $archive
+          Expand-Archive -LiteralPath $archive -DestinationPath $env:RUNNER_TEMP -Force
+          if (-not (Test-Path (Join-Path $runtimeDirectory 'love.exe') -PathType Leaf)) {
+            throw "LÖVE 11.5 x64 runtime was not extracted to $runtimeDirectory"
+          }
+
       - name: Package the tracker for LÖVE
         shell: pwsh
-        run: ./windows/package.ps1
+        env:
+          LOVE_WINDOWS_DIR: '${{ runner.temp }}\love-11.5-win64'
+        run: ./windows/package.ps1 -LoveRuntimeDirectory $env:LOVE_WINDOWS_DIR
+
+      - name: Verify the Windows executable package
+        shell: pwsh
+        run: |
+          $package = 'windows/build/OutbreakTracker-Windows-x64.zip'
+          if (-not (Test-Path $package -PathType Leaf)) {
+            throw "Windows package not found: $package"
+          }
+
+          $verificationDirectory = Join-Path $env:RUNNER_TEMP 'outbreak-tracker-windows-verify'
+          Expand-Archive -LiteralPath $package -DestinationPath $verificationDirectory -Force
+          $requiredFiles = @(
+            'OutbreakTracker.exe',
+            'luaoutbreaktracker.dll',
+            'love.dll',
+            'lua51.dll',
+            'SDL2.dll',
+            'OpenAL32.dll',
+            'license.txt'
+          )
+          foreach ($file in $requiredFiles) {
+            $path = Join-Path $verificationDirectory $file
+            if (-not (Test-Path $path -PathType Leaf)) {
+              throw "Windows distribution is missing $file"
+            }
+          }
 
       - name: Upload the Windows package
         uses: actions/upload-artifact@v4

@@ -31,4 +31,4 @@ chmod +x linux/love-11.5-x86_64.AppImage linux/appimagetool-x86_64.AppImage linu
 
 The resulting `OutbreakStatusTracker-x86_64.AppImage` includes the tracker and LÖVE runtime. It uses Linux PINE's `pcsx2.sock` runtime socket directly and does not need Flatpak permissions.
 
-The GitHub Actions workflow builds this AppImage automatically on pushes to `main` and can also be started manually.
+The GitHub Actions workflow is manual-only and can be started from the repository's Actions page. The all-platform workflow can also call it after a manual dispatch.

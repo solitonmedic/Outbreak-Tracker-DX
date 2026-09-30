@@ -7,7 +7,7 @@ The Windows native module reads PCSX2 process memory directly. It does not requi
 - Windows 10 or newer.
 - Visual Studio 2022 with the Desktop development with C++ workload (v143 toolset).
 - Git and PowerShell.
-- LÖVE 11.5 or newer to run the packaged tracker.
+- The official LÖVE 11.5 x64 ZIP runtime for packaging.
 
 ## Build
 
@@ -28,13 +28,15 @@ cd ..\..\..
 msbuild "windows\Outbreak Tracker.sln" /m /p:Configuration=Release /p:Platform=x64
 ```
 
-Package the shared UI and DLL:
+Download and extract [`love-11.5-win64.zip`](https://github.com/love2d/love/releases/tag/11.5), then package the shared UI, native reader, LÖVE runtime, and fused executable:
 
 ```powershell
-./windows/package.ps1
+./windows/package.ps1 -LoveRuntimeDirectory 'C:\path\to\love-11.5-win64'
 ```
 
-The package is `windows/build/OutbreakTracker-Windows-x64.zip`. Extract it, then run `love lua` from a terminal in the extracted directory. The ZIP contains the `lua` game folder and native DLL; it does not bundle the LÖVE runtime.
+The package is `windows/build/OutbreakTracker-Windows-x64.zip`. Extract it and launch `OutbreakTracker.exe`; LÖVE does not need to be separately installed. The ZIP contains the fused game executable, the native reader DLL, LÖVE's runtime DLLs, and LÖVE's license. The executable needs those adjacent runtime DLLs, so distribute the ZIP contents together.
+
+The Windows Actions workflow is manual-only. It downloads the official LÖVE 11.5 x64 runtime, creates the executable package, checks that the executable and required runtime files are present, then uploads the ZIP artifact.
 
 ## PCSX2
 
