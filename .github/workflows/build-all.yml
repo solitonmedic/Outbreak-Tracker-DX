@@ -1,9 +1,6 @@
 name: Build all platforms
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 jobs:
