@@ -36,7 +36,7 @@ Download and extract [`love-11.5-win64.zip`](https://github.com/love2d/love/rele
 
 The package is `windows/build/OutbreakTracker-Windows-x64.zip`. Extract it and launch `OutbreakTracker.exe`; LÖVE does not need to be separately installed. The ZIP contains the fused game executable, the native reader DLL, LÖVE's runtime DLLs, and LÖVE's license. The executable needs those adjacent runtime DLLs, so distribute the ZIP contents together.
 
-The Windows Actions workflow is manual-only. It downloads the official LÖVE 11.5 x64 runtime, creates the executable package, checks that the executable and required runtime files are present, then uploads the ZIP artifact.
+The Windows Actions workflow is manual-only. It downloads the official LÖVE 11.5 x64 runtime, builds the distribution directory, checks the executable and required runtime files, then uploads that directory as an artifact. After downloading the artifact from GitHub, extract it once to get the Windows distribution files.
 
 ## PCSX2
 

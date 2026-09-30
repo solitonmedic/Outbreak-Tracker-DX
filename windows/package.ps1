@@ -1,5 +1,6 @@
 param(
-    [string]$LoveRuntimeDirectory = $env:LOVE_WINDOWS_DIR
+    [string]$LoveRuntimeDirectory = $env:LOVE_WINDOWS_DIR,
+    [switch]$SkipArchive
 )
 
 $ErrorActionPreference = 'Stop'
@@ -110,8 +111,10 @@ if (-not (Test-Path $exePath -PathType Leaf) -or (Get-Item $exePath).Length -le 
     throw 'The fused Windows executable was not created correctly.'
 }
 
-if (Test-Path $zipPath) {
-    Remove-Item $zipPath -Force
+if ($SkipArchive) {
+    Write-Output "Built Windows executable distribution: $distributionRoot"
 }
-Compress-Archive -Path (Join-Path $distributionRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal
-Write-Output "Built Windows executable package: $zipPath"
+else {
+    Compress-Archive -Path (Join-Path $distributionRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal
+    Write-Output "Built Windows executable package: $zipPath"
+}
