@@ -1063,7 +1063,7 @@ function love.draw()
 
 	elseif InitResult == false then
 		love.graphics.setFont(DefaultFont)
-		love.graphics.printf(_l("Unable to find PCSX2 process.\n Will try again in ") .. tostring(math.floor(5-RetryTimer + 0.5)) .. ".", errorX, errorY, 300, "center")
+		love.graphics.printf(_l("An Outbreak game is not loaded.\n Will try again in ") .. tostring(math.floor(5-RetryTimer + 0.5)) .. ".", errorX, errorY, 300, "center")
 		love.graphics.setFont(VerySmallFont)
 		love.graphics.printf(_l("Language list"), 4, 4, 300, "left")
 		love.graphics.printf(_l("Hotkeys list"), 4, 60, 300, "left")
