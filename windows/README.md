@@ -8,6 +8,7 @@ The Windows native module reads PCSX2 process memory directly. It does not requi
 - Visual Studio 2022 with the Desktop development with C++ workload (v143 toolset).
 - Git and PowerShell.
 - The official LÖVE 11.5 x64 ZIP runtime for packaging.
+- The official [rcedit v2.0.0 x64 executable](https://github.com/electron/rcedit/releases/tag/v2.0.0), used to embed the tracker icon in the launcher before it is fused with the game archive.
 
 ## Build
 
@@ -31,7 +32,8 @@ msbuild "windows\Outbreak Tracker.sln" /m /p:Configuration=Release /p:Platform=x
 Download and extract [`love-11.5-win64.zip`](https://github.com/love2d/love/releases/tag/11.5), then package the shared UI, native reader, LÖVE runtime, and fused executable:
 
 ```powershell
-./windows/package.ps1 -LoveRuntimeDirectory 'C:\path\to\love-11.5-win64'
+$resourceEditor = 'C:\path\to\rcedit-x64.exe'
+./windows/package.ps1 -LoveRuntimeDirectory 'C:\path\to\love-11.5-win64' -ResourceEditorPath $resourceEditor
 ```
 
 The package is `windows/build/OutbreakTracker-Windows-x64.zip`. Extract it and launch `OutbreakTracker.exe`; LÖVE does not need to be separately installed. The ZIP contains the fused game executable, the native reader DLL, LÖVE's runtime DLLs, and LÖVE's license. The executable needs those adjacent runtime DLLs, so distribute the ZIP contents together.

@@ -1,5 +1,6 @@
 param(
     [string]$LoveRuntimeDirectory = $env:LOVE_WINDOWS_DIR,
+    [string]$ResourceEditorPath = $env:RCEDIT_PATH,
     [switch]$SkipArchive
 )
 
@@ -13,12 +14,18 @@ $distributionRoot = Join-Path $stageRoot 'distribution'
 $dllPath = Join-Path $PSScriptRoot 'Build/Release/x64/luaoutbreaktracker.dll'
 $gameZipPath = Join-Path $stageRoot 'game.zip'
 $loveArchivePath = Join-Path $buildRoot 'OutbreakTracker-Windows-x64.love'
+$iconPath = Join-Path $PSScriptRoot 'assets/outbreak-tracker.ico'
 
 if ([string]::IsNullOrWhiteSpace($LoveRuntimeDirectory)) {
     throw 'Pass -LoveRuntimeDirectory or set LOVE_WINDOWS_DIR to an extracted LÖVE 11.5 x64 distribution.'
 }
 
+if ([string]::IsNullOrWhiteSpace($ResourceEditorPath)) {
+    throw 'Pass -ResourceEditorPath or set RCEDIT_PATH to rcedit-x64.exe so the launcher receives the Outbreak Tracker icon.'
+}
+
 $loveExePath = Join-Path $LoveRuntimeDirectory 'love.exe'
+$launcherPath = Join-Path $stageRoot 'love-iconized.exe'
 $exePath = Join-Path $distributionRoot 'OutbreakTracker.exe'
 $zipPath = Join-Path $buildRoot 'OutbreakTracker-Windows-x64.zip'
 
@@ -28,6 +35,14 @@ if (-not (Test-Path $dllPath -PathType Leaf)) {
 
 if (-not (Test-Path $loveExePath -PathType Leaf)) {
     throw "LÖVE executable not found: $loveExePath"
+}
+
+if (-not (Test-Path $ResourceEditorPath -PathType Leaf)) {
+    throw "Windows resource editor not found: $ResourceEditorPath"
+}
+
+if (-not (Test-Path $iconPath -PathType Leaf)) {
+    throw "Windows launcher icon not found: $iconPath"
 }
 
 $requiredLoveFiles = @(
@@ -85,10 +100,19 @@ finally {
 }
 
 # A fused LÖVE executable is the official LÖVE launcher followed by the .love
-# archive. Keep the native reader beside the executable so require can load it.
+# archive. Edit a staging copy of the launcher before fusion because the
+# resource editor needs a normal PE executable rather than one with a .love
+# archive appended to it.
+Copy-Item $loveExePath $launcherPath -Force
+& $ResourceEditorPath $launcherPath --set-icon $iconPath
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to apply the Outbreak Tracker icon with $ResourceEditorPath"
+}
+
+# Keep the native reader beside the executable so require can load it.
 $exeStream = [System.IO.File]::Create($exePath)
 try {
-    foreach ($sourcePath in @($loveExePath, $loveArchivePath)) {
+    foreach ($sourcePath in @($launcherPath, $loveArchivePath)) {
         $sourceStream = [System.IO.File]::OpenRead($sourcePath)
         try {
             $sourceStream.CopyTo($exeStream)
@@ -101,6 +125,7 @@ try {
 finally {
     $exeStream.Dispose()
 }
+Remove-Item $launcherPath -Force
 
 Copy-Item $dllPath (Join-Path $distributionRoot 'luaoutbreaktracker.dll') -Force
 Get-ChildItem -LiteralPath $LoveRuntimeDirectory -Filter '*.dll' -File |

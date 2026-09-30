@@ -67,11 +67,23 @@ jobs:
             throw "LÖVE 11.5 x64 runtime was not extracted to $runtimeDirectory"
           }
 
+      - name: Download the Windows resource editor
+        shell: pwsh
+        run: |
+          $resourceEditor = Join-Path $env:RUNNER_TEMP 'rcedit-x64.exe'
+          Invoke-WebRequest `
+            -Uri 'https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe' `
+            -OutFile $resourceEditor
+          if (-not (Test-Path $resourceEditor -PathType Leaf)) {
+            throw "Windows resource editor was not downloaded to $resourceEditor"
+          }
+
       - name: Build the Windows distribution
         shell: pwsh
         env:
           LOVE_WINDOWS_DIR: '${{ runner.temp }}\love-11.5-win64'
-        run: ./windows/package.ps1 -LoveRuntimeDirectory $env:LOVE_WINDOWS_DIR -SkipArchive
+          RCEDIT_PATH: '${{ runner.temp }}\rcedit-x64.exe'
+        run: ./windows/package.ps1 -LoveRuntimeDirectory $env:LOVE_WINDOWS_DIR -ResourceEditorPath $env:RCEDIT_PATH -SkipArchive
 
       - name: Verify the Windows distribution
         shell: pwsh
