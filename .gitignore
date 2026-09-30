@@ -1,0 +1,25 @@
+.DS_Store
+
+/Outbreak Status Tracker.app/
+/OutbreakStatusTracker-x86_64.AppImage
+
+/macos/iconset.*
+/macos/pine-source/
+/macos/build-arm64/
+/macos/build-x86_64/
+/macos/terminal-build-arm64/
+/macos/luaoutbreaktracker-universal.so
+
+/linux/build/
+/linux/love-11.5-x86_64.AppImage
+/linux/appimagetool-x86_64.AppImage
+/.outbreak-tracker.*/
+/.outbreak-appimage.*/
+
+/windows/Build/
+/windows/build/
+/windows/luajit/
+/windows/Outbreak Tracker/Build/
+/windows/Outbreak Tracker/lib/
+
+/sources/*.so

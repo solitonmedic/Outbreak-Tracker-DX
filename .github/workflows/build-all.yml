@@ -1,0 +1,20 @@
+name: Build all platforms
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  macos:
+    name: macOS
+    uses: ./.github/workflows/build-macos.yml
+
+  linux:
+    name: Linux
+    uses: ./.github/workflows/build-linux.yml
+
+  windows:
+    name: Windows
+    uses: ./.github/workflows/build-windows.yml

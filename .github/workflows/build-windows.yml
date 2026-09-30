@@ -1,0 +1,69 @@
+name: Build Windows package
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build Windows x64 package
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v4
+
+      - name: Check out LuaJIT
+        uses: actions/checkout@v4
+        with:
+          repository: LuaJIT/LuaJIT
+          ref: v2.1
+          path: windows/luajit
+
+      - name: Build LuaJIT and the native reader
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          if (-not (Test-Path $vswhere -PathType Leaf)) {
+            throw "Visual Studio locator not found: $vswhere"
+          }
+
+          $vsInstall = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsInstall) {
+            throw 'Visual Studio C++ x64 build tools were not found.'
+          }
+
+          $devCmd = Join-Path $vsInstall 'Common7/Tools/VsDevCmd.bat'
+          $batch = Join-Path $env:RUNNER_TEMP 'build-windows.cmd'
+          @"
+          @echo off
+          set "WORKSPACE_ROOT=%CD%"
+          call "$devCmd" -arch=x64
+          if errorlevel 1 exit /b 1
+          cd /d windows\luajit\src
+          call msvcbuild.bat
+          if errorlevel 1 exit /b 1
+          cd /d "%WORKSPACE_ROOT%"
+          if not exist "windows\Outbreak Tracker\lib\x64" mkdir "windows\Outbreak Tracker\lib\x64"
+          copy /y "windows\luajit\src\lua51.lib" "windows\Outbreak Tracker\lib\x64\lua51.lib"
+          if errorlevel 1 exit /b 1
+          msbuild "windows\Outbreak Tracker.sln" /m /p:Configuration=Release /p:Platform=x64
+          if errorlevel 1 exit /b 1
+          "@ | Set-Content -Path $batch -Encoding ascii
+
+          & $batch
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package the tracker for LÖVE
+        shell: pwsh
+        run: ./windows/package.ps1
+
+      - name: Upload the Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Outbreak-Tracker-Windows-x64
+          path: windows/build/OutbreakTracker-Windows-x64.zip
+          if-no-files-found: error

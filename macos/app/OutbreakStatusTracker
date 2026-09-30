@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+bundle_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+love_bin="$bundle_dir/Frameworks/love.app/Contents/MacOS/love"
+game_dir="$bundle_dir/Resources/game"
+
+# If Finder opened this universal bundle through Rosetta, restart the bundled
+# runtime natively so the ARM64 reader is loaded on Apple Silicon.
+if [ "$(sysctl -in sysctl.proc_translated 2>/dev/null || true)" = "1" ]; then
+  exec arch -arm64 "$love_bin" "$game_dir"
+fi
+
+exec "$love_bin" "$game_dir"

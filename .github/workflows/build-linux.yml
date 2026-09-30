@@ -1,0 +1,65 @@
+name: Build Linux AppImage
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build x86_64 AppImage
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ squashfs-tools fuse3
+
+      - name: Download LÖVE and appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            -o "$RUNNER_TEMP/love-11.5-x86_64.AppImage" \
+            "https://github.com/love2d/love/releases/download/11.5/love-11.5-x86_64.AppImage"
+          curl -fsSL \
+            -o "$RUNNER_TEMP/appimagetool-x86_64.AppImage" \
+            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x "$RUNNER_TEMP/love-11.5-x86_64.AppImage" \
+            "$RUNNER_TEMP/appimagetool-x86_64.AppImage"
+
+      - name: Build the native reader
+        run: |
+          cmake -S linux -B linux/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build linux/build --config Release --parallel
+
+      - name: Build the AppImage
+        env:
+          LOVE_APPIMAGE: ${{ runner.temp }}/love-11.5-x86_64.AppImage
+          APPIMAGETOOL: ${{ runner.temp }}/appimagetool-x86_64.AppImage
+        run: |
+          chmod +x linux/build-appimage.sh
+          ./linux/build-appimage.sh
+
+      - name: Verify the AppImage
+        run: |
+          test -x OutbreakStatusTracker-x86_64.AppImage
+          test -s OutbreakStatusTracker-x86_64.AppImage
+          APPIMAGE_EXTRACT_AND_RUN=1 \
+            ./OutbreakStatusTracker-x86_64.AppImage --appimage-extract >/dev/null
+          test -f squashfs-root/bin/OutbreakStatusTracker
+          test -f squashfs-root/bin/luaoutbreaktracker.so
+          rm -rf squashfs-root
+
+      - name: Upload the AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: Outbreak-Status-Tracker-Linux-x86_64
+          path: OutbreakStatusTracker-x86_64.AppImage
+          if-no-files-found: error

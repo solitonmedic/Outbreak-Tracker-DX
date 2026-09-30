@@ -1,0 +1,61 @@
+name: Build macOS app
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build universal macOS app
+    runs-on: macos-14
+
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: brew install cmake luajit
+
+      - name: Install LÖVE 11.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            -o "$RUNNER_TEMP/love-11.5-macos.zip" \
+            "https://github.com/love2d/love/releases/download/11.5/love-11.5-macos.zip"
+          mkdir -p "$RUNNER_TEMP/love"
+          unzip -q "$RUNNER_TEMP/love-11.5-macos.zip" -d "$RUNNER_TEMP/love"
+          love_app=$(find "$RUNNER_TEMP/love" -maxdepth 3 -type d -name love.app -print -quit)
+          test -n "$love_app"
+          cp -R "$love_app" "$RUNNER_TEMP/love.app"
+
+      - name: Build the app
+        env:
+          LOVE_APP: ${{ runner.temp }}/love.app
+        run: |
+          chmod +x macos/build-app.sh
+          ./macos/build-app.sh
+
+      - name: Verify the app and native reader
+        run: |
+          test -d "Outbreak Status Tracker.app"
+          test -f "Outbreak Status Tracker.app/Contents/Resources/game/luaoutbreaktracker.so"
+          plutil -lint "Outbreak Status Tracker.app/Contents/Info.plist"
+          lipo -archs "Outbreak Status Tracker.app/Contents/Resources/game/luaoutbreaktracker.so"
+
+      - name: Upload the app
+        run: |
+          rm -rf artifact
+          mkdir -p artifact
+          cp -R "Outbreak Status Tracker.app" artifact/
+          test -d "artifact/Outbreak Status Tracker.app/Contents"
+
+      - name: Publish the app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Outbreak-Status-Tracker-macOS
+          path: artifact/*
+          if-no-files-found: error
