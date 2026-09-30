@@ -1,6 +1,6 @@
 local language = {
-    ["An Outbreak game is not loaded.\n Will try again in "] = "An Outbreak game is not loaded.\n Will try again in ", -- UI
-    ["This is not Biohazard Outbreak game.\n Will try again in "] = "This is not Biohazard Outbreak game.\n Will try again in ",
+    ["Unable to find a PCSX2 process.\n Will try again in "] = "Unable to find a PCSX2 process.\n Will try again in ", -- UI
+    ["An Outbreak game is not loaded.\n Will try again in "] = "An Outbreak game is not loaded.\n Will try again in ",
     ["Hotkeys list"] = "Hotkeys list:\n F1: Show/hide help menu.\n F2: Show/hide item list/ F3: Switch room list.\n F4: Show/hide enemy list. F5: No border.\n 1/2/3/4: Change window size.\n I: Show/hide item list in current room.\n T: Show/hide Timers.\n Q: Show/hide Puzzle Solutions.\n E: Switch/hide enemy HP in current room.\n S: Simple window.\n A: Auto size.\n D: Default.\n H/V: Change layout style.\n ESC: Exit.\n\nCredits\n    Program: Fothsid, killme, phoe-nix, madgamer98\n    Port: solitonmedic\n    Thanks: morshi, alyssaprimp\nCode: github.com/madgamer98/OutbreakTracker\nRussian Translation: FAILING FORWARD, Damin72",
     ["Help Menu"] = "Hotkeys list:\n F1: Show/hide help menu.\n F2: Show/hide item list/ F3: Switch room list.\n F4: Show/hide enemy list. F5: No border.\n 1/2/3/4: Change window size.\n I: Show/hide item list in current room.\n T: Show/hide Timers.\n Q: Show/hide Puzzle Solutions.\n E: Switch/hide enemy HP in current room.\n S: Simple window.\n A: Auto size.\n D: Default.\n H/V: Change layout style.\n ESC: Exit.",
     ["Language list"] = "Switch Language Hotkey:\n L: Switch language to English\n L: Переключить язык на русский",
@@ -534,8 +534,8 @@ local language = {
 }
 
 local language_ru = {
-    ["An Outbreak game is not loaded.\n Will try again in "] = "Игра Biohazard Outbreak не запущена.\n Повторный поиск через ", -- UI
-    ["This is not Biohazard Outbreak game.\n Will try again in "] = "Запущен не Обитель Зла Эпидемия.\n Повторный поиск через ",
+    ["Unable to find a PCSX2 process.\n Will try again in "] = "PCSX2 не запущен.\n Повторный поиск через ", -- UI
+    ["An Outbreak game is not loaded.\n Will try again in "] = "Игра Biohazard Outbreak не запущена.\n Повторный поиск через ",
     ["Hotkeys list"] = "Горячие клавиши:\n F1: показать/скрыть меню.\n F2: показать/скрыть предметы/ F3: сменить список комнат.\n F4: показать/скрыть врагов. F5: без рамок.\n 1/2/3/4: сменить размер окна.\n I: показать/скрыть предметы в комнате.\n T: Показать/скрыть таймеры.\n Q: Показать/скрыть решение загадок.\n E: Показать/скрыть здоровье врагов в комнате.\n S: обычное окно.\n A: авто размер.\n D: по умолчанию.\n H/V: сменить раскладку.\n ESC: выйти.\n\nАвторы\n    Программа: Fothsid, killme, phoe-nix, madgamer98\n    Port: solitonmedic\n    Спасибо: morshi, alyssaprimp\nКод: github.com/madgamer98/OutbreakTracker\n Перевод на русский: FAILING FORWARD, Damin72",
     ["Help Menu"] = "Горячие клавиши:\n F1: показать/скрыть меню.\n F2: показать/скрыть предметы/ F3: сменить список комнат.\n F4: показать/скрыть врагов. F5: без рамок.\n 1/2/3/4: сменить размер окна.\n I: показать/скрыть предметы в комнате.\n T: Показать/скрыть таймеры.\n Q: Показать/скрыть решение загадок.\n E: Показать/скрыть здоровье врагов в комнате.\n S: обычное окно.\n A: авто размер.\n D: по умолчанию.\n H/V: сменить раскладку.\n ESC: выйти.",
     ["Language list"] = "Кнопка переключения языка:\n L: Switch language to English\n L: Переключить язык на русский",
