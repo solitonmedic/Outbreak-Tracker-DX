@@ -73,7 +73,11 @@ local g=love.graphics
 function g.newFont(path,size) return makefont(path,size) end
 function g.newImageFont(path,characters) return makefont(path,nil,characters) end
 function g.newImage(path) return {path=path} end
-function g.newQuad(x,y,w,h) return {x,y,w,h} end
+function g.newQuad(x,y,w,h)
+    local q={x,y,w,h}
+    function q:getViewport() return self[1],self[2],self[3],self[4] end
+    return q
+end
 function g.newSpriteBatch(image)
     local batch={image=image,entries={},tint={1,1,1,1}}
     function batch:setColor(...) self.tint=rgba(...) end

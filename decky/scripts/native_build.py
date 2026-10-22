@@ -44,7 +44,11 @@ def build_native():
         "-DFETCHCONTENT_SOURCE_DIR_PINE=" + str(pine),
         "-DFETCHCONTENT_SOURCE_DIR_LUAJIT=" + str(headers.parent),
     ], env=env, check=True)
-    subprocess.run([str(prefix / "bin/cmake"), "--build", str(build), "--parallel", "2"], env=env, check=True)
+    with (output / "build.log").open("w") as log:
+        result = subprocess.run([str(prefix / "bin/cmake"), "--build", str(build), "--parallel", "2"], env=env, stdout=log, stderr=subprocess.STDOUT)
+    if result.returncode:
+        print((output / "build.log").read_text()[-6000:])
+        raise RuntimeError("Native build failed; see .artifacts/native/build.log")
     shutil.copy2(build / "luaoutbreaktracker.so", output)
     license_file = next(p for p in pine.iterdir() if p.name.lower().startswith("license"))
     shutil.copy2(license_file, output / "PINE-LICENSE")

@@ -102,7 +102,7 @@ def build(expected):
         **metadata, "platform": platform.platform(), "architecture": platform.machine(),
         "node": actual_node, "pnpm": actual_pnpm,
         "archive": archive_name, "sha256": hashlib.sha256(archive_path.read_bytes()).hexdigest(),
-        "checks": ["frontend typecheck", "frontend build", "Python syntax", "ZIP contents and CRC", "source commit"],
+        "checks": ["frontend typecheck", "frontend build", "native Linux reader link", "original font metrics", "Python syntax", "ZIP contents and CRC", "source commit"],
         "installed": False, "userRun": False, "inGameVerified": False,
     }
     report_path = output / "build-report.json"
