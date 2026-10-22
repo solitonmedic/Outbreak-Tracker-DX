@@ -21,7 +21,7 @@ See the parent README for the full build/install/rollback procedure.
 - `native_build.py`: called by build.py; reuses the shared Linux build with a pinned PINE revision, emits native module and font metrics into ignored output.
 - `font_metrics.py`: called with the user toolchain Python and Pillow; reads original fonts/images and writes the Lua metric table.
 - `../reader.lua`: LuaJIT child running the shared UI and reader; reads live PINE and emits in-memory drawing frames.
-- `../tracker_service.py`: standard-library Python HTTP/child lifecycle; serves port 8384 and authenticates frame/control requests with a private link. Stops on plugin unload.
+- `../tracker_service.py`: standard-library Python HTTP/child lifecycle; serves LAN port 28080 and authenticates frame/control requests with a private link. Stops on plugin unload.
 - `../web/app.js`: browser Canvas adapter and touch/keyboard controls, using original assets and fonts.
 
 Build/sync commands do not access PINE. The installed plugin's service and reader
