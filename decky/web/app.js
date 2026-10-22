@@ -127,7 +127,16 @@ function drawTinted(img,q,values,tint,id) {
     }ctx.drawImage(tinted.get(key),0,0);
   }ctx.restore();
 }
+// Safari hides its toolbar but floats the address pill over the page and reports no safe area,
+// so when a touch phone shows the page at full screen height, keep the tracker clear of both.
+function updateInsets() {
+  const portrait=innerHeight>innerWidth, fullHeight=Math.max(screen.width,screen.height);
+  const immersive=portrait&&matchMedia("(pointer: coarse)").matches&&innerHeight>=fullHeight-60;
+  document.documentElement.style.setProperty("--reserve-top",immersive?"100px":"0px");
+  document.documentElement.style.setProperty("--reserve-bottom",immersive?"24px":"0px");
+}
 async function render(frame) {
+  updateInsets();
   await Promise.all(frame.commands.filter(c=>c[0]==="image").map(c=>image(c[1])));
   const w=frame.width||300,h=frame.height||740;
   const area=canvas.parentElement.getBoundingClientRect();

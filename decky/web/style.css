@@ -1,7 +1,7 @@
 @font-face{font-family:TrackerBold;src:url('/assets/arialbd.ttf')}@font-face{font-family:TrackerNarrow;src:url('/assets/arialnb.ttf')}
-:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#000;color:#f1f1f1}
+:root{--reserve-top:0px;--reserve-bottom:0px;color-scheme:dark;font-family:system-ui,sans-serif;background:#000;color:#f1f1f1}
 html,body{height:100%;margin:0;background:#000;overflow:hidden}
-main{box-sizing:border-box;height:100%;height:100dvh;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+main{box-sizing:border-box;height:100%;height:100dvh;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:max(8px,env(safe-area-inset-top),var(--reserve-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom),var(--reserve-bottom)) max(8px,env(safe-area-inset-left))}
 canvas{display:block;background:#000}canvas.stale{opacity:.45}
 #message{position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:50%;transform:translateX(-50%);max-width:88vw;margin:0;padding:8px 14px;border-radius:8px;background:rgba(16,19,24,.88);color:#ffdb8b;font-size:.9rem;text-align:center;white-space:pre-wrap}
 #message:empty{display:none}
