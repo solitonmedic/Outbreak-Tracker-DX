@@ -8,8 +8,6 @@ Outbreak Status Tracker is a companion window for *Resident Evil Outbreak* in PC
 - U.S. File 1 support is still in progress. The current mappings were developed with the Ver2.162 community update installed; stock U.S. v2.00 has not been checked. Player 1 gameplay has been compared with the game in Outbreak. Multiplayer and some lobby information still need testing.
 - U.S. File 2 has not been mapped yet.
 
-On U.S. File 1, the tracker cannot show the current number of players in your room, the room's player cards, or the room master indicator. The Room List works, but entries for other players' occupied rooms still need checking. Puzzle hints for The Hive and Below Freezing Point are hidden because Ver2.162 changes those puzzles. Decisions, Decisions codes were checked in game; the Hellfire hint still needs a live check. The tracker only reads what PCSX2 has loaded into memory, so it cannot query the server for information outside the game.
-
 ## Run it
 
 Download the artifact for your platform from a successful [Build all platforms run](https://github.com/solitonmedic/Outbreak-Tracker-DX/actions/workflows/build-all.yml), or [build it from source](BUILDING.md). GitHub wraps each artifact in a ZIP, so extract that ZIP first.
