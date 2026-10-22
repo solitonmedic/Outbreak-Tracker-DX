@@ -1,8 +1,16 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Outbreak Tracker</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#000000"><title>Outbreak Tracker</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head>
 <body>
-  <header><strong>Outbreak Tracker</strong><span id="connection" role="status">Connecting…</span></header>
-  <main><p id="message" role="alert"></p><canvas id="tracker" width="300" height="740" aria-label="Live Outbreak tracker"></canvas></main>
-  <details open><summary>Tracker controls</summary><nav id="controls" aria-label="Tracker controls"></nav><p>Controls change the shared view on every connected device. Keyboard shortcuts also work.</p></details>
+  <main><canvas id="tracker" width="300" height="740" aria-label="Live Outbreak tracker"></canvas></main>
+  <p id="message" role="status"></p>
+  <button id="menu" type="button" aria-controls="sheet" aria-expanded="false" aria-label="Tracker controls">&#9776;</button>
+  <div id="sheet" hidden>
+    <div id="backdrop"></div>
+    <section aria-label="Tracker controls">
+      <header><h2>Controls</h2><button id="close" type="button">Done</button></header>
+      <div id="controls"></div>
+      <p>Controls change the shared view on every connected device. Keyboard shortcuts also work.</p>
+    </section>
+  </div>
 </body></html>
