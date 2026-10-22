@@ -1,0 +1,46 @@
+name: Build Decky plugin
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build Decky plugin ZIP (x86_64)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+
+      - name: Set up the native toolchain
+        run: python3 decky/scripts/bootstrap_native.py
+
+      - name: Build the plugin
+        run: python3 decky/scripts/build.py --expect-commit "$GITHUB_SHA"
+
+      - name: Verify the ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$(ls decky/.artifacts/outbreak-tracker-*.zip)"
+          test "$(echo "$archive" | wc -l)" -eq 1
+          unzip -l "$archive" | grep -q 'outbreak-tracker/bin/luaoutbreaktracker.so'
+          unzip -l "$archive" | grep -q 'outbreak-tracker/dist/index.js'
+          unzip -l "$archive" | grep -q 'outbreak-tracker/web/manifest.webmanifest'
+          unzip -p "$archive" outbreak-tracker/build-info.json | grep -q "$GITHUB_SHA"
+          sha256sum "$archive"
+
+      - name: Upload the plugin ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Outbreak-Tracker-Decky-Plugin
+          path: |
+            decky/.artifacts/outbreak-tracker-*.zip
+            decky/.artifacts/build-report.json
+          if-no-files-found: error
