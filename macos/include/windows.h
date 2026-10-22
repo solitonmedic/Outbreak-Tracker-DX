@@ -4,7 +4,7 @@
 #include <cstring>
 #include <cstddef>
 #include <vector>
-#include <pine.h>
+#include <pine_access.h>
 #include <cstdlib>
 
 #define __declspec(x) __attribute__((visibility("default")))
@@ -15,7 +15,6 @@ constexpr BOOL FALSE = 0; constexpr BOOL TRUE = 1;
 constexpr DWORD PROCESS_VM_READ = 0x0010;
 
 struct SYMBOL_INFO { std::uint32_t SizeOfStruct = 0; std::uint64_t Address = 0; };
-inline PINE::PCSX2 mac_pine;
 
 inline HANDLE OpenProcess(DWORD, BOOL, DWORD) { return reinterpret_cast<HANDLE>(1); }
 inline BOOL CloseHandle(HANDLE) { return TRUE; }
@@ -31,6 +30,7 @@ inline BOOL ReadProcessMemory(HANDLE, const void* address, void* output, SIZE_T 
     }
     const auto ee = static_cast<std::uint32_t>((raw >= 0x20000000ULL && raw < 0x30000000ULL) ? raw - 0x20000000ULL : raw);
     try {
+        std::lock_guard<std::mutex> lock(mac_pine_mutex);
         auto* bytes = static_cast<std::uint8_t*>(output);
 
         // Large legacy reads (the room pickup table is several kilobytes)

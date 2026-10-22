@@ -1,6 +1,7 @@
 .DS_Store
 
 /Outbreak Status Tracker.app/
+/Outbreak Status Tracker Debug.app/
 /OutbreakStatusTracker-x86_64.AppImage
 
 /macos/iconset.*
@@ -8,6 +9,9 @@
 /macos/build-arm64/
 /macos/build-x86_64/
 /macos/terminal-build-arm64/
+/macos/build-debug-arm64/
+/macos/build-debug-x86_64/
+/macos/terminal-build-debug-arm64/
 /macos/luaoutbreaktracker-universal.so
 
 /linux/build/

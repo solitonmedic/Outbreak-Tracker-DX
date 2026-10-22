@@ -18,7 +18,13 @@ set(PATCHED_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/main_mac.cpp")
       -P "${CMAKE_CURRENT_SOURCE_DIR}/patch_legacy_source.cmake"
     COMMAND /bin/chmod u+w "${PATCHED_SOURCE}"
   DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../sources/main.c" "${CMAKE_CURRENT_SOURCE_DIR}/patch_legacy_source.cmake")
+option(OUTBREAK_DEBUG_RECORDER "Build the debug reader that also records EE-RAM checkpoints" OFF)
 add_library(luaoutbreaktracker MODULE "${PATCHED_SOURCE}")
+if(OUTBREAK_DEBUG_RECORDER)
+  find_package(ZLIB REQUIRED)
+  target_sources(luaoutbreaktracker PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../sources/PineRecorder.cpp")
+  target_link_libraries(luaoutbreaktracker PRIVATE ZLIB::ZLIB)
+endif()
 target_compile_features(luaoutbreaktracker PRIVATE cxx_std_17)
 target_compile_options(luaoutbreaktracker PRIVATE -fdeclspec -fpermissive -include "${CMAKE_CURRENT_SOURCE_DIR}/include/legacy_macros.h")
 target_include_directories(luaoutbreaktracker PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include" ${pine_SOURCE_DIR}/src ${LUA_INCLUDE_DIR} ../sources)
