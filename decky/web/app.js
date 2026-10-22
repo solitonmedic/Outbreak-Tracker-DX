@@ -5,24 +5,43 @@
 // Run: open the private phone link in Decky. Check: cards and controls update.
 "use strict";
 const canvas = document.querySelector("#tracker"), ctx = canvas.getContext("2d");
-const connection = document.querySelector("#connection"), message = document.querySelector("#message");
+const message = document.querySelector("#message");
 const token = location.hash.slice(1) || sessionStorage.getItem("outbreakToken") || "";
 if (token) sessionStorage.setItem("outbreakToken", token);
 history.replaceState(null, "", location.pathname);
 const images = new Map(), imageFonts = new Map(), tinted = new Map();
-const controls = [["f1","Help"],["f2","Item views"],["f3","Next room"],["f4","Enemy list"],["i","Room items"],["t","Timers"],["q","Puzzle hints"],["e","Enemy HP"],["h","Horizontal"],["v","Vertical"],["d","Default size"],["a","Auto size"],["1","1 player"],["2","2 players"],["3","3 players"],["4","4 players"],["kp0","All enemies"],["kp1","Player 1 enemies"],["kp2","Player 2 enemies"],["kp3","Player 3 enemies"],["kp4","Player 4 enemies"],["l","Language"]];
+const groups = [
+  ["Views", false, [["f1","Help"],["f2","Item views"],["f3","Next room"],["l","Language"]]],
+  ["Show", false, [["i","Room items"],["t","Timers"],["q","Puzzle hints"],["e","Enemy HP"],["f4","Enemy list"]]],
+  ["Layout", false, [["v","Vertical"],["h","Horizontal"],["d","Default size"],["a","Auto size"]]],
+  ["Players shown", true, [["1","1"],["2","2"],["3","3"],["4","4"]]],
+  ["Enemy list shows", true, [["kp0","All"],["kp1","P1"],["kp2","P2"],["kp3","P3"],["kp4","P4"]]],
+];
+const controls = groups.flatMap(([, , keys]) => keys);
 async function sendKey(key) {
   try {
     const response = await fetch("/api/key", {method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({key}),signal:AbortSignal.timeout(5000)});
     if (!response.ok) throw new Error("Control request failed; reopen the link from Decky.");
   } catch(error) { message.textContent=error.message; }
 }
-for(const [key,label] of controls) {
-  const button=document.createElement("button"); button.textContent=label; button.title=key.toUpperCase();
-  button.addEventListener("click",()=>sendKey(key)); document.querySelector("#controls").append(button);
+const controlsRoot = document.querySelector("#controls");
+for(const [title,segmented,keys] of groups) {
+  const group=document.createElement("div"), heading=document.createElement("h3"), row=document.createElement("div");
+  group.className="group"; heading.textContent=title; row.className=segmented?"row segmented":"row";
+  for(const [key,label] of keys) {
+    const button=document.createElement("button"); button.type="button"; button.textContent=label; button.title=key.toUpperCase();
+    button.addEventListener("click",()=>sendKey(key)); row.append(button);
+  }
+  group.append(heading,row); controlsRoot.append(group);
 }
+const sheet = document.querySelector("#sheet"), menu = document.querySelector("#menu");
+function setSheet(open) { sheet.hidden=!open; menu.setAttribute("aria-expanded",String(open)); }
+menu.addEventListener("click",()=>setSheet(true));
+document.querySelector("#close").addEventListener("click",()=>setSheet(false));
+document.querySelector("#backdrop").addEventListener("click",()=>setSheet(false));
 addEventListener("keydown",event=>{
   const key=event.code.startsWith("Numpad") ? "kp"+event.code.slice(6) : event.key.toLowerCase();
+  if(key==="escape"&&!sheet.hidden){setSheet(false);return;}
   if(controls.some(([allowed])=>allowed===key)&&!event.ctrlKey&&!event.metaKey&&!event.altKey) {
     event.preventDefault(); if(!event.repeat) void sendKey(key);
   }
@@ -111,10 +130,15 @@ function drawTinted(img,q,values,tint,id) {
 async function render(frame) {
   await Promise.all(frame.commands.filter(c=>c[0]==="image").map(c=>image(c[1])));
   const w=frame.width||300,h=frame.height||740;
-  const cssWidth=Math.min(w*2,document.documentElement.clientWidth-24);
+  const area=canvas.parentElement.getBoundingClientRect();
+  const available=getComputedStyle(canvas.parentElement);
+  const maxWidth=area.width-parseFloat(available.paddingLeft)-parseFloat(available.paddingRight);
+  const maxHeight=area.height-parseFloat(available.paddingTop)-parseFloat(available.paddingBottom);
+  const cssWidth=Math.max(1,Math.floor(w*Math.min(maxWidth/w,maxHeight/h,4)));
+  const cssHeight=Math.round(cssWidth*h/w);
   const ratio=(devicePixelRatio||1)*cssWidth/w;
   if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}
-  canvas.style.width=cssWidth+"px";
+  canvas.style.width=cssWidth+"px";canvas.style.height=cssHeight+"px";
   ctx.setTransform(ratio,0,0,ratio,0,0);ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
   let depth=0;
   for(const command of frame.commands) {
@@ -130,13 +154,13 @@ async function render(frame) {
   }while(depth-->0)ctx.restore();
 }
 async function poll() {
-  if(!token){connection.textContent="Private link required";message.textContent="Open the phone link shown in the Outbreak Tracker Decky panel.";return;}
+  if(!token){message.textContent="Open the phone link shown in the Outbreak Tracker Decky panel.";return;}
   try {
     const response=await fetch("/api/frame",{headers:{"Authorization":"Bearer "+token},signal:AbortSignal.timeout(5000)});
     if(!response.ok)throw new Error(response.status===401?"This connection link has expired. Open the current link from Decky.":"Tracker service unavailable");
-    const frame=await response.json();connection.textContent=frame.state==="connected"?"Live":frame.state==="waiting"?"Waiting for game":frame.state;
-    message.textContent=frame.message||"";canvas.classList.toggle("stale",frame.state!=="connected");await render(frame);
-  }catch(error){connection.textContent="Disconnected";message.textContent=error.message;canvas.classList.add("stale");}
+    const frame=await response.json();
+    message.textContent=frame.state==="connected"?"":frame.message||(frame.state==="waiting"?"Waiting for game":frame.state);canvas.classList.toggle("stale",frame.state!=="connected");await render(frame);
+  }catch(error){message.textContent=error.message;canvas.classList.add("stale");}
   setTimeout(poll,200);
 }
 Promise.all([document.fonts.load("18px TrackerBold"),document.fonts.load("11px TrackerNarrow")]).then(poll).catch(error=>{message.textContent=error.message;});
