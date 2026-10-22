@@ -16,7 +16,7 @@ cmake --build linux/build --config Release
 
 The first CMake configure downloads the PINE and LuaJIT headers. To use local checkouts, pass `-DFETCHCONTENT_SOURCE_DIR_PINE=/path/to/pine` and `-DFETCHCONTENT_SOURCE_DIR_LUAJIT=/path/to/LuaJIT`.
 
-The tracker still requires PCSX2 running the Japanese game with **PINE enabled**. On Linux, PINE uses a Unix socket named `pcsx2.sock` in `$XDG_RUNTIME_DIR` rather than TCP port `28011`.
+The tracker requires PCSX2 running a supported game with **PINE enabled**. Japanese File 1 and File 2 are supported; U.S. File 1 support is partial. On Linux, PINE uses a Unix socket named `pcsx2.sock` in `$XDG_RUNTIME_DIR` rather than TCP port `28011`. See the [project README](../README.md) for current limits.
 
 If you are using the LÖVE Flatpak (`org.love2d.love2d`), run `LOVE_FLATPAK=1 ./linux/run.sh`. The launcher grants the Flatpak access to `$XDG_RUNTIME_DIR` so it can reach PINE. Otherwise, if LÖVE is installed somewhere other than your `PATH`, set `LOVE_BIN` to its executable before running `./linux/run.sh`.
 

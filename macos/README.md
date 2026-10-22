@@ -26,11 +26,11 @@ cmake --build macos/terminal-build-arm64 --config Release
 ./macos/run.sh
 ```
 
-The tracker requires PCSX2 running File 1 or File 2 with **PINE enabled on TCP port `28011`**. Japanese File 1 is fully supported; U.S. File 1 is detected automatically, but its support is partial and still being tested (see below).
+The tracker requires PCSX2 running a supported game with **PINE enabled on TCP port `28011`**. Japanese File 1 and File 2 are supported. U.S. File 1 is detected automatically, but support is partial; see the [project README](../README.md) for current limits.
 
 ## Debug build with run recording
 
-The debug build is for testing and is not a release. It shows the same tracker and also records the run in the format of `record-pine-ee-run.py`: one compressed 32 MiB EE-RAM checkpoint every 10 seconds, extra checkpoints when player 1 settles in a new room or a marker is added, and a `manifest.json` with a JSON sidecar per checkpoint. It only reads memory. The reader detects Japanese and U.S. File 1 automatically. On the U.S. release, fields without a known U.S. address (lobby and host data, item set, puzzle hints, room items) are left empty.
+The debug build is for testing and is not a release. It shows the same tracker and also records the run in the format of `record-pine-ee-run.py`: one compressed 32 MiB EE-RAM checkpoint every 10 seconds, extra checkpoints when player 1 settles in a new room or a marker is added, and a `manifest.json` with a JSON sidecar per checkpoint. It only reads memory. The reader detects Japanese and U.S. File 1 automatically. U.S. fields without a mapped address remain unavailable; some host, lobby and puzzle fields still need work.
 
 ```sh
 ./macos/build-app.sh --debug

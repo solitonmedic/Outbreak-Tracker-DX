@@ -42,4 +42,4 @@ The Windows Actions workflow is manual-only. It downloads the official LÖVE 11.
 
 ## PCSX2
 
-Start PCSX2 with the Japanese version of Outbreak File 1 or File 2 before launching the tracker. The Windows reader locates the PCSX2 process and reads its emulated EE memory directly.
+Start PCSX2 with a supported game before launching the tracker. Japanese File 1 and File 2 are supported; U.S. File 1 support is partial. The Windows reader locates the PCSX2 process and reads its emulated EE memory directly. See the [project README](../README.md) for current limits.
