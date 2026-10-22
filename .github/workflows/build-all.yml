@@ -15,3 +15,7 @@ jobs:
   windows:
     name: Windows
     uses: ./.github/workflows/build-windows.yml
+
+  decky:
+    name: Decky plugin
+    uses: ./.github/workflows/build-decky.yml
