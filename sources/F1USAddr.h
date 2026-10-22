@@ -50,6 +50,8 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x62E230, 1,          0xAAB80 },  // host status, first byte of the lobby state cleared by the same reset code
     { 0x62E236, 2,          0xAAB80 },  // host scenario, same lobby-state offset (+6)
     { 0x62EB80, 2,          0xAAB88 },  // host countdown in seconds; U.S. lobby state +0x958 (Japan +0x950)
+    { 0x5FFFDA, 2,          0xA3EA0 },  // host max players - 2, same offset from the second slot copy
+    { 0x60292A, 2,          0xA3EA0 },  // host difficulty, same offset from the second slot copy
 };
 
 // Returns the U.S. address for a Japanese File 1 address, or 0 when the whole

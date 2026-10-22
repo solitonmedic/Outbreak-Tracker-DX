@@ -58,10 +58,13 @@ function PuzzleHintsAvailable()
 	return GameInfo.release ~= "us"
 end
 
--- The U.S. room's player count, maximum and difficulty are not mapped yet;
--- leave them off there instead of showing zeros.
-function HostPartyAvailable()
-	return GameInfo.release ~= "us"
+-- The U.S. room's player count is not mapped yet; show it as "-" there
+-- instead of a zero.
+function HostPlayerText(players)
+	if GameInfo.release == "us" then
+		return "-"
+	end
+	return players
 end
 
 function love.load(args)
@@ -388,13 +391,9 @@ function love.draw()
 		if (hs >= 4 and hs < 6 and s=="") then
 			UIAtlas:draw(hm, hostmap_x, hostmap_y, 0, hostmap_scale)
 			love.graphics.printf(Time2string2(GameInfo.hosttime), hosttime_x, hosttime_y, 300, "left")
-			if HostPartyAvailable() then
-				love.graphics.printf(hp.."/"..hmp+2, hostplayer_x, hostplayer_y, 300, "left")
-				love.graphics.setFont(DefaultFont)
-				love.graphics.printf(hd, hostdifficulty_x, hostdifficulty_y, 200, "right")
-			else
-				love.graphics.setFont(DefaultFont)
-			end
+			love.graphics.printf(HostPlayerText(hp).."/"..hmp+2, hostplayer_x, hostplayer_y, 300, "left")
+			love.graphics.setFont(DefaultFont)
+			love.graphics.printf(hd, hostdifficulty_x, hostdifficulty_y, 200, "right")
 
 			for i=1, 4 do
 				if SPlayers[i].enabled then
