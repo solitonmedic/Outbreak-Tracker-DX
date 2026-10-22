@@ -30,6 +30,8 @@ def setup():
     if not (prefix / "conda-meta/history").is_file():
         arguments = [str(executable), "--no-rc", "--root-prefix", str(cache / "mamba"), "create", "-y", "-p", str(prefix)]
         if lock.is_file():
+            if "@EXPLICIT" not in lock.read_text().splitlines():
+                raise RuntimeError("native-toolchain.lock must be an explicit lock: a line '@EXPLICIT', then one package URL per line")
             arguments += ["--file", str(lock)]
         else:
             arguments += ["-c", "conda-forge", "gxx_linux-64=14", "cmake=3.31", "make=4.4", "luajit=2.1", "python=3.12", "pillow=11"]
