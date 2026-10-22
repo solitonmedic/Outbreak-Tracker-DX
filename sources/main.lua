@@ -1105,6 +1105,7 @@ function love.update(dt)
 		tracker.updateRoom()
 		tracker.update()
 		GameInfo = tracker.getGameInfo()
+		SelectUIAtlas(GameInfo.currentFile, GameInfo.release)
 		local p = GameInfo.playernum
 		local itemset = GameInfo.itemrandom
 		local r = GameInfo.itemrandom2

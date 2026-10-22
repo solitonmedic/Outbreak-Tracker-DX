@@ -38,6 +38,8 @@ CMake copies the shared `sources/main.c` reader, applies `macos/patch_legacy_sou
 
 `build-app.sh` compiles an arm64 and an x86_64 reader, combines them into one native module with `lipo`, and places that module, the shared Lua UI, assets and a copy of LÖVE inside the app bundle. The debug option also compiles `sources/PineRecorder.cpp` with zlib into the native module and loads `macos/overrides/debug.lua`. The normal app does not include the recorder.
 
+The shared UI loads `assets/ui.png` and `assets/ui-us.png`. After the reader identifies U.S. File 1, it selects the English atlas; Japanese File 1 and File 2 use the original atlas. All platform packages copy both files from `assets/`.
+
 ## Linux
 
 On Ubuntu 24.04, install the packages used by the Linux workflow. A local Terminal run also needs LÖVE 11.5. The first CMake configure downloads PINE and LuaJIT source for headers; use `-DFETCHCONTENT_SOURCE_DIR_PINE=/path/to/pine` and `-DFETCHCONTENT_SOURCE_DIR_LUAJIT=/path/to/LuaJIT` if you already have local copies.

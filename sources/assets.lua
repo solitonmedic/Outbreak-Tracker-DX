@@ -2,13 +2,20 @@ local IconLinks = require "icondata"
 local IconLinks2 = require "icondata2"
 local UIAtlasInfo = require "uidata"
 RoomNames = require "roomnames"
+local JapaneseUIAtlas, USUIAtlas
+
+function SelectUIAtlas(currentFile, release)
+	UIAtlas = currentFile == 1 and release == "us" and USUIAtlas or JapaneseUIAtlas
+end
 
 function LoadAssets()
 	ItemCountFont = love.graphics.newImageFont("assets/ItemCountFont.png", "0123456789")
 	TimeFont = love.graphics.newImageFont("assets/TimeFont.png", "0123456789:./")
 	VirusFont = love.graphics.newImageFont("assets/VirusFont.png", "0123456789.%")
 	VirusFont:setFilter("nearest", "linear")
-	UIAtlas = LoadTextureAtlas("assets/ui.png", UIAtlasInfo)
+	JapaneseUIAtlas = LoadTextureAtlas("assets/ui.png", UIAtlasInfo)
+	USUIAtlas = LoadTextureAtlas("assets/ui-us.png", UIAtlasInfo)
+	UIAtlas = JapaneseUIAtlas
 	ItemIcons = LoadTextureAtlas("assets/icons.png", IconLinks)
 	ItemIcons2 = LoadTextureAtlas("assets/StartingItem.png", IconLinks2)
 	DefaultFont = love.graphics.newFont("assets/arialbd.ttf",18)

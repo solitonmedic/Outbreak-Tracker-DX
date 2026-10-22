@@ -43,3 +43,5 @@ The Windows Actions workflow is manual-only. It downloads the official LÖVE 11.
 ## PCSX2
 
 Start PCSX2 with a supported game before launching the tracker. Japanese File 1 and File 2 are supported; U.S. File 1 support is partial. The Windows reader locates the PCSX2 process and reads its emulated EE memory directly. See the [project README](../README.md) for current limits.
+
+The Windows package includes both UI atlases and selects the English one when U.S. File 1 is detected.
