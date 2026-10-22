@@ -1074,11 +1074,20 @@ void GetRoomItemF1()
 		}
 
 		int Pointer;
+		ReadF1(F1_RoomItem, &Pointer, 4);
+
+		/* The pointer is 0 or stale while rooms load; only read a window inside EE RAM. */
+		int windowStart = Pointer+0x40-(196*MAX_ITEM/2);
+		if (Pointer == 0 || windowStart < 0 || windowStart + 196*MAX_ITEM > 0x2000000)
+		{
+			memset(RItems, 0, sizeof(RItems));
+			return;
+		}
+
 		unsigned char* buffer = malloc(196*MAX_ITEM);
 		int bytesRead = 0;
 
-		ReadF1(F1_RoomItem, &Pointer, 4);
-		ReadProcessMemory(ProcessHandle, (char *)BasePointer+Pointer+0x40-(196*MAX_ITEM/2), buffer, 196*MAX_ITEM, NULL);
+		ReadProcessMemory(ProcessHandle, (char *)BasePointer+windowStart, buffer, 196*MAX_ITEM, NULL);
 
 		/* Warning! Unexplainable magic below! */
 		for (int i=0; i < MAX_ITEM; i++)

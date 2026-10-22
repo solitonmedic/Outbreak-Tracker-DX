@@ -43,6 +43,7 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x3065AA, 2,          0x1DE30 },  // scenario ID
     { 0x23BE14, 1,          0x27F08C },  // number of players present (supported)
     { 0x6E6C70, 12 * 4,     0x34140 },  // virus maximum per character type (byte-identical table)
+    { 0x23BD90, 4,          0x1793D0 }, // room-item pointer (supported); the records it names are read as is
 };
 
 // Returns the U.S. address for a Japanese File 1 address, or 0 when the whole
