@@ -72,6 +72,12 @@ with native reader, shared Lua UI, original assets, browser frontend, backend,
 package metadata, licenses and `build-info.json`.
 Build output and dependencies are ignored. Save older ZIPs to roll back a build.
 
+The same ZIP can be built by the manual GitHub workflow `.github/workflows/build-decky.yml`
+(`Build Decky plugin`): it runs `bootstrap_native.py` and `build.py` on `ubuntu-24.04` with
+Node 24.19.0 from `actions/setup-node`, verifies the ZIP and uploads it as the
+`Outbreak-Tracker-Decky-Plugin` artifact. `build.py` accepts any branch and the Node on
+`PATH` only when `GITHUB_ACTIONS=true`.
+
 To repeat a build directly over SSH, the equivalent command on the Deck is:
 
 ```sh

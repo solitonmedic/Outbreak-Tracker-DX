@@ -17,8 +17,8 @@ See the parent README for the full build/install/rollback procedure.
 
 ## Live reader additions
 
-- `bootstrap_native.py`: `python3 decky/scripts/deck.py native-setup` after sync. Downloads checksum-pinned micromamba and installs a locked compiler/CMake/Pillow environment under the Deck user home. No OS or emulator changes.
-- `native_build.py`: called by build.py; reuses the shared Linux build with a pinned PINE revision, emits native module and font metrics into ignored output.
+- `bootstrap_native.py`: `python3 decky/scripts/deck.py native-setup` after sync. Downloads checksum-pinned micromamba and installs a locked compiler/CMake/Pillow environment under the Deck user home (the GitHub workflow runs it directly on its runner). No OS or emulator changes.
+- `native_build.py`: called by build.py; reuses the shared Linux build with a pinned PINE revision, emits native module and font metrics into ignored output; its CMake build folder is `.artifacts/native/cmake-build` inside each checkout.
 - `font_metrics.py`: called with the user toolchain Python and Pillow; reads original fonts/images and writes the Lua metric table.
 - `../reader.lua`: LuaJIT child running the shared UI and reader; reads live PINE and emits in-memory drawing frames.
 - `../tracker_service.py`: standard-library Python HTTP/child lifecycle; serves LAN port 28080 to local-network clients only (no login), with same-origin JSON controls. Stops on plugin unload.
@@ -27,3 +27,4 @@ See the parent README for the full build/install/rollback procedure.
 Build/sync commands do not access PINE. The installed plugin's service and reader
 do read live PINE when started; they never write game memory or create recordings.
 - `make_icons.py`: reusable one-time generator for the home-screen icons in `web/icons/` (committed). Needs Pillow; run with the bundled Codex Python from `repo-merged/` (see its header).
+- `../../.github/workflows/build-decky.yml`: manual workflow that runs `bootstrap_native.py` then `build.py` on `ubuntu-24.04` and uploads the ZIP; `build.py` allows any branch and the Node on PATH only when `GITHUB_ACTIONS=true`.
