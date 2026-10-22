@@ -48,6 +48,8 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x23BBA0, 2,          0xE8918 },  // PuzzleRandom / ItemRandom2: state of the same 0xFF53 random generator
     { 0x629600, 30 * 0x15C, 0xA3EA0 },  // room-list slots: same 0x28C8 clear and field offsets in the lobby code
     { 0x62E230, 1,          0xAAB80 },  // host status, first byte of the lobby state cleared by the same reset code
+    { 0x62E236, 2,          0xAAB80 },  // host scenario, same lobby-state offset (+6)
+    { 0x62EB80, 2,          0xAAB88 },  // host countdown in seconds; U.S. lobby state +0x958 (Japan +0x950)
 };
 
 // Returns the U.S. address for a Japanese File 1 address, or 0 when the whole
