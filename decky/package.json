@@ -1,6 +1,6 @@
 {
   "name": "outbreak-tracker",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Live Outbreak tracker and local-network phone view for Steam Deck",
   "author": "solitonmedic",
   "license": "BSD-3-Clause",
