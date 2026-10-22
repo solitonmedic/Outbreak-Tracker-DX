@@ -1,4 +1,4 @@
-# Outbreak Status Tracker
+# Outbreak Status Tracker DX
 
 Outbreak Status Tracker is a companion window for *Resident Evil Outbreak* in PCSX2. It reads the game's memory and shows character health, infection and status, inventory, nearby items, enemies, doors, timers, puzzle hints and online room information. It does not change the game.
 
