@@ -1,11 +1,14 @@
 """Purpose: reusable native Steam Deck frontend build and installable ZIP packager.
-Location/runtime: decky/scripts/build.py; Python 3, Git, nvm Node 24.19.0/Corepack.
+Location/runtime: decky/scripts/build.py; Python 3, Git, Node 24.19.0/Corepack (nvm on the
+Deck; the one on PATH, from actions/setup-node, when GITHUB_ACTIONS=true as in build-decky.yml).
 Inputs: clean committed checkout, --expect-commit, package/lockfile, frontend/backend;
 network for pinned pnpm/dependencies. No environment options beyond normal home/cache.
 Outputs: ignored decky/dist and decky/.artifacts/ZIP plus JSON build report.
 Safety: writes build artifacts and user caches only; no sudo, installation, PINE,
 settings edits, game memory, recordings or workbook access.
 Run from repo-merged/ on Deck: python3 decky/scripts/build.py --expect-commit $(git rev-parse HEAD)
+In GitHub Actions the same command runs on ubuntu-24.04 after bootstrap_native.py; the checkout
+need not be on the Decky branch there.
 Check: compilation/typecheck pass; report and ZIP metadata identify expected HEAD.
 """
 
@@ -17,6 +20,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import shutil
 import subprocess
 import tempfile
 import zipfile
@@ -31,12 +35,13 @@ def build(expected):
     commit = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
     branch = subprocess.check_output(["git", "-C", str(repo), "branch", "--show-current"], text=True).strip()
     dirty = subprocess.check_output(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"], text=True)
-    if commit != expected or branch != "Decky" or dirty.strip():
+    ci = os.environ.get("GITHUB_ACTIONS") == "true"
+    if commit != expected or dirty.strip() or (branch != "Decky" and not ci):
         raise RuntimeError("Build requires a clean Decky checkout at the expected commit")
     if platform.system() != "Linux" or platform.machine() != "x86_64":
-        raise RuntimeError("This build command targets the x86_64 Steam Deck")
+        raise RuntimeError("This build command targets x86_64 Linux (the Steam Deck or a Linux CI runner)")
 
-    node_bin = Path.home() / f".nvm/versions/node/v{NODE_VERSION}/bin"
+    node_bin = Path(shutil.which("node") or "node").parent if ci else Path.home() / f".nvm/versions/node/v{NODE_VERSION}/bin"
     node = node_bin / "node"
     corepack = node_bin / "corepack"
     env = dict(os.environ)
