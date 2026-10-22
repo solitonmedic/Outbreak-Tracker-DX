@@ -40,6 +40,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Outbreak-Tracker-Decky-Plugin
+          include-hidden-files: true
           path: |
             decky/.artifacts/outbreak-tracker-*.zip
             decky/.artifacts/build-report.json
