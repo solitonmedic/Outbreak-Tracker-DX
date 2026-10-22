@@ -44,6 +44,8 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x23BE14, 1,          0x27F08C },  // number of players present (supported)
     { 0x6E6C70, 12 * 4,     0x34140 },  // virus maximum per character type (byte-identical table)
     { 0x23BD90, 4,          0x1793D0 }, // room-item pointer (supported); the records it names are read as is
+    { 0x23BB20, 4,          0x7D2B8 },  // ItemRandom: same start-up clear and running-maximum code as Japan
+    { 0x23BBA0, 2,          0xE8918 },  // PuzzleRandom / ItemRandom2: state of the same 0xFF53 random generator
 };
 
 // Returns the U.S. address for a Japanese File 1 address, or 0 when the whole
