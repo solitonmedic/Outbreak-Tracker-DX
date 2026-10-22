@@ -57,7 +57,7 @@ function Content() {
           {status && <>
             <p>{status.message}</p>
             <p>Reader: {status.trackerState}</p>
-            {qrImage && <img src={qrImage} alt="Scan to open the private tracker link" style={{ width: 220, maxWidth: "100%" }} />}
+            {qrImage && <img src={qrImage} alt="Scan to open the tracker on your network" style={{ width: 220, maxWidth: "100%" }} />}
             {status.phoneUrl && <p>{status.phoneUrl}</p>}
             <p>PCSX2 AppImage: {status.pcsx2Installed ? "Found" : "Not found"}</p>
             <p>PINE setting: {status.pineEnabled === null ? "Unavailable" : status.pineEnabled ? "Enabled" : "Disabled"}

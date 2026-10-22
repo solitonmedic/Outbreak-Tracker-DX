@@ -1,7 +1,7 @@
 # Outbreak Tracker for Decky
 
-The plugin starts a read-only PCSX2 PINE reader and serves a private phone view on
-LAN port 28080. Scan the QR code in Decky or open its private link on another device
+The plugin starts a read-only PCSX2 PINE reader and serves a phone view on
+LAN port 28080. Scan the QR code in Decky or open its link on another device
 on the same network. The page draws the original shared Lua tracker UI with its
 existing sprite atlases, fonts, card logic, release limits and keyboard controls.
 Touch buttons mirror those controls; every connected device shares one view.
@@ -88,11 +88,26 @@ needed). Installation is a separate user action. The development driver never
 writes into the root-owned installed plugin directory or restarts the loader.
 
 Open **Outbreak Tracker** from the Decky menu, check its version and commit, then
-scan the QR code on your phone. The link includes a per-start access token in its
-fragment; keep the full link private. The browser retains it in session storage
-and sends it in an authorization header. A new service start invalidates old links.
+scan the QR code on your phone. There is no login and no token: the link is just
+`http://<deck address>:28080/` and stays the same across restarts.
+
 The service listens on port 28080 and exposes only packaged web/artwork files plus
-authenticated frame/control endpoints. It adds no firewall or router rules.
+the frame and control endpoints. It answers only clients on private, link-local,
+loopback or Tailscale addresses, and only for requests addressed to an IP, a
+single-label or a `.local` host name (this blocks DNS rebinding). Controls are
+accepted only as same-origin JSON requests from the tracker page, so other websites
+cannot press keys. Anyone on your local network can open the page and change the
+shared view; they cannot read game memory or do anything else. It adds no firewall
+or router rules; do not forward port 28080 from your router.
+
+**Home-screen app (PWA).** The page has a web app manifest, an Apple touch icon and
+standalone meta tags using the Outbreak Tracker HD icon. On iPhone Safari use Share →
+Add to Home Screen; it then opens full screen without Safari's bars (the margin logic
+for the hidden-toolbar case is skipped in that mode). The Deck's address is plain
+`http://`, so browsers do not offer a service worker or offline mode; the app needs
+the Deck and the phone view running. If your router changes the Deck's address, add
+the app again (a DHCP reservation for the Deck avoids this). Icons are made by
+`scripts/make_icons.py` and committed under `web/icons/`.
 
 Start PCSX2 with PINE enabled and a supported game. The native reader uses
 `/run/user/1000/pcsx2.sock` for default slot 28011. A waiting status means that a
@@ -116,9 +131,9 @@ textures and fonts, including image-font separators. The bridge does not export
 raw RAM, duplicate memory-address maps, or execute browser-supplied code. Native
 compilation reuses `linux/CMakeLists.txt` and its existing source patcher.
 
-New endpoints: authorized `GET /api/frame` and `POST /api/key` with a whitelisted
-key. Decky methods `get_status` and `set_running` expose lifecycle state and the
-private link. Waiting/error/stale states are distinct from live. Browser and native
+New endpoints: `GET /api/frame` and `POST /api/key` with a whitelisted
+key, both restricted as described above. Decky methods `get_status` and `set_running`
+expose lifecycle state and the phone link. Waiting/error/stale states are distinct from live. Browser and native
 visual parity still require comparison in the user's game and phone browser.
 
 ## Template provenance and license
