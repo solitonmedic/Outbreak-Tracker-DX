@@ -52,6 +52,19 @@ EnemyCards2 = {}
 EnemyCards3 = {}
 EnemyCards4 = {}
 
+-- The U.S. File 1 release has no mapped item-set or puzzle fields yet, so
+-- show the item set as unknown and leave the Japanese puzzle hints off.
+function ItemSetText(itemset, r, separator)
+	if GameInfo.release == "us" then
+		return "?"
+	end
+	return itemset+1 ..separator..math.floor(r/10)+1
+end
+
+function PuzzleHintsAvailable()
+	return GameInfo.release ~= "us"
+end
+
 function love.load(args)
 	LoadAssets()
 	InitResult = tracker.init()
@@ -435,7 +448,7 @@ function love.draw()
 					end
 				end
 				if not(s == "") and (f > 0) and ItemSwitch ==1 then
-					love.graphics.printf(itemset+1 .."\n"..math.floor(r/10)+1, 0, itemr_y, 24, "center")
+					love.graphics.printf(ItemSetText(itemset, r, "\n"), 0, itemr_y, 24, "center")
 					for i=1, 1 do
 						ItemCards[i]:draw(itemcard_x, itemcard_y)
 					end
@@ -513,7 +526,7 @@ function love.draw()
 							ItemCards2[i]:draw(1+45*(i-201), 1+44*20)
 						end
 						love.graphics.setFont(VerySmallFont)
-						love.graphics.printf("Item set: "..itemset+1 .."-"..math.floor(r/10)+1, 4, 720, 300, "left")
+						love.graphics.printf("Item set: "..ItemSetText(itemset, r, "-"), 4, 720, 300, "left")
 					else
 						for i=1, 30 do
 							ItemCards2[i]:draw(1+46*(i-1), 1)
@@ -537,7 +550,7 @@ function love.draw()
 							ItemCards2[i]:draw(1+46*(i-181), 1+44*6)
 						end
 						love.graphics.setFont(VerySmallFont)
-						love.graphics.printf("Item set: "..itemset+1 .."-"..math.floor(r/10)+1, 4, 190, 300, "left")
+						love.graphics.printf("Item set: "..ItemSetText(itemset, r, "-"), 4, 190, 300, "left")
 					end
 				end
 
@@ -992,25 +1005,25 @@ function love.draw()
 				end
 
 			elseif (s == "below freezing point") then
-				if(PuzzleSwitch == 1) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable()) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(passbfp.."-"..pass2bfp, timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "the hive") then
-				if(PuzzleSwitch == 1) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable()) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(passhive, timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "hellfire") then
-				if(PuzzleSwitch == 1) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable()) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(hfpass.."-"..hfmap.."-"..hfpower, timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "decisions,decisions") then
-				if(PuzzleSwitch == 1) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable()) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(ddpass.."-"..clocktime, timeleft_x, timeleft_y, 300, "left")
 				end
