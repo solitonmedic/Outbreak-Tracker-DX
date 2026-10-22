@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#000000"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Outbreak"><meta name="apple-mobile-web-app-status-bar-style" content="black"><title>Outbreak Tracker</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head>
+<body>
+  <main><canvas id="tracker" width="300" height="740" aria-label="Live Outbreak tracker"></canvas></main>
+  <p id="message" role="status"></p>
+  <button id="menu" type="button" aria-controls="sheet" aria-expanded="false" aria-label="Tracker controls">&#9776;</button>
+  <div id="sheet" hidden>
+    <div id="backdrop"></div>
+    <section aria-label="Tracker controls">
+      <header><h2>Controls</h2><button id="close" type="button">Done</button></header>
+      <div id="controls"></div>
+      <p>Tap the tracker to open these controls. They change the shared view on every connected device. Keyboard shortcuts also work.</p>
+      <p id="diagnostics"></p>
+    </section>
+  </div>
+</body></html>
