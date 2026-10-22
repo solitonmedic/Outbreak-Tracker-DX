@@ -46,6 +46,8 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x23BD90, 4,          0x1793D0 }, // room-item pointer (supported); the records it names are read as is
     { 0x23BB20, 4,          0x7D2B8 },  // ItemRandom: same start-up clear and running-maximum code as Japan
     { 0x23BBA0, 2,          0xE8918 },  // PuzzleRandom / ItemRandom2: state of the same 0xFF53 random generator
+    { 0x629600, 30 * 0x15C, 0xA3EA0 },  // room-list slots: same 0x28C8 clear and field offsets in the lobby code
+    { 0x62E230, 1,          0xAAB80 },  // host status, first byte of the lobby state cleared by the same reset code
 };
 
 // Returns the U.S. address for a Japanese File 1 address, or 0 when the whole
