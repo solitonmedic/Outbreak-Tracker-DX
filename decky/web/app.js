@@ -37,6 +37,8 @@ for(const [title,segmented,keys] of groups) {
 const sheet = document.querySelector("#sheet"), menu = document.querySelector("#menu");
 function setSheet(open) { sheet.hidden=!open; menu.setAttribute("aria-expanded",String(open)); }
 menu.addEventListener("click",()=>setSheet(true));
+document.querySelector("main").addEventListener("click",()=>setSheet(true));
+setTimeout(()=>menu.classList.add("idle"),4000);
 document.querySelector("#close").addEventListener("click",()=>setSheet(false));
 document.querySelector("#backdrop").addEventListener("click",()=>setSheet(false));
 addEventListener("keydown",event=>{
@@ -127,13 +129,18 @@ function drawTinted(img,q,values,tint,id) {
     }ctx.drawImage(tinted.get(key),0,0);
   }ctx.restore();
 }
-// Safari hides its toolbar but floats the address pill over the page and reports no safe area,
-// so when a touch phone shows the page at full screen height, keep the tracker clear of both.
+// With Safari's toolbar hidden the page starts below the status bar but its floating address pill
+// still overlaps the top ~30 px and Safari reports no safe area for it. When a touch phone shows
+// a page nearly as tall as the screen, keep the tracker clear of the pill. The diagnostics line
+// in the controls sheet shows the numbers used.
+const diagnostics = document.querySelector("#diagnostics");
 function updateInsets() {
   const portrait=innerHeight>innerWidth, fullHeight=Math.max(screen.width,screen.height);
-  const immersive=portrait&&matchMedia("(pointer: coarse)").matches&&innerHeight>=fullHeight-60;
-  document.documentElement.style.setProperty("--reserve-top",immersive?"100px":"0px");
-  document.documentElement.style.setProperty("--reserve-bottom",immersive?"24px":"0px");
+  const immersive=portrait&&matchMedia("(pointer: coarse)").matches&&innerHeight>=fullHeight*0.85;
+  const top=immersive?36:0, bottom=immersive?12:0;
+  document.documentElement.style.setProperty("--reserve-top",top+"px");
+  document.documentElement.style.setProperty("--reserve-bottom",bottom+"px");
+  diagnostics.textContent="Page "+innerWidth+"x"+innerHeight+", screen "+screen.width+"x"+screen.height+", margins "+top+"/"+bottom+" px";
 }
 async function render(frame) {
   updateInsets();

@@ -8,6 +8,7 @@ canvas{display:block;background:#000}canvas.stale{opacity:.45}
 button{font:inherit;color:inherit;border:1px solid #526579;border-radius:8px;padding:8px 6px;background:#223345;min-height:44px;line-height:1.15;touch-action:manipulation}
 button:focus-visible{outline:3px solid #88c6ff}button:active{background:#496680}
 #menu{position:fixed;right:calc(env(safe-area-inset-right) + 14px);bottom:calc(env(safe-area-inset-bottom) + 20px);width:48px;height:48px;padding:0;border-radius:24px;font-size:1.3rem;background:rgba(34,51,69,.82)}
+#menu{transition:opacity .6s}#menu.idle{opacity:0;pointer-events:none}
 #sheet[hidden]{display:none}#sheet{position:fixed;inset:0;z-index:2}
 #backdrop{position:absolute;inset:0;background:rgba(0,0,0,.5)}
 #sheet section{position:absolute;left:0;right:0;bottom:0;max-height:75dvh;overflow:auto;box-sizing:border-box;padding:12px 14px calc(env(safe-area-inset-bottom) + 14px);background:#161d26;border-radius:16px 16px 0 0;border-top:1px solid #3a424d}
@@ -17,3 +18,4 @@ button:focus-visible{outline:3px solid #88c6ff}button:active{background:#496680}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px}
 .row.segmented{grid-template-columns:repeat(auto-fit,minmax(52px,1fr))}
 #sheet p{margin:8px 0 0;font-size:.8rem;color:#bac3cc}
+#sheet #diagnostics{font-size:.7rem;color:#7f8a96}
