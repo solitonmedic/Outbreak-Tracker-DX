@@ -52,6 +52,22 @@ EnemyCards2 = {}
 EnemyCards3 = {}
 EnemyCards4 = {}
 
+-- The community update changes the U.S. File 1 puzzles of The Hive and
+-- Below Freezing Point, so the Japanese hints stay off for those two;
+-- Decisions, Decisions and Hellfire keep the original puzzles.
+function PuzzleHintsAvailable(scenario)
+	return GameInfo.release ~= "us" or scenario == "decisions,decisions" or scenario == "hellfire"
+end
+
+-- The U.S. room's player count is not mapped yet; show it as "-" there
+-- instead of a zero.
+function HostPlayerText(players)
+	if GameInfo.release == "us" then
+		return "-"
+	end
+	return players
+end
+
 function love.load(args)
 	LoadAssets()
 	InitResult = tracker.init()
@@ -376,7 +392,7 @@ function love.draw()
 		if (hs >= 4 and hs < 6 and s=="") then
 			UIAtlas:draw(hm, hostmap_x, hostmap_y, 0, hostmap_scale)
 			love.graphics.printf(Time2string2(GameInfo.hosttime), hosttime_x, hosttime_y, 300, "left")
-			love.graphics.printf(hp.."/"..hmp+2, hostplayer_x, hostplayer_y, 300, "left")
+			love.graphics.printf(HostPlayerText(hp).."/"..hmp+2, hostplayer_x, hostplayer_y, 300, "left")
 			love.graphics.setFont(DefaultFont)
 			love.graphics.printf(hd, hostdifficulty_x, hostdifficulty_y, 200, "right")
 
@@ -992,25 +1008,25 @@ function love.draw()
 				end
 
 			elseif (s == "below freezing point") then
-				if(PuzzleSwitch == 1) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable(s)) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(passbfp.."-"..pass2bfp, timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "the hive") then
-				if(PuzzleSwitch == 1) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable(s)) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(passhive, timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "hellfire") then
-				if(PuzzleSwitch == 1) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable(s)) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(hfpass.."-"..hfmap.."-"..hfpower, timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "decisions,decisions") then
-				if(PuzzleSwitch == 1) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable(s)) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(ddpass.."-"..clocktime, timeleft_x, timeleft_y, 300, "left")
 				end

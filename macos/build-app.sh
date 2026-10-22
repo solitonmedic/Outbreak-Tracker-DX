@@ -1,7 +1,25 @@
 #!/bin/sh
 set -eu
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-app_dir="${OUTBREAK_APP_DIR:-$root_dir/Outbreak Status Tracker.app}"
+
+# --debug builds a separate app whose reader also records EE-RAM checkpoints.
+debug=0
+case "${1:-}" in
+  "") ;;
+  --debug) debug=1 ;;
+  *) echo "Usage: $0 [--debug]" >&2; exit 2 ;;
+esac
+if [ "$debug" = 1 ]; then
+  app_dir="${OUTBREAK_APP_DIR:-$root_dir/Outbreak Status Tracker Debug.app}"
+  build_prefix="$root_dir/macos/build-debug"
+  build_type=RelWithDebInfo
+  recorder_option=ON
+else
+  app_dir="${OUTBREAK_APP_DIR:-$root_dir/Outbreak Status Tracker.app}"
+  build_prefix="$root_dir/macos/build"
+  build_type=Release
+  recorder_option=OFF
+fi
 love_app="${LOVE_APP:-/Applications/love.app}"
 icon_source="$root_dir/sources/outbreak-tracker-icon-hd.png"
 [ -d "$love_app" ] || { echo "LÖVE not found: $love_app" >&2; exit 1; }
@@ -9,7 +27,7 @@ icon_source="$root_dir/sources/outbreak-tracker-icon-hd.png"
 
 build_module() {
   arch="$1"
-  build_dir="$root_dir/macos/build-$arch"
+  build_dir="$build_prefix-$arch"
   pine_args=
   if [ -f "$build_dir/CMakeCache.txt" ]; then
     cached_source=$(sed -n 's#^CMAKE_HOME_DIRECTORY:INTERNAL=##p' "$build_dir/CMakeCache.txt")
@@ -22,18 +40,19 @@ build_module() {
   fi
   # shellcheck disable=SC2086
   cmake -S "$root_dir/macos" -B "$build_dir" \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_TYPE="$build_type" \
     -DCMAKE_OSX_ARCHITECTURES="$arch" \
+    -DOUTBREAK_DEBUG_RECORDER="$recorder_option" \
     -DFETCHCONTENT_FULLY_DISCONNECTED="${FETCHCONTENT_FULLY_DISCONNECTED:-OFF}" \
     $pine_args
-  cmake --build "$build_dir" --config Release
+  cmake --build "$build_dir" --config "$build_type"
 }
 
 build_module arm64
 build_module x86_64
 native_module="$root_dir/macos/luaoutbreaktracker-universal.so"
-lipo -create "$root_dir/macos/build-arm64/luaoutbreaktracker.so" \
-  "$root_dir/macos/build-x86_64/luaoutbreaktracker.so" -output "$native_module"
+lipo -create "$build_prefix-arm64/luaoutbreaktracker.so" \
+  "$build_prefix-x86_64/luaoutbreaktracker.so" -output "$native_module"
 rm -rf "$app_dir"
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources/game" "$app_dir/Contents/Frameworks"
 cp "$root_dir/macos/app/Info.plist" "$app_dir/Contents/Info.plist"
@@ -45,7 +64,15 @@ game_dir="$app_dir/Contents/Resources/game"
 cp "$root_dir"/sources/*.lua "$game_dir/"
 chmod -R u+w "$game_dir"
 cp "$root_dir/sources/main.lua" "$game_dir/main_base.lua"
-cp "$root_dir/macos/overrides/main.lua" "$game_dir/main.lua"
+if [ "$debug" = 1 ]; then
+  cp "$root_dir/macos/overrides/main.lua" "$game_dir/main_mac.lua"
+  cp "$root_dir/macos/overrides/debug.lua" "$game_dir/main.lua"
+  plutil -replace CFBundleName -string "Outbreak Status Tracker Debug" "$app_dir/Contents/Info.plist"
+  plutil -replace CFBundleDisplayName -string "Outbreak Status Tracker Debug" "$app_dir/Contents/Info.plist"
+  plutil -replace CFBundleIdentifier -string "org.outbreaktracker.macos.debug" "$app_dir/Contents/Info.plist"
+else
+  cp "$root_dir/macos/overrides/main.lua" "$game_dir/main.lua"
+fi
 cp -R "$root_dir/assets" "$game_dir/assets"
 cp "$native_module" "$game_dir/luaoutbreaktracker.so"
 rm -f "$native_module"

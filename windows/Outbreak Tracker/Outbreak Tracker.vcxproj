@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\sources\F1Addr.h" />
     <ClInclude Include="..\..\sources\F2Addr.h" />
+    <ClInclude Include="..\..\sources\F1USAddr.h" />
     <ClInclude Include="..\..\sources\structs.h" />
   </ItemGroup>
   <ItemGroup>

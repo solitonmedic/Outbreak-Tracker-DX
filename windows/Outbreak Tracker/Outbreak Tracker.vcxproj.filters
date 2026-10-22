@@ -21,6 +21,9 @@
     <ClInclude Include="..\..\sources\F2Addr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\sources\F1USAddr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\sources\structs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
