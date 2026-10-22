@@ -1,6 +1,8 @@
 """Reusable native reader build; Python 3, user CMake/GCC/Pillow toolchain on Deck.
 Inputs: existing shared sources/, linux/ build and assets; pinned PINE revision.
-Outputs: ignored .artifacts/native/ module/metrics/license, user source/build caches.
+Outputs: ignored .artifacts/native/ module/metrics/license and cmake-build/ inside the checkout
+(CMake caches the source path, so each checkout needs its own build folder); the PINE source
+and LuaJIT headers are cached under ~/.cache/outbreak-tracker/native.
 Safety: offline compilation only; no running game, PINE connection or recordings.
 Run from repo root: python3 decky/scripts/native_build.py (also called by build.py).
 Check: native module links and fontmetrics.lua plus PINE license are produced.
@@ -32,7 +34,7 @@ def build_native():
         shutil.copytree(prefix / "include/luajit-2.1", headers)
     output = plugin / ".artifacts/native"
     output.mkdir(parents=True, exist_ok=True)
-    build = cache / "build"
+    build = output / "cmake-build"
     env = dict(os.environ)
     env["PATH"] = str(prefix / "bin") + os.pathsep + env.get("PATH", "")
     subprocess.run([
