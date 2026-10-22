@@ -52,11 +52,11 @@ EnemyCards2 = {}
 EnemyCards3 = {}
 EnemyCards4 = {}
 
--- The community update changes some U.S. File 1 puzzles, so the Japanese
--- hints stay off there except for scenarios checked in game
--- (Decisions, Decisions: keypad and clock codes confirmed).
+-- The community update changes the U.S. File 1 puzzles of The Hive and
+-- Below Freezing Point, so the Japanese hints stay off for those two;
+-- Decisions, Decisions and Hellfire keep the original puzzles.
 function PuzzleHintsAvailable(scenario)
-	return GameInfo.release ~= "us" or scenario == "decisions,decisions"
+	return GameInfo.release ~= "us" or scenario == "decisions,decisions" or scenario == "hellfire"
 end
 
 -- The U.S. room's player count is not mapped yet; show it as "-" there
