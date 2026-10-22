@@ -52,10 +52,11 @@ EnemyCards2 = {}
 EnemyCards3 = {}
 EnemyCards4 = {}
 
--- The community update changes U.S. File 1 puzzles, so the Japanese
--- puzzle hints would be wrong there; leave them off on that release.
-function PuzzleHintsAvailable()
-	return GameInfo.release ~= "us"
+-- The community update changes some U.S. File 1 puzzles, so the Japanese
+-- hints stay off there except for scenarios checked in game
+-- (Decisions, Decisions: keypad and clock codes confirmed).
+function PuzzleHintsAvailable(scenario)
+	return GameInfo.release ~= "us" or scenario == "decisions,decisions"
 end
 
 -- The U.S. room's player count is not mapped yet; show it as "-" there
@@ -1007,25 +1008,25 @@ function love.draw()
 				end
 
 			elseif (s == "below freezing point") then
-				if(PuzzleSwitch == 1 and PuzzleHintsAvailable()) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable(s)) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(passbfp.."-"..pass2bfp, timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "the hive") then
-				if(PuzzleSwitch == 1 and PuzzleHintsAvailable()) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable(s)) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(passhive, timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "hellfire") then
-				if(PuzzleSwitch == 1 and PuzzleHintsAvailable()) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable(s)) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(hfpass.."-"..hfmap.."-"..hfpower, timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "decisions,decisions") then
-				if(PuzzleSwitch == 1 and PuzzleHintsAvailable()) then
+				if(PuzzleSwitch == 1 and PuzzleHintsAvailable(s)) then
 					love.graphics.setFont(DefaultFont)
 					love.graphics.printf(ddpass.."-"..clocktime, timeleft_x, timeleft_y, 300, "left")
 				end
