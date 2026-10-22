@@ -1,7 +1,7 @@
 """Purpose: reusable Decky backend owning the live reader and LAN phone service.
 Location/runtime: decky/main.py, Python provided by Decky Loader (no pip packages).
 Inputs: packaged build-info.json, package.json, DECKY_USER_HOME, PCSX2 INI settings.
-Outputs: get_status() including a private phone link; lifecycle logs, LAN port 28080.
+Outputs: get_status() including the phone link; lifecycle logs, LAN port 28080.
 Safety: live PINE reads only; no recording, game/settings writes or saved recordings.
 Run: install the ZIP made by `python3 decky/scripts/deck.py build` from repo-merged/.
 Check: open Outbreak Tracker in Decky; Refresh shows version, commit and PINE setting.
@@ -49,7 +49,7 @@ class Plugin:
             "pcsx2Installed": (user_home / "Applications/pcsx2-Qt.AppImage").is_file(),
             "pineEnabled": pine_enabled,
             "pineSlot": pine_slot,
-            "message": getattr(self, "startup_error", None) or web.get("lastError") or "Scan the code or open the private link on a device on your network.",
+            "message": getattr(self, "startup_error", None) or web.get("lastError") or "Scan the code or open the link on a device on your network. Add it to the home screen to use it like an app.",
             **web,
         }
 

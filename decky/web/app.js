@@ -1,14 +1,11 @@
 // Purpose: reusable Canvas renderer for original Lua tracker drawing commands.
-// Runtime: phone/desktop browser. Inputs: private fragment, drawing frames, fonts.
+// Runtime: phone/desktop browser. Inputs: drawing frames from the Deck on the local network, fonts.
 // Outputs: responsive tracker and whitelisted touch/keyboard commands.
-// Safety: no emulator access or saved game data; token stays in session storage.
+// Safety: no emulator access or saved game data; nothing is stored in the browser.
 // Run: open the private phone link in Decky. Check: cards and controls update.
 "use strict";
 const canvas = document.querySelector("#tracker"), ctx = canvas.getContext("2d");
 const message = document.querySelector("#message");
-const token = location.hash.slice(1) || sessionStorage.getItem("outbreakToken") || "";
-if (token) sessionStorage.setItem("outbreakToken", token);
-history.replaceState(null, "", location.pathname);
 const images = new Map(), imageFonts = new Map(), tinted = new Map();
 const groups = [
   ["Views", false, [["f1","Help"],["f2","Item views"],["f3","Next room"],["l","Language"]]],
@@ -20,8 +17,8 @@ const groups = [
 const controls = groups.flatMap(([, , keys]) => keys);
 async function sendKey(key) {
   try {
-    const response = await fetch("/api/key", {method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({key}),signal:AbortSignal.timeout(5000)});
-    if (!response.ok) throw new Error("Control request failed; reopen the link from Decky.");
+    const response = await fetch("/api/key", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key}),signal:AbortSignal.timeout(5000)});
+    if (!response.ok) throw new Error("Control request failed; check the phone view in Decky.");
   } catch(error) { message.textContent=error.message; }
 }
 const controlsRoot = document.querySelector("#controls");
@@ -135,8 +132,9 @@ function drawTinted(img,q,values,tint,id) {
 // in the controls sheet shows the numbers used.
 const diagnostics = document.querySelector("#diagnostics");
 function updateInsets() {
+  const standalone=navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;
   const portrait=innerHeight>innerWidth, fullHeight=Math.max(screen.width,screen.height);
-  const immersive=portrait&&matchMedia("(pointer: coarse)").matches&&innerHeight>=fullHeight*0.85;
+  const immersive=!standalone&&portrait&&matchMedia("(pointer: coarse)").matches&&innerHeight>=fullHeight*0.85;
   const top=immersive?36:0, bottom=immersive?12:0;
   document.documentElement.style.setProperty("--reserve-top",top+"px");
   document.documentElement.style.setProperty("--reserve-bottom",bottom+"px");
@@ -170,10 +168,9 @@ async function render(frame) {
   }while(depth-->0)ctx.restore();
 }
 async function poll() {
-  if(!token){message.textContent="Open the phone link shown in the Outbreak Tracker Decky panel.";return;}
   try {
-    const response=await fetch("/api/frame",{headers:{"Authorization":"Bearer "+token},signal:AbortSignal.timeout(5000)});
-    if(!response.ok)throw new Error(response.status===401?"This connection link has expired. Open the current link from Decky.":"Tracker service unavailable");
+    const response=await fetch("/api/frame",{signal:AbortSignal.timeout(5000)});
+    if(!response.ok)throw new Error(response.status===403?"This device is not on the Deck's local network.":"Tracker service unavailable");
     const frame=await response.json();
     message.textContent=frame.state==="connected"?"":frame.message||(frame.state==="waiting"?"Waiting for game":frame.state);canvas.classList.toggle("stale",frame.state!=="connected");await render(frame);
   }catch(error){message.textContent=error.message;canvas.classList.add("stale");}
