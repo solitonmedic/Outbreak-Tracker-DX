@@ -53,7 +53,9 @@ def build(expected):
         raise RuntimeError("Unexpected pnpm version")
     for arguments in (("install", "--frozen-lockfile"), ("run", "typecheck"), ("run", "build")):
         subprocess.run([*pnpm, *arguments], cwd=plugin, env=env, check=True)
-    ast.parse((plugin / "main.py").read_text(), filename="main.py")
+    for python_source in plugin.glob("*.py"):
+        ast.parse(python_source.read_text(), filename=python_source.name)
+    subprocess.run(["python3", str(plugin / "scripts/native_build.py")], check=True)
     if subprocess.check_output(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"], text=True).strip():
         raise RuntimeError("Build unexpectedly changed source files")
 
@@ -66,18 +68,26 @@ def build(expected):
     output.mkdir(exist_ok=True)
     archive_name = f"outbreak-tracker-{package['version']}-{commit[:12]}.zip"
     archive_path = output / archive_name
-    required = {"dist/index.js", "main.py", "plugin.json", "package.json", "LICENSE", "README.md", "build-info.json"}
-    paths = [plugin / name for name in required - {"build-info.json", "dist/index.js"}]
-    paths += sorted((plugin / "dist").rglob("*"))
+    required = {"dist/index.js", "main.py", "tracker_service.py", "reader.lua", "plugin.json", "package.json",
+                "LICENSE", "README.md", "build-info.json", "bin/luaoutbreaktracker.so",
+                "fontmetrics.lua", "web/index.html", "shared/main.lua", "assets/ui.png", "assets/ui-us.png"}
+    entries = [(plugin / name, name) for name in ("main.py", "tracker_service.py", "reader.lua", "plugin.json", "package.json", "LICENSE", "README.md")]
+    for folder in ("dist", "web"):
+        entries += [(path, path.relative_to(plugin).as_posix()) for path in sorted((plugin / folder).rglob("*")) if path.is_file()]
+    entries += [(path, "shared/" + path.name) for path in sorted((repo / "sources").glob("*.lua"))]
+    entries += [(path, "assets/" + path.relative_to(repo / "assets").as_posix()) for path in sorted((repo / "assets").rglob("*")) if path.is_file()]
+    entries += [(plugin / ".artifacts/native/luaoutbreaktracker.so", "bin/luaoutbreaktracker.so"),
+                (plugin / ".artifacts/native/fontmetrics.lua", "fontmetrics.lua"),
+                (plugin / ".artifacts/native/PINE-LICENSE", "PINE-LICENSE")]
     with tempfile.NamedTemporaryFile(dir=output, suffix=".zip.partial", delete=False) as temporary:
         temporary_path = Path(temporary.name)
     try:
         with zipfile.ZipFile(temporary_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            for path in paths:
+            for path, name in entries:
                 if path.is_symlink():
                     raise RuntimeError("Refusing to package a symlink")
                 if path.is_file():
-                    archive.write(path, "outbreak-tracker/" + path.relative_to(plugin).as_posix())
+                    archive.write(path, "outbreak-tracker/" + name)
             archive.writestr("outbreak-tracker/build-info.json", json.dumps(metadata, indent=2) + "\n")
         with zipfile.ZipFile(temporary_path) as archive:
             names = {name.removeprefix("outbreak-tracker/") for name in archive.namelist()}

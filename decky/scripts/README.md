@@ -10,7 +10,19 @@ Run from `repo-merged/`. Python scripts use Python 3's standard library.
 | `../main.py` | Decky Python backend; loaded by installing the ZIP and opening its panel. | Reads package/build metadata and only relevant PCSX2 settings; returns setup status and writes lifecycle log messages through Decky. |
 | `../rollup.config.js` | Node build configuration used by `pnpm run build` through `build.py`. | Reads frontend sources/dependencies and emits `dist/`. |
 
-No command installs the plugin, restarts services, writes emulator settings, reads
-live PINE memory, starts recording, or accesses saved recordings/workbooks. Each
+Development commands do not install the plugin, restart services, write emulator
+settings, start recording, or access saved recordings/workbooks. Each
 script header includes its inputs, outputs, safety boundary and expected result.
 See the parent README for the full build/install/rollback procedure.
+
+## Live reader additions
+
+- `bootstrap_native.py`: `python3 decky/scripts/deck.py native-setup` after sync. Downloads checksum-pinned micromamba and installs a locked compiler/CMake/Pillow environment under the Deck user home. No OS or emulator changes.
+- `native_build.py`: called by build.py; reuses the shared Linux build with a pinned PINE revision, emits native module and font metrics into ignored output.
+- `font_metrics.py`: called with the user toolchain Python and Pillow; reads original fonts/images and writes the Lua metric table.
+- `../reader.lua`: LuaJIT child running the shared UI and reader; reads live PINE and emits in-memory drawing frames.
+- `../tracker_service.py`: standard-library Python HTTP/child lifecycle; serves port 8384 and authenticates frame/control requests with a private link. Stops on plugin unload.
+- `../web/app.js`: browser Canvas adapter and touch/keyboard controls, using original assets and fonts.
+
+Build/sync commands do not access PINE. The installed plugin's service and reader
+do read live PINE when started; they never write game memory or create recordings.

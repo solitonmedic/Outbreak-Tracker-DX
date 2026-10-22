@@ -1,18 +1,22 @@
-"""Purpose: reusable Decky backend providing setup status for the foundation plugin.
+"""Purpose: reusable Decky backend owning the live reader and LAN phone service.
 Location/runtime: decky/main.py, Python provided by Decky Loader (no pip packages).
 Inputs: packaged build-info.json, package.json, DECKY_USER_HOME, PCSX2 INI settings.
-Outputs: get_status() JSON-compatible values; lifecycle messages in Decky's plugin log.
-Safety: reads only setup metadata and PINE configuration; never connects to PINE,
-records memory, changes emulator settings, or reads recordings/workbooks.
+Outputs: get_status() including a private phone link; lifecycle logs, LAN port 8384.
+Safety: live PINE reads only; no recording, game/settings writes or saved recordings.
 Run: install the ZIP made by `python3 decky/scripts/deck.py build` from repo-merged/.
 Check: open Outbreak Tracker in Decky; Refresh shows version, commit and PINE setting.
 """
 
+import asyncio
 import configparser
 import json
 from pathlib import Path
+import sys
 
 import decky
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tracker_service import TrackerService
 
 
 class Plugin:
@@ -36,18 +40,40 @@ class Plugin:
             pine_enabled = None
             pine_slot = None
 
+        service = getattr(self, "service", None)
+        web = service.status() if service else {"running": False, "phoneUrl": None, "connection": "stopped", "lastError": None}
         return {
             "version": package["version"],
             "sourceCommit": metadata.get("sourceCommit", "unbuilt"),
-            "trackerState": "pending",
+            "trackerState": web["connection"],
             "pcsx2Installed": (user_home / "Applications/pcsx2-Qt.AppImage").is_file(),
             "pineEnabled": pine_enabled,
             "pineSlot": pine_slot,
-            "message": "Setup foundation is ready. Live tracker data and the phone view are pending.",
+            "message": getattr(self, "startup_error", None) or web.get("lastError") or "Scan the code or open the private link on a device on your network.",
+            **web,
         }
 
+    async def set_running(self, running: bool):
+        if not isinstance(running, bool):
+            raise ValueError("running must be a boolean")
+        if running:
+            await asyncio.to_thread(self.service.start)
+        else:
+            await asyncio.to_thread(self.service.stop)
+        self.startup_error = None
+        return await self.get_status()
+
     async def _main(self):
-        decky.logger.info("Outbreak Tracker foundation loaded")
+        self.service = TrackerService(Path(__file__).resolve().parent)
+        self.startup_error = None
+        try:
+            await asyncio.to_thread(self.service.start)
+            decky.logger.info("Outbreak Tracker LAN service started on port 8384")
+        except OSError:
+            self.startup_error = "Unable to start phone view. Port 8384 may already be in use."
+            decky.logger.error(self.startup_error)
 
     async def _unload(self):
-        decky.logger.info("Outbreak Tracker foundation unloaded")
+        if getattr(self, "service", None):
+            await asyncio.to_thread(self.service.stop)
+        decky.logger.info("Outbreak Tracker reader and LAN service stopped")

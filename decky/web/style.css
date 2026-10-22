@@ -1,0 +1,9 @@
+@font-face{font-family:TrackerBold;src:url('/assets/arialbd.ttf')}@font-face{font-family:TrackerNarrow;src:url('/assets/arialnb.ttf')}
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101318;color:#f1f1f1}
+body{margin:0;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom);max-width:1500px;margin-inline:auto}
+header{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 0}
+header span{font-size:.85rem;color:#a9c4d9}main{text-align:center}#message{color:#ffdb8b;margin:8px;white-space:pre-wrap}
+canvas{display:block;background:#000;margin:auto;max-width:100%;height:auto}
+canvas.stale{opacity:.45}details{margin:16px 0;border-top:1px solid #3a424d;padding-top:12px}summary{cursor:pointer;min-height:32px}
+nav{display:flex;flex-wrap:wrap;gap:8px}button{font:inherit;color:inherit;border:1px solid #526579;border-radius:6px;padding:10px 14px;background:#223345;min-height:44px;touch-action:manipulation}
+button:focus-visible{outline:3px solid #88c6ff}button:active{background:#496680}details p{font-size:.85rem;color:#bac3cc}

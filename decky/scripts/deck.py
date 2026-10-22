@@ -73,6 +73,8 @@ print(json.dumps({"home": str(h), "system": platform.system(), "architecture": p
                 remote(options, ["python3", "-", remote_bundle, checkout, commit], input=helper, text=True)
             finally:
                 remote(options, ["rm", "-f", remote_bundle])
+    elif options.command == "native-setup":
+        remote(options, ["python3", checkout / "decky/scripts/bootstrap_native.py"])
     elif options.command == "build":
         remote(options, ["python3", checkout / "decky/scripts/build.py", "--expect-commit", commit])
     elif options.command == "fetch":
@@ -80,7 +82,6 @@ print(json.dumps({"home": str(h), "system": platform.system(), "architecture": p
         result = remote(options, ["cat", remote_output / "build-report.json"], capture_output=True, text=True)
         report = json.loads(result.stdout)
         name = report["archive"]
-        expected_name = f"outbreak-tracker-0.1.0-{commit[:12]}.zip"
         version = json.loads((PLUGIN / "package.json").read_text())["version"]
         expected_name = f"outbreak-tracker-{version}-{commit[:12]}.zip"
         if report["sourceCommit"] != commit or name != expected_name:
@@ -101,7 +102,7 @@ print(json.dumps({"home": str(h), "system": platform.system(), "architecture": p
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["doctor", "sync", "build", "fetch"])
+    parser.add_argument("command", choices=["doctor", "sync", "native-setup", "build", "fetch"])
     parser.add_argument("--host", default="steamdeck")
     parser.add_argument("--checkout", default="/home/deck/Projects/Outbreak-Tracker-DX")
     try:
