@@ -6,9 +6,11 @@ on the same network. The page draws the original shared Lua tracker UI with its
 existing sprite atlases, fonts, card logic, release limits and keyboard controls.
 Touch buttons mirror those controls; every connected device shares one view.
 
-The browser preserves aspect ratio and uses a high-resolution canvas that fits
-phone, tablet and desktop widths. Vertical mode suits phones; horizontal mode
-remains available. The reader polls at five updates per second; the service marks
+The page has no header: the tracker is scaled to fit the visible screen (width and
+height, no scrolling) on a high-resolution canvas. A round button at the bottom
+right opens a sheet of controls grouped as Views, Show, Layout, Players shown and
+Enemy list shows; status text appears on top only when not live. Vertical mode
+suits phones; horizontal mode remains available. The reader polls at five updates per second; the service marks
 delayed data stale and retries a lost reader. No RAM snapshots or frame files are
 saved. PINE supports a single client: stop this reader before using another tracker
 or a recorder. Use **Stop phone view and reader** in Decky to release it.
