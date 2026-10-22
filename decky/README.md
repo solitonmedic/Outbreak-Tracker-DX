@@ -1,7 +1,7 @@
 # Outbreak Tracker for Decky
 
 The plugin starts a read-only PCSX2 PINE reader and serves a private phone view on
-LAN port 8384. Scan the QR code in Decky or open its private link on another device
+LAN port 28080. Scan the QR code in Decky or open its private link on another device
 on the same network. The page draws the original shared Lua tracker UI with its
 existing sprite atlases, fonts, card logic, release limits and keyboard controls.
 Touch buttons mirror those controls; every connected device shares one view.
@@ -89,7 +89,7 @@ Open **Outbreak Tracker** from the Decky menu, check its version and commit, the
 scan the QR code on your phone. The link includes a per-start access token in its
 fragment; keep the full link private. The browser retains it in session storage
 and sends it in an authorization header. A new service start invalidates old links.
-The service listens on port 8384 and exposes only packaged web/artwork files plus
+The service listens on port 28080 and exposes only packaged web/artwork files plus
 authenticated frame/control endpoints. It adds no firewall or router rules.
 
 Start PCSX2 with PINE enabled and a supported game. The native reader uses

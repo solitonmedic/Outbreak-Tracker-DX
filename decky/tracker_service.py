@@ -1,6 +1,6 @@
 """Reusable LAN tracker service; Python 3 standard library and native LuaJIT reader.
 Inputs: installed plugin files, read-only PINE, bounded authenticated browser keys.
-Outputs: in-memory drawing frames and HTTP on LAN port 8384; no frame files.
+Outputs: in-memory drawing frames and HTTP on LAN port 28080; no frame files.
 Safety: per-start secret link protects data/control; static package assets only;
 no recordings, emulator writes, shell commands, filesystem browsing or sudo.
 Run: started/stopped by the Decky backend; standalone diagnostic mode at file end.
@@ -28,7 +28,7 @@ KEYS = {"f1", "f2", "f3", "f4", "d", "h", "v", "l", "t", "i", "q", "e",
 
 
 class TrackerService:
-    def __init__(self, plugin, port=8384):
+    def __init__(self, plugin, port=28080):
         self.plugin = Path(plugin).resolve()
         self.port = port
         self.token = secrets.token_urlsafe(24)
@@ -212,7 +212,7 @@ class TrackerService:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--port", type=int, default=8384)
+    parser.add_argument("--port", type=int, default=28080)
     args = parser.parse_args()
     service = TrackerService(Path(__file__).resolve().parent, args.port)
     service.start()

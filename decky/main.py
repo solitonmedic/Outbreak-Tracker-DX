@@ -1,7 +1,7 @@
 """Purpose: reusable Decky backend owning the live reader and LAN phone service.
 Location/runtime: decky/main.py, Python provided by Decky Loader (no pip packages).
 Inputs: packaged build-info.json, package.json, DECKY_USER_HOME, PCSX2 INI settings.
-Outputs: get_status() including a private phone link; lifecycle logs, LAN port 8384.
+Outputs: get_status() including a private phone link; lifecycle logs, LAN port 28080.
 Safety: live PINE reads only; no recording, game/settings writes or saved recordings.
 Run: install the ZIP made by `python3 decky/scripts/deck.py build` from repo-merged/.
 Check: open Outbreak Tracker in Decky; Refresh shows version, commit and PINE setting.
@@ -68,9 +68,9 @@ class Plugin:
         self.startup_error = None
         try:
             await asyncio.to_thread(self.service.start)
-            decky.logger.info("Outbreak Tracker LAN service started on port 8384")
+            decky.logger.info("Outbreak Tracker LAN service started on port 28080")
         except OSError:
-            self.startup_error = "Unable to start phone view. Port 8384 may already be in use."
+            self.startup_error = "Unable to start phone view. Port 28080 may already be in use."
             decky.logger.error(self.startup_error)
 
     async def _unload(self):
