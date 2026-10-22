@@ -96,6 +96,35 @@ Extract the [LÖVE 11.5 Windows x64 ZIP](https://github.com/love2d/love/releases
 
 The DLL is `windows/Outbreak Tracker/Build/Release/x64/luaoutbreaktracker.dll`. The package is `windows/build/OutbreakTracker-Windows-x64.zip`; keep the extracted EXE and DLLs together. `-SkipArchive` leaves the distribution at `windows/build/stage/distribution/`, as the GitHub workflow does. Windows reads PCSX2 memory directly and does not use PINE. See [Windows build notes](windows/README.md).
 
+## Steam Deck (Decky plugin)
+
+The plugin is in `decky/` on the `Decky` branch. The native reader has to be built for Linux x86_64, so the build runs on the Deck. A script on your Mac or Linux computer sends the committed source to the Deck over SSH, builds it there and copies the ZIP back. See [decky/README.md](decky/README.md) for the full procedure, rollback and logs.
+
+**On the Deck**, you need SSH access as `deck` with key login (the scripts never prompt for a password), Git, Python 3, Decky Loader, and Node.js 24.19.0 installed with nvm at `/home/deck/.nvm/versions/node/v24.19.0/`. Corepack comes with that Node and downloads pnpm 9.15.9 on the first build. SteamOS provides `/usr/bin/luajit`, which the plugin runs at runtime. The first build also needs network access for the pnpm packages, a pinned micromamba download and the PINE source. Nothing is installed system-wide.
+
+**On your computer**, you need Git, Python 3, `ssh` and `scp`, and an SSH host alias named `steamdeck` for the Deck in `~/.ssh/config`. Pass `--host` to use another name.
+
+From the repository root, on the `Decky` branch:
+
+```sh
+git checkout Decky
+python3 decky/scripts/deck.py doctor
+python3 decky/scripts/deck.py sync
+python3 decky/scripts/deck.py native-setup
+python3 decky/scripts/deck.py build
+python3 decky/scripts/deck.py fetch
+```
+
+`doctor` only reads and reports what the Deck has. `sync` sends the committed `Decky` history as a Git bundle to `/home/deck/Projects/Outbreak-Tracker-DX` and refuses to run if `decky/` has uncommitted changes, so commit first. It refuses to touch a destination that is dirty, unrelated or diverged, and it never resets or cleans anything. `native-setup` creates a compiler, CMake and Pillow environment under the Deck user's home from `decky/native-toolchain.lock`. Run it once per Deck. `build` type-checks and builds the frontend, links the Linux reader against a pinned PINE revision, generates the font metrics and packs the ZIP. `fetch` copies it to your computer and checks its SHA-256. Both copies are named `outbreak-tracker-<version>-<commit>.zip` in `decky/.artifacts/`. Use `--checkout` to put the Deck's copy somewhere else.
+
+To install, copy the ZIP to the Deck, for example `scp decky/.artifacts/outbreak-tracker-*.zip steamdeck:Downloads/`. On the Deck, turn on Developer mode in Decky's settings, open Developer and choose **Install Plugin from ZIP File**. The scripts never install the plugin or restart Decky for you. Reopen the plugin panel after installing a new ZIP and compare the commit it shows with the one in the file name.
+
+### How the Decky build works
+
+`decky/main.py` is the Decky backend. It starts `decky/tracker_service.py`, a standard-library HTTP server on port `28080`, and a `luajit reader.lua` child process. `reader.lua` loads the shared `sources/` Lua UI behind a small LÖVE graphics adapter that writes drawing commands as JSON frames instead of drawing, and reads the game through the same native module built from `linux/CMakeLists.txt` and its patched copy of `sources/main.c`. `decky/web/app.js` draws those frames on a canvas with the original atlases and fonts and sends control keys back. The React panel in `decky/src/` shows the QR code and the start and stop buttons.
+
+The ZIP holds the native module, the shared Lua, everything in `assets/`, the web files and the backend. `decky/scripts/make_icons.py` makes the home-screen icons from `sources/outbreak-tracker-icon-hd.png`; the PNGs are committed in `decky/web/icons/`, so a build does not need it. The plugin keeps the original Decky template's BSD 3-Clause license in `decky/LICENSE`.
+
 ## Build checks
 
-The manual GitHub workflow builds and verifies the macOS app, Linux AppImage and Windows distribution, then uploads each as an artifact. Its checks establish that the packages were built and contain the expected files. They do not test gameplay. The local reader and recorder offline checks are in the workspace's ignored `tools-n-shit/tracker-tests/` directory; they are not part of a fresh Git clone.
+The manual GitHub workflow builds and verifies the macOS app, Linux AppImage and Windows distribution, then uploads each as an artifact. Its checks establish that the packages were built and contain the expected files. They do not test gameplay. The Decky plugin is not part of that workflow. Its build checks the TypeScript, the frontend, the reader link, the Python syntax and the ZIP contents, and the ZIP was installed and run on one Deck with an iPhone. The local reader and recorder offline checks are in the workspace's ignored `tools-n-shit/tracker-tests/` directory; they are not part of a fresh Git clone.

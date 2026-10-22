@@ -26,8 +26,24 @@ Start PCSX2 and load a supported game before opening the tracker. On macOS and L
 
 Press **F1** in the tracker for its full key list. **F2** cycles the item views, **F3** changes the room shown in the room list, **F4** toggles the enemy view, **I** shows items in the current room, **T** toggles timers, **Q** toggles puzzle hints, and **Esc** quits.
 
+## Phone view on a Steam Deck
+
+The Decky plugin runs the tracker on a Steam Deck and shows it in a browser on your phone, so the tracker can sit on a second screen while you play in PCSX2 on the Deck. It runs the same Lua UI, fonts and sprite atlases as the desktop tracker and draws them on a canvas in the browser, so the cards, views and controls match. It reads through PINE and never writes to the game.
+
+You need Decky Loader on the Deck, PCSX2 with PINE enabled (the default slot is `28011`), and a phone, tablet or computer on the same network. The plugin is not in the GitHub workflow or the Decky store, so [build the ZIP](BUILDING.md#steam-deck-decky-plugin) yourself. Then open Decky's settings, turn on Developer mode and choose **Install Plugin from ZIP File**.
+
+Open **Outbreak Tracker** in the Decky menu. The panel shows a QR code and the address, `http://<Deck address>:28080/`. Scan it or type it into a browser. The page says it is waiting for a game until PCSX2 has a supported one loaded. Tap the tracker to open the controls: views, room, players shown, timers, puzzle hints, enemy list, size and layout. Every connected device shares one view. The panel's **Stop phone view and reader** button releases the connection to PCSX2.
+
+On an iPhone, use Share, then Add to Home Screen, to run it full screen with the Outbreak Tracker icon. There is no offline mode, so the Deck, PCSX2 and the plugin all have to be running. If your router gives the Deck a new address, add the app again. A DHCP reservation for the Deck avoids that.
+
+There is no login. The plugin answers only devices on private, link-local or Tailscale addresses, but anyone on your Wi-Fi can open the page and change the shared view. They cannot read game memory. Do not forward port `28080` on your router. PINE accepts one client, so stop the phone view before you run the desktop tracker or the recorder against the same PCSX2.
+
+The plugin uses the same reader and address profiles as the desktop tracker, so [game support](#game-support) is the same. So far it has been tested only with U.S. File 1 on one Steam Deck and an iPhone in Safari. Other phones, other browsers and the Japanese releases through the plugin have not been tried, and the phone's values have not been checked against the game screen the way player 1 gameplay was on desktop.
+
 ## Credits
 
 The original [OutbreakTracker](https://github.com/madgamer98/OutbreakTracker) credits Fothsid, killme, phoe-nix and madgamer98. This repository brings the tracker to Windows, macOS and Linux.
 
 The U.S. File 1 UI atlas was shared by Jeferes_Soares in the *Outbreak Status Tracker for File 1 US* package.
+
+The Decky plugin started from Steam Deck Homebrew's [decky-plugin-template](https://github.com/SteamDeckHomebrew/decky-plugin-template) under its BSD 3-Clause license. Its home-screen icon is the Outbreak Tracker HD icon.
