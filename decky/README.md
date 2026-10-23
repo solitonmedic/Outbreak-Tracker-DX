@@ -10,8 +10,10 @@ The page has no header: the tracker is scaled to fit the visible screen (width a
 height, no scrolling) on a high-resolution canvas. A round button at the bottom
 right opens a sheet of controls grouped as Views, Show, Layout, Players shown and
 Enemy list shows; status text appears on top only when not live. Vertical mode
-suits phones; horizontal mode remains available. The reader polls at five updates per second; the service marks
-delayed data stale and retries a lost reader. No RAM snapshots or frame files are
+suits phones; horizontal mode remains available. The reader polls at five updates per second, but only while a device
+has the page open: it starts on the first request and stops 15 seconds after the last,
+so PCSX2 gets no PINE traffic otherwise (the panel then shows the reader as idle). The
+service marks delayed data stale and retries a lost reader. No RAM snapshots or frame files are
 saved. PINE supports a single client: stop this reader before using another tracker
 or a recorder. Use **Stop phone view and reader** in Decky to release it.
 
