@@ -3,7 +3,7 @@ Location/runtime: decky/main.py, Python provided by Decky Loader (no pip package
 Inputs: packaged build-info.json, package.json, DECKY_USER_HOME, PCSX2 INI settings.
 Outputs: get_status() including the phone link; lifecycle logs, LAN port 28080.
 Safety: live PINE reads only; no recording, game/settings writes or saved recordings.
-Run: install the ZIP made by `python3 decky/scripts/deck.py build` from repo-merged/.
+Run: install the ZIP made by `python3 decky/scripts/build.py` (see decky/README.md).
 Check: open Outbreak Tracker in Decky; Refresh shows version, commit and PINE setting.
 """
 

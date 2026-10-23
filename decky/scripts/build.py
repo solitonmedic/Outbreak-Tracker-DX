@@ -7,8 +7,7 @@ Outputs: ignored decky/dist and decky/.artifacts/ZIP plus JSON build report.
 Safety: writes build artifacts and user caches only; no sudo, installation, PINE,
 settings edits, game memory, recordings or workbook access.
 Run from repo-merged/ on Deck: python3 decky/scripts/build.py --expect-commit $(git rev-parse HEAD)
-In GitHub Actions the same command runs on ubuntu-24.04 after bootstrap_native.py; the checkout
-need not be on the Decky branch there.
+In GitHub Actions the same command runs on ubuntu-24.04 after bootstrap_native.py.
 Check: compilation/typecheck pass; report and ZIP metadata identify expected HEAD.
 """
 
@@ -33,11 +32,10 @@ def build(expected):
     plugin = Path(__file__).resolve().parents[1]
     repo = plugin.parent
     commit = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
-    branch = subprocess.check_output(["git", "-C", str(repo), "branch", "--show-current"], text=True).strip()
     dirty = subprocess.check_output(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"], text=True)
     ci = os.environ.get("GITHUB_ACTIONS") == "true"
-    if commit != expected or dirty.strip() or (branch != "Decky" and not ci):
-        raise RuntimeError("Build requires a clean Decky checkout at the expected commit")
+    if commit != expected or dirty.strip():
+        raise RuntimeError("Build requires a clean checkout at the expected commit")
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         raise RuntimeError("This build command targets x86_64 Linux (the Steam Deck or a Linux CI runner)")
 
@@ -51,7 +49,7 @@ def build(expected):
     env["CI"] = "true"
     actual_node = subprocess.check_output([str(node), "--version"], text=True).strip()
     if actual_node != f"v{NODE_VERSION}" or not corepack.is_file():
-        raise RuntimeError("Pinned Node/Corepack is unavailable; run the doctor command")
+        raise RuntimeError("Node 24.19.0 with Corepack is unavailable; install it with nvm")
     pnpm = [str(corepack), f"pnpm@{PNPM_VERSION}"]
     actual_pnpm = subprocess.check_output([*pnpm, "--version"], cwd=plugin, env=env, text=True).strip()
     if actual_pnpm != PNPM_VERSION:
