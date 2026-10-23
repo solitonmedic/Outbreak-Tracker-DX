@@ -1,9 +1,12 @@
 #pragma once
 #include <cstdint>
 #include <algorithm>
+#include <array>
+#include <chrono>
 #include <cstring>
 #include <cstddef>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <pine.h>
 #include <cstdlib>
@@ -17,6 +20,36 @@ constexpr DWORD PROCESS_VM_READ = 0x0010;
 
 struct SYMBOL_INFO { std::uint32_t SizeOfStruct = 0; std::uint64_t Address = 0; };
 inline PINE::PCSX2 mac_pine;
+
+// The tracker reads hundreds of small fields per update, and each PINE request costs
+// PCSX2 a wake-up of its PINE thread. Small reads in main RAM are therefore served
+// from 4 KiB pages, each fetched with one batched request and reused for a few
+// milliseconds, which covers one tracker update but not the next one.
+namespace tracker_page_cache {
+constexpr std::uint32_t kPageSize = 4096;
+constexpr std::uint32_t kMainRamSize = 0x02000000;
+constexpr auto kLifetime = std::chrono::milliseconds(25);
+struct Page { std::chrono::steady_clock::time_point fetched{}; std::array<std::uint8_t, kPageSize> bytes{}; };
+inline std::unordered_map<std::uint32_t, Page> pages;
+
+inline const std::uint8_t* Get(std::uint32_t base) {
+    auto found = pages.find(base);
+    if (found != pages.end() && std::chrono::steady_clock::now() - found->second.fetched < kLifetime)
+        return found->second.bytes.data();
+    Page page;
+    mac_pine.InitializeBatch();
+    for (std::uint32_t offset = 0; offset < kPageSize; offset += 8)
+        mac_pine.Read<std::uint64_t, true>(base + offset);
+    auto batch = mac_pine.FinalizeBatch();
+    mac_pine.SendCommand(batch);
+    for (std::uint32_t i = 0; i < kPageSize / 8; ++i) {
+        const std::uint64_t value = mac_pine.GetReply<PINE::PCSX2::MsgRead64>(batch, static_cast<int>(i));
+        std::memcpy(page.bytes.data() + i * 8, &value, sizeof(value));
+    }
+    page.fetched = std::chrono::steady_clock::now();
+    return (pages[base] = page).bytes.data();
+}
+}
 
 inline HANDLE OpenProcess(DWORD, BOOL, DWORD) { return reinterpret_cast<HANDLE>(1); }
 inline BOOL CloseHandle(HANDLE) { return TRUE; }
@@ -69,6 +102,18 @@ inline BOOL ReadProcessMemory(HANDLE, const void* address, void* output, SIZE_T 
                     else if (op.width == 2) *reinterpret_cast<std::uint16_t*>(bytes + op.offset) = mac_pine.GetReply<PINE::PCSX2::MsgRead16>(batch, static_cast<int>(i));
                     else bytes[op.offset] = mac_pine.GetReply<PINE::PCSX2::MsgRead8>(batch, static_cast<int>(i));
                 }
+            }
+            return TRUE;
+        }
+
+        if (ee < tracker_page_cache::kMainRamSize && size <= tracker_page_cache::kMainRamSize - ee) {
+            for (SIZE_T copied = 0; copied < size;) {
+                const std::uint32_t address = ee + static_cast<std::uint32_t>(copied);
+                const std::uint32_t base = address & ~(tracker_page_cache::kPageSize - 1);
+                const SIZE_T within = address - base;
+                const SIZE_T count = std::min<SIZE_T>(size - copied, tracker_page_cache::kPageSize - within);
+                std::memcpy(bytes + copied, tracker_page_cache::Get(base) + within, count);
+                copied += count;
             }
             return TRUE;
         }
