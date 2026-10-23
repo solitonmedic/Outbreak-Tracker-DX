@@ -5,6 +5,8 @@ Safety: no login; serves only clients on private/link-local/loopback/Tailscale a
 for IP-literal, single-label or .local host names (blocks DNS rebinding), and accepts keys only
 as same-origin JSON POSTs (blocks other websites); static package assets only; no recordings,
 emulator writes, shell commands, filesystem browsing or sudo.
+The reader runs only while a device is watching: it starts on the first frame request and
+stops after IDLE_SECONDS without one, so PCSX2 gets no PINE traffic while nobody looks.
 Run: started/stopped by the Decky backend; standalone diagnostic mode at file end.
 Check: open the link shown in Decky, verify live status and original tracker UI.
 """
@@ -25,6 +27,7 @@ from urllib.parse import unquote, urlsplit
 import os
 
 TAILSCALE = ipaddress.ip_network("100.64.0.0/10")
+IDLE_SECONDS = 15
 KEYS = {"f1", "f2", "f3", "f4", "d", "h", "v", "l", "t", "i", "q", "e",
         "1", "2", "3", "4", "a", "kp0", "kp1", "kp2", "kp3", "kp4"}
 
@@ -67,8 +70,23 @@ class TrackerService:
         self.server = None
         self.worker = None
         self.http_thread = None
-        self.frame = {"state": "waiting", "message": "Waiting for PCSX2 and a supported game", "commands": []}
+        self.frame = {"state": "idle", "message": "Reader paused until a device opens the tracker", "commands": []}
         self.updated = time.monotonic()
+        self.runtime_dir = f"/run/user/{os.getuid()}"
+        self.last_request = None
+        self.wake = threading.Event()
+
+    def watched(self):
+        return self.last_request is not None and time.monotonic() - self.last_request < IDLE_SECONDS
+
+    def touch(self):
+        """Record a device request; wakes an idle reader."""
+        self.last_request = time.monotonic()
+        with self.lock:
+            if self.frame.get("state") == "idle":
+                self.frame = {"state": "waiting", "message": "Starting the reader", "commands": []}
+                self.updated = time.monotonic()
+        self.wake.set()
 
     def publish(self, frame):
         with self.lock:
@@ -86,17 +104,24 @@ class TrackerService:
 
     def reader_loop(self):
         while not self.stopping.is_set():
+            if not self.watched():
+                self.publish({"state": "idle", "message": "Reader paused until a device opens the tracker", "commands": []})
+                while not self.stopping.is_set() and not self.watched():
+                    self.wake.wait(1)
+                    self.wake.clear()
+                continue
             process = None
+            failed = False
             try:
                 executable = shutil.which("luajit")
                 if not executable:
                     raise RuntimeError("LuaJIT is not installed on this Deck")
                 env = dict(os.environ)
-                env["XDG_RUNTIME_DIR"] = f"/run/user/{os.getuid()}"
+                env["XDG_RUNTIME_DIR"] = self.runtime_dir
                 process = subprocess.Popen([executable, "reader.lua"], cwd=self.plugin, env=env,
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                 self.process = process
-                while not self.stopping.is_set():
+                while not self.stopping.is_set() and self.watched():
                     keys = []
                     while not self.keys.empty():
                         try:
@@ -117,6 +142,7 @@ class TrackerService:
                     self.publish(frame)
                     self.stopping.wait(0.2)
             except (OSError, ValueError, RuntimeError) as error:
+                failed = True
                 self.publish({"state": "error", "message": str(error), "commands": []})
             finally:
                 if process:
@@ -130,7 +156,8 @@ class TrackerService:
                     process.stdin.close()
                     process.stdout.close()
                 self.process = None
-            self.stopping.wait(2)
+            if failed:
+                self.stopping.wait(2)
 
     def status(self):
         address = "127.0.0.1"
@@ -151,6 +178,7 @@ class TrackerService:
         if self.server:
             return
         self.stopping.clear()
+        self.last_request = None
         service = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -182,6 +210,7 @@ class TrackerService:
                     return self.json({"error": "Only devices on the local network may connect"}, 403)
                 path = unquote(urlsplit(self.path).path)
                 if path == "/api/frame":
+                    service.touch()
                     return self.json(service.snapshot())
                 if path == "/":
                     relative = Path("web/index.html")
@@ -216,6 +245,7 @@ class TrackerService:
                     if not isinstance(key, str) or key not in KEYS:
                         raise ValueError()
                     service.keys.put_nowait(key)
+                    service.touch()
                 except (ValueError, KeyError, TypeError, queue.Full):
                     return self.json({"error": "Invalid control or control queue full"}, 400)
                 return self.json({"ok": True})
@@ -229,6 +259,7 @@ class TrackerService:
 
     def stop(self):
         self.stopping.set()
+        self.wake.set()
         if self.process and self.process.poll() is None:
             self.process.terminate()
         if self.server:
