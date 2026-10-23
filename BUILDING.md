@@ -67,7 +67,7 @@ The output is `OutbreakStatusTracker-x86_64.AppImage` in the repository root. `L
 
 ### How the Linux build works
 
-Linux also copies and patches `sources/main.c` before compiling it as C++17. Its `windows.h` shim translates the shared reader's memory requests into PINE reads through `$XDG_RUNTIME_DIR/pcsx2.sock`. The Lua UI and assets are the same files used on macOS and Windows. `linux/run.sh` assembles a temporary LÖVE game folder with the native module and starts LÖVE. `build-appimage.sh` instead extracts the official LÖVE AppImage, adds the game and reader, and repacks it as one executable AppImage.
+Linux also copies and patches `sources/main.c` before compiling it as C++17. Its `windows.h` shim translates the shared reader's memory requests into PINE reads through `$XDG_RUNTIME_DIR/pcsx2.sock`. Large reads are sent as batches, and small reads in main RAM come from 4 KiB pages fetched in one batched request and reused for 25 ms, so one tracker update costs one PINE request per page it touches instead of one per field. The Lua UI and assets are the same files used on macOS and Windows. `linux/run.sh` assembles a temporary LÖVE game folder with the native module and starts LÖVE. `build-appimage.sh` instead extracts the official LÖVE AppImage, adds the game and reader, and repacks it as one executable AppImage.
 
 ## Windows
 
