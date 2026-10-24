@@ -1122,12 +1122,22 @@ void GetRoomItemF1()
 
 void GetRoomItemF2()
 {
-		int Pointer;
-		unsigned char* buffer = malloc(192*MAX_ITEM);
-		int bytesRead = 0;
+		unsigned int Pointer = 0;
+		unsigned char buffer[192*MAX_ITEM];
 
-		ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_RoomItem, &Pointer,4,0);//24AF48
-		ReadProcessMemory(ProcessHandle, (char *)BasePointer+Pointer+0x40-(192*MAX_ITEM/2), buffer, 192*MAX_ITEM, NULL);
+		/* Do not retain an earlier room when a load or memory read is incomplete. */
+		memset(RItems, 0, sizeof(RItems));
+		if (!ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_RoomItem, &Pointer, 4, NULL))
+			return;
+
+		/* Validate the pointer before arithmetic, then the entire 32-record window. */
+		if (Pointer == 0 || Pointer >= 0x2000000)
+			return;
+		int windowStart = (int)Pointer+0x40-(192*MAX_ITEM/2);
+		if (windowStart < 0 || windowStart > 0x2000000-192*MAX_ITEM)
+			return;
+		if (!ReadProcessMemory(ProcessHandle, (char *)BasePointer+windowStart, buffer, sizeof(buffer), NULL))
+			return;
 
 		/* Warning! Unexplainable magic below! */
 		for (int i=0; i < MAX_ITEM; i++)
@@ -1155,9 +1165,6 @@ void GetRoomItemF2()
 				}
 			}
 		}
-
-		free(buffer);
-		buffer = NULL;
 }
 
 char GetEnemyNameID(int enemyID)
