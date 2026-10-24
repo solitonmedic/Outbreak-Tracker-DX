@@ -2,6 +2,11 @@
 
 This folder contains the files used to build and test the Linux version of Outbreak Status Tracker.
 
+`patch_legacy_source.cmake` reads `INPUT` and writes a generated C++ reader to
+`OUTPUT`. It preserves byte offsets when casting room-item state pointers and
+keeps the shared reader's object-state filter, with an additional item-ID bounds
+check. It does not read the game or modify `sources/main.c`; the build runs it.
+
 ## Building from Terminal
 
 You will need a C++17 compiler, CMake, and LÖVE 11.5 or newer. The Linux build includes the Lua headers it needs, so a system LuaJIT development package is not required.

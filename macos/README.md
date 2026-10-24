@@ -2,6 +2,11 @@
 
 This folder contains the files used to build and test the macOS version of Outbreak Status Tracker.
 
+`patch_legacy_source.cmake` reads `INPUT` and writes a generated C++ reader to
+`OUTPUT`. It preserves byte offsets when casting room-item state pointers and
+keeps the shared reader's object-state filter, with an additional item-ID bounds
+check. It does not read the game or modify `sources/main.c`; the build runs it.
+
 ## Build a Finder app
 
 From the project’s main folder, run:
