@@ -66,3 +66,7 @@ OUTBREAK_RECORD_LABEL=my-run ./macos/run.sh --debug
 ```
 
 Recordings contain the game's login and network data. Keep them private.
+
+The debug recorder recognizes U.S. File 1 `SLUS-20765` / `2.00` with retail CRC
+`0245ef6d` or the alternate boot executable CRC `0244e76c`. Other fingerprints
+retain periodic full-memory recording without inferred File 1 state fields.

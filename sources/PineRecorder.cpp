@@ -246,6 +246,7 @@ struct File1Profile {
 
 const File1Profile kProfiles[] = {
     {"SLUS-20765", "2.00", "0245ef6d", 0x004BADE8, 0x003243DA, 0x004A5C30, 0x004B9A83, true},
+    {"SLUS-20765", "2.00", "0244e76c", 0x004BADE8, 0x003243DA, 0x004A5C30, 0x004B9A83, true},
     {"SLPM-65428", "1.04", "32088394", 0x0048BF78, 0x003065AA, 0x00476DD0, 0x0048AC13, false},
 };
 
