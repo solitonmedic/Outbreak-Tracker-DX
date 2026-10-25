@@ -19,6 +19,14 @@ const int F1_US_ReleaseMarker = 0x250510;
 const char F1_US_ReleaseMarkerText[] = "BASLUS-20765";
 #define F1_US_RELEASE_MARKER_SIZE 12
 
+// Loaded host-room table. The room number selects a 0x34-byte entry;
+// reading the first entry alone gives the wrong count for rooms 2-30.
+const int F1_US_HostOwner = 0x6D9706;
+const int F1_US_CurrentRoom = 0x6D8820;
+const int F1_US_HostStatus = 0x6D8DB0;
+const int F1_US_RoomPlayerCount = 0x648EE6;
+const int F1_US_RoomEntrySize = 0x34;
+
 int F1_Release = F1_RELEASE_JP;
 
 typedef struct

@@ -59,10 +59,9 @@ function PuzzleHintsAvailable(scenario)
 	return GameInfo.release ~= "us" or scenario == "decisions,decisions" or scenario == "hellfire"
 end
 
--- The U.S. room's player count is not mapped yet; show it as "-" there
--- instead of a zero.
+-- Zero means the U.S. host-room count is unavailable in the current state.
 function HostPlayerText(players)
-	if GameInfo.release == "us" then
+	if GameInfo.release == "us" and (players == nil or players < 1 or players > 4) then
 		return "-"
 	end
 	return players

@@ -172,6 +172,20 @@ const char* GetReleaseName()
 	return F1_Release == F1_RELEASE_US ? "us" : "jp";
 }
 
+/* U.S.-only structures do not have a direct Japanese address translation. */
+static int ReadUSFile1(int address, void* buffer, SIZE_T size)
+{
+	memset(buffer, 0, size);
+	if (address < 0 || size > 0x2000000 || (SIZE_T)address > 0x2000000 - size)
+		return 0;
+	if (!ReadProcessMemory(ProcessHandle, (char*)BasePointer+address, buffer, size, NULL))
+	{
+		memset(buffer, 0, size);
+		return 0;
+	}
+	return 1;
+}
+
 unsigned short GetSlotNum(int slotNum)
 {
   unsigned short buffer;
@@ -273,8 +287,27 @@ unsigned short GetHostMaxPlayer()
 
 unsigned short GetHostPlayer()
 {
-	unsigned short buffer;
+	unsigned short buffer = 0;
 	int bytesRead = 0;
+	if (info.CurrentFile == 1 && F1_Release == F1_RELEASE_US)
+	{
+		unsigned char owner = 0, room = 0, status = 0;
+		unsigned char ownerAfter = 0, roomAfter = 0, statusAfter = 0;
+		unsigned short entry[2] = {0, 0};
+		if (!ReadUSFile1(F1_US_HostStatus, &status, 1) || status != 4 ||
+			!ReadUSFile1(F1_US_HostOwner, &owner, 1) || owner != 1 ||
+			!ReadUSFile1(F1_US_CurrentRoom, &room, 1) || room < 1 || room > 30)
+			return 0;
+		if (!ReadUSFile1(F1_US_RoomPlayerCount + (room-1)*F1_US_RoomEntrySize, entry, sizeof(entry)) ||
+			entry[1] < 2 || entry[1] > 4 || entry[0] < 1 || entry[0] > entry[1])
+			return 0;
+		/* The lobby overlay and selected room can change between reads. */
+		if (!ReadUSFile1(F1_US_HostStatus, &statusAfter, 1) || statusAfter != status ||
+			!ReadUSFile1(F1_US_HostOwner, &ownerAfter, 1) || ownerAfter != owner ||
+			!ReadUSFile1(F1_US_CurrentRoom, &roomAfter, 1) || roomAfter != room)
+			return 0;
+		return entry[0];
+	}
 	if (info.CurrentFile == 1)
 	    ReadF1(F1_HostPlayer, &buffer, 2);
 	else
