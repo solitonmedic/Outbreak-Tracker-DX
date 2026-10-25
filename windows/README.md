@@ -2,6 +2,10 @@
 
 The Windows native module reads PCSX2 process memory directly. It does not require PINE.
 
+U.S. host rooms show the selected room's player count when its lobby data is
+available. Hive puzzle hints read the current updated-game codes and hide while
+the loaded code tables are unavailable; leading zeros are preserved.
+
 ## Requirements
 
 - Windows 10 or newer.

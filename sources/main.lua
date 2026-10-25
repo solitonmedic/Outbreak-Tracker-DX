@@ -52,11 +52,22 @@ EnemyCards2 = {}
 EnemyCards3 = {}
 EnemyCards4 = {}
 
--- The community update changes the U.S. File 1 puzzles of The Hive and
--- Below Freezing Point, so the Japanese hints stay off for those two;
--- Decisions, Decisions and Hellfire keep the original puzzles.
+-- U.S. Hive hints use the loaded module's digit tables, never the Japanese
+-- Pass1 lookup or a prediction from a later RNG state.
+function HiveCodeText(japaneseText)
+	if GameInfo.release ~= "us" then return japaneseText end
+	local b2f, roof = GameInfo.hiveb2f, GameInfo.hiverooftop
+	if GameInfo.hivecodesavailable ~= true or type(b2f) ~= "number" or type(roof) ~= "number" or
+		b2f <= 0 or b2f > 9999 or roof <= 0 or roof > 9999 or b2f ~= math.floor(b2f) or roof ~= math.floor(roof) then
+		return nil
+	end
+	return string.format("%04d-%04d", b2f, roof)
+end
+
+-- Below Freezing Point remains unavailable on the U.S. release.
 function PuzzleHintsAvailable(scenario)
-	return GameInfo.release ~= "us" or scenario == "decisions,decisions" or scenario == "hellfire"
+	return GameInfo.release ~= "us" or scenario == "decisions,decisions" or scenario == "hellfire" or
+		(scenario == "the hive" and HiveCodeText() ~= nil)
 end
 
 -- Zero means the U.S. host-room count is unavailable in the current state.
@@ -1015,7 +1026,7 @@ function love.draw()
 			elseif (s == "the hive") then
 				if(PuzzleSwitch == 1 and PuzzleHintsAvailable(s)) then
 					love.graphics.setFont(DefaultFont)
-					love.graphics.printf(passhive, timeleft_x, timeleft_y, 300, "left")
+					love.graphics.printf(HiveCodeText(passhive), timeleft_x, timeleft_y, 300, "left")
 				end
 
 			elseif (s == "hellfire") then

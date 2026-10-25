@@ -84,6 +84,9 @@ typedef struct
 	unsigned short Pass4;
 	unsigned char Pass5;
 	unsigned char Pass6;
+	unsigned char HiveCodesAvailable;
+	unsigned short HiveB2FCode;
+	unsigned short HiveRoofCode;
 	unsigned char Difficulty;
 	unsigned int E1Start;
 	unsigned int E2Start;

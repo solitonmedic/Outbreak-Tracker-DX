@@ -27,6 +27,16 @@ const int F1_US_HostStatus = 0x6D8DB0;
 const int F1_US_RoomPlayerCount = 0x648EE6;
 const int F1_US_RoomEntrySize = 0x34;
 
+// The loaded Hive module compares four separate digit bytes per code.
+// The community update copies each selected code into three table entries.
+const int F1_US_HiveCodes = 0x7087E0;
+const int F1_US_HiveB2FCompare = 0x574F08;
+const int F1_US_HiveRoofCompare = 0x574FB0;
+const unsigned int F1_US_HiveB2FInstruction = 0x244287E0;
+const unsigned int F1_US_HiveRoofInstruction = 0x902287EC;
+const int F1_US_UpdateTag = 0x367080;
+const char F1_US_UpdateTagText[] = "BIO-V1-2c";
+
 int F1_Release = F1_RELEASE_JP;
 
 typedef struct
@@ -48,6 +58,7 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x48BF60, 1,          0x2EE70 },  // scenario state (cleared)
     { 0x48BF78, 4,          0x2EE70 },  // scenario clock, 30 ticks per second
     { 0x48C01A, 1,          0x2EE70 },  // difficulty
+    { 0x48AC14, 2,          0x2EE70 },  // DD selection bytes; getters gate their scenario
     { 0x3065AA, 2,          0x1DE30 },  // scenario ID
     { 0x23BE14, 1,          0x27F08C },  // number of players present (supported)
     { 0x6E6C70, 12 * 4,     0x34140 },  // virus maximum per character type (byte-identical table)

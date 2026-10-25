@@ -25,6 +25,10 @@ The tracker requires PCSX2 running a supported game with **PINE enabled**. Japan
 
 The shared UI selects English art for U.S. File 1 and the original art for the Japanese games; both atlases are included in the AppImage.
 
+U.S. host rooms show the selected room's player count when its lobby data is
+available. Hive puzzle hints read the current updated-game codes and hide while
+the loaded code tables are unavailable; leading zeros are preserved.
+
 If you are using the LÖVE Flatpak (`org.love2d.love2d`), run `LOVE_FLATPAK=1 ./linux/run.sh`. The launcher grants the Flatpak access to `$XDG_RUNTIME_DIR` so it can reach PINE. Otherwise, if LÖVE is installed somewhere other than your `PATH`, set `LOVE_BIN` to its executable before running `./linux/run.sh`.
 
 ## Building an AppImage

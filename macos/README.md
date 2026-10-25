@@ -35,6 +35,10 @@ The tracker requires PCSX2 running a supported game with **PINE enabled on TCP p
 
 The app switches to the English UI atlas for U.S. File 1 and keeps the original atlas for the Japanese games.
 
+U.S. host rooms show the selected room's player count when its lobby data is
+available. Hive puzzle hints read the current updated-game codes and hide while
+the loaded code tables are unavailable; leading zeros are preserved.
+
 ## Debug build with run recording
 
 The debug build is for testing and is not a release. It shows the same tracker and also records the run in the format of `record-pine-ee-run.py`: one compressed 32 MiB EE-RAM checkpoint every 10 seconds, extra checkpoints when player 1 settles in a new room or a marker is added, and a `manifest.json` with a JSON sidecar per checkpoint. It only reads memory. The reader detects Japanese and U.S. File 1 automatically. U.S. fields without a mapped address remain unavailable; some host, lobby and puzzle fields still need work.

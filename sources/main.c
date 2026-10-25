@@ -585,8 +585,10 @@ unsigned char GetPass2()
 
 unsigned char GetPass3()
 {
-	unsigned char buffer;
+	unsigned char buffer = 0;
 	int bytesRead = 0;
+	if (info.CurrentFile == 1 && F1_Release == F1_RELEASE_US && info.ScenarioID != 41)
+		return 0;
 	    ReadF1(F1_Pass3, &buffer, 1);
 	return buffer;
 }
@@ -636,10 +638,57 @@ unsigned char GetPass5()
 
 unsigned char GetPass6()
 {
-	unsigned char buffer;
+	unsigned char buffer = 0;
 	int bytesRead = 0;
+	if (info.CurrentFile == 1 && F1_Release == F1_RELEASE_US && info.ScenarioID != 41)
+		return 0;
 	    ReadF1(F1_Pass6, &buffer, 1);
 	return buffer;
+}
+
+void UpdateHiveCodes()
+{
+	unsigned char digits[24] = {0}, after[24] = {0};
+	unsigned int b2fInstruction = 0, roofInstruction = 0;
+	unsigned short scenarioAfter = 0;
+	unsigned char stateAfter = 0;
+	char updateTag[sizeof(F1_US_UpdateTagText)-1];
+	info.HiveCodesAvailable = 0;
+	info.HiveB2FCode = 0;
+	info.HiveRoofCode = 0;
+	if (info.CurrentFile != 1 || F1_Release != F1_RELEASE_US || info.ScenarioID != 28 ||
+		info.FrameCounter == 0 || info.Cleared < 2 || info.Cleared > 4)
+		return;
+	if (!ReadUSFile1(F1_US_UpdateTag, updateTag, sizeof(updateTag)) ||
+		memcmp(updateTag, F1_US_UpdateTagText, sizeof(updateTag)) != 0 ||
+		!ReadUSFile1(F1_US_HiveB2FCompare, &b2fInstruction, 4) || b2fInstruction != F1_US_HiveB2FInstruction ||
+		!ReadUSFile1(F1_US_HiveRoofCompare, &roofInstruction, 4) || roofInstruction != F1_US_HiveRoofInstruction ||
+		!ReadUSFile1(F1_US_HiveCodes, digits, sizeof(digits)))
+		return;
+	for (int i = 0; i < 24; i++)
+		if (digits[i] > 9)
+			return;
+	for (int i = 0; i < 4; i++)
+		if (digits[i] != digits[i+4] || digits[i] != digits[i+8] ||
+			digits[i+12] != digits[i+16] || digits[i+12] != digits[i+20])
+			return;
+	/* Reject an overlay replacement or a partial code-table rewrite. */
+	if (!ReadUSFile1(0x3243DA, &scenarioAfter, 2) || scenarioAfter != info.ScenarioID ||
+		!ReadUSFile1(0x4BADD0, &stateAfter, 1) || stateAfter < 2 || stateAfter > 4 ||
+		!ReadUSFile1(F1_US_HiveCodes, after, sizeof(after)) || memcmp(digits, after, sizeof(digits)) != 0)
+		return;
+	for (int i = 0; i < 4; i++)
+	{
+		info.HiveB2FCode = info.HiveB2FCode*10 + digits[i];
+		info.HiveRoofCode = info.HiveRoofCode*10 + digits[i+12];
+	}
+	if (info.HiveB2FCode == 0 || info.HiveRoofCode == 0)
+	{
+		info.HiveB2FCode = 0;
+		info.HiveRoofCode = 0;
+		return;
+	}
+	info.HiveCodesAvailable = 1;
 }
 
 unsigned char GetDifficulty()
@@ -1421,6 +1470,7 @@ static int LUpdateRoom (lua_State* L)
 
 static int LUpdate (lua_State* L)
 {
+	info.HiveCodesAvailable = 0;
 	info.CurrentFile = GetFile();
 	if (info.CurrentFile == -1)
 		return 0;
@@ -1461,6 +1511,7 @@ static int LUpdate (lua_State* L)
 	info.Pass5 = GetPass5();
 	info.Pass6 = GetPass6();
 	info.Difficulty = GetDifficulty();
+	UpdateHiveCodes();
 	UpdatePickups();
 	UpdateEnemyList();
 	UpdateRoomMasters();
@@ -2154,6 +2205,15 @@ static int LGetGameInfo (lua_State* L)
 		lua_rawset(L, -3);
 		lua_pushstring(L, "pass1");
 			lua_pushnumber(L, (double)info.Pass1);
+		lua_rawset(L, -3);
+		lua_pushstring(L, "hivecodesavailable");
+			lua_pushboolean(L, info.HiveCodesAvailable);
+		lua_rawset(L, -3);
+		lua_pushstring(L, "hiveb2f");
+			lua_pushnumber(L, info.HiveCodesAvailable ? info.HiveB2FCode : 0);
+		lua_rawset(L, -3);
+		lua_pushstring(L, "hiverooftop");
+			lua_pushnumber(L, info.HiveCodesAvailable ? info.HiveRoofCode : 0);
 		lua_rawset(L, -3);
 		lua_pushstring(L, "pass2");
 			lua_pushnumber(L, (double)info.Pass2);
