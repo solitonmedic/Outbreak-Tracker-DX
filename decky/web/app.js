@@ -3,6 +3,7 @@
 // Outputs: responsive tracker and whitelisted touch/keyboard commands.
 // Safety: no emulator access or saved game data; nothing is stored in the browser.
 // Run: open the private phone link in Decky. Check: cards and controls update.
+// SP vector commands: ellipse, polygon, rotation and line width from shared Lua.
 "use strict";
 const canvas = document.querySelector("#tracker"), ctx = canvas.getContext("2d");
 const message = document.querySelector("#message");
@@ -154,6 +155,7 @@ async function render(frame) {
   if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}
   canvas.style.width=cssWidth+"px";canvas.style.height=cssHeight+"px";
   ctx.setTransform(ratio,0,0,ratio,0,0);ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
+  ctx.lineWidth=1;
   let depth=0;
   for(const command of frame.commands) {
     const [op,...a]=command;
@@ -161,10 +163,18 @@ async function render(frame) {
     else if(op==="pop"){if(depth){ctx.restore();depth--;}}
     else if(op==="translate")ctx.translate(...a);
     else if(op==="scale")ctx.scale(...a);
+    else if(op==="rotate")ctx.rotate(a[0]);
+    else if(op==="lineWidth")ctx.lineWidth=a[0];
     else if(op==="image")drawTinted(await image(a[0]),a[1],a[2],a[3],a[0]);
     else if(op==="text")await drawText(...a);
     else if(op==="rectangle"){color(a[5]);ctx.beginPath();ctx.roundRect(a[1],a[2],a[3],a[4],Math.max(0,Math.min(a[6],Math.abs(a[3])/2,Math.abs(a[4])/2)));a[0]==="fill"?ctx.fill():ctx.stroke();}
     else if(op==="circle"){color(a[4]);ctx.beginPath();ctx.arc(a[1],a[2],Math.max(0,a[3]),0,Math.PI*2);a[0]==="fill"?ctx.fill():ctx.stroke();}
+    else if(op==="ellipse"){color(a[5]);ctx.beginPath();ctx.ellipse(a[1],a[2],Math.max(0,a[3]),Math.max(0,a[4]),0,0,Math.PI*2);a[0]==="fill"?ctx.fill():ctx.stroke();}
+    else if(op==="polygon"){
+      const points=a[1];color(a[2]);ctx.beginPath();ctx.moveTo(points[0],points[1]);
+      for(let i=2;i<points.length;i+=2)ctx.lineTo(points[i],points[i+1]);
+      ctx.closePath();a[0]==="fill"?ctx.fill():ctx.stroke();
+    }
   }while(depth-->0)ctx.restore();
 }
 async function poll() {

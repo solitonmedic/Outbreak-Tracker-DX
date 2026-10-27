@@ -11,6 +11,7 @@ require "DoorCard"
 require "LobbyCard"
 require "SPlayerCard"
 require "language"
+local SPTracking = require "SPTracking"
 
 local InitResult = false
 local RetryTimer = 0
@@ -832,6 +833,11 @@ function love.draw()
 		end
 		love.graphics.setFont(TimeFont)
 		if EnemyHPSwitch<3 and f > 0 and EnemyList == 0 and ItemList ==0 then
+			-- The Penpot pilot covers the vertical layout. No sample SP state is
+			-- substituted when the native reader does not provide this interface.
+			if Style == 0 and s ~= "" then
+				SPTracking.draw(GameInfo.spTracking, time_x, time_y, DefaultFont)
+			end
 			if (s == "wild things") then
 				if(GameInfo.wttime > 0) and not (GameInfo.wttime == 0xffff) then
 					love.graphics.printf(Time2string3(GameInfo.wttime), timeleft_x, timeleft_y, 300, "left")

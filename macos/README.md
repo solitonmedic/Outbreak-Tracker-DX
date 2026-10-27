@@ -74,3 +74,8 @@ Recordings contain the game's login and network data. Keep them private.
 The debug recorder recognizes U.S. File 1 `SLUS-20765` / `2.00` with retail CRC
 `0245ef6d` or the alternate boot executable CRC `0244e76c`. Other fingerprints
 retain periodic full-memory recording without inferred File 1 state fields.
+
+The shared SP layout pilot uses generated `sources/layout.lua` and
+`sources/SPTracking.lua`, both included by the existing app packager. Text uses
+the same Arial Bold font as password hints. The display stays hidden until the
+reader supplies valid SP state; this is not live SP detection yet.
