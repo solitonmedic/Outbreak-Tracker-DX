@@ -6,6 +6,8 @@ This folder contains the files used to build and test the Linux version of Outbr
 `OUTPUT`. It preserves byte offsets when casting room-item state pointers and
 keeps the shared reader's object-state filter, with an additional item-ID bounds
 check. It does not read the game or modify `sources/main.c`; the build runs it.
+U.S. File 1 room authority refreshes on each update; the legacy releases keep
+their existing room-authority polling interval.
 
 ## Building from Terminal
 
@@ -28,6 +30,8 @@ The shared UI selects English art for U.S. File 1 and the original art for the J
 U.S. host rooms show the selected room's player count when its lobby data is
 available. Hive puzzle hints read the current updated-game codes and hide while
 the loaded code tables are unavailable; leading zeros are preserved.
+In-game room-master crowns use the loaded U.S. authority table. Unavailable or
+changing data suppresses the crown; a gameplay-screen comparison is pending.
 
 If you are using the LÖVE Flatpak (`org.love2d.love2d`), run `LOVE_FLATPAK=1 ./linux/run.sh`. The launcher grants the Flatpak access to `$XDG_RUNTIME_DIR` so it can reach PINE. Otherwise, if LÖVE is installed somewhere other than your `PATH`, set `LOVE_BIN` to its executable before running `./linux/run.sh`.
 

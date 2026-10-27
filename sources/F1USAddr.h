@@ -27,6 +27,10 @@ const int F1_US_HostStatus = 0x6D8DB0;
 const int F1_US_RoomPlayerCount = 0x648EE6;
 const int F1_US_RoomEntrySize = 0x34;
 
+// Gameplay room authority: 128 rooms, four ordered player-slot bytes each.
+// The first byte is the room master (0-3), or 0xFF for no master.
+const int F1_US_RoomPriorityLookup = 0x8115F8;
+
 // The loaded Hive module compares four separate digit bytes per code.
 // The community update copies each selected code into three table entries.
 const int F1_US_HiveCodes = 0x7087E0;
@@ -57,6 +61,7 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x39680C, 255 * 60,   0x2EE60 },  // pickup array, 60-byte records
     { 0x420000, 12 * 0xD90, 0x2EE60 },  // enemy slots 1-12
     { 0x71A030, 80 * 0x60,  0x35220 },  // enemy list, 0x60-byte entries
+    { 0x825810, 128 * 4,   -0xFFE0 },   // room-priority table (supported by game code/saved states)
     { 0x472F90, 0xAF0,      0x2EE60 },  // door HP words (supported)
     { 0x48AD90, 0x4E0,      0x2EE70 },  // door flag words (supported)
     { 0x48BDE2, 4 * 8,      0x2EE70 },  // dead inventories

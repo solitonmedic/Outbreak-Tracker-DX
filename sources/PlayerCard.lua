@@ -704,12 +704,9 @@ function PlayerCard:draw(x, y)
 	local pow = math.floor(math.floor(Players[self.id].power*100+0.5))
 	love.graphics.printf({{25/255, 255/255, 255/255, 1},string.format("%d", pow) .. "%"}, tx+46, ty+3.5-20, 60, "right", 0, 1.0, 1.0)
 
-	if (RoomMasters[1].enabled) then
-		if not(Players[self.id].roomID == 0) then
-			if (RoomMasters[Players[self.id].roomID].roommaster == self.id)  then
-					UIAtlas:draw("room master crown", tx+75, ty+3.5-40);
-			end
-		end
+	local roomMaster = RoomMasters[player.roomID]
+	if player.inGame and player.roomID > 0 and roomMaster and roomMaster.enabled and roomMaster.roommaster == self.id then
+		UIAtlas:draw("room master crown", tx+75, ty+3.5-40);
 	end
 
 	--local spd = math.floor(math.floor(Players[self.id].speed*100+0.5))

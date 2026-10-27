@@ -6,6 +6,8 @@ This folder contains the files used to build and test the macOS version of Outbr
 `OUTPUT`. It preserves byte offsets when casting room-item state pointers and
 keeps the shared reader's object-state filter, with an additional item-ID bounds
 check. It does not read the game or modify `sources/main.c`; the build runs it.
+U.S. File 1 room authority refreshes on each update; the legacy releases keep
+their existing room-authority polling interval.
 
 ## Build a Finder app
 
@@ -38,6 +40,8 @@ The app switches to the English UI atlas for U.S. File 1 and keeps the original 
 U.S. host rooms show the selected room's player count when its lobby data is
 available. Hive puzzle hints read the current updated-game codes and hide while
 the loaded code tables are unavailable; leading zeros are preserved.
+In-game room-master crowns use the loaded U.S. authority table. Unavailable or
+changing data suppresses the crown; a gameplay-screen comparison is pending.
 
 ## Debug build with run recording
 

@@ -1208,7 +1208,7 @@ function love.update(dt)
 				end
 			end
 			if not(s == "") and (f > 0) then
-				for i=1, 128 do
+				for i=0, 127 do
 					RoomMasters[i] = tracker.getRoomMaster(i)
 				end
 			end
