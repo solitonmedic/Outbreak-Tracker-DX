@@ -37,6 +37,11 @@ const unsigned int F1_US_HiveRoofInstruction = 0x902287EC;
 const int F1_US_UpdateTag = 0x367080;
 const char F1_US_UpdateTagText[] = "BIO-V1-2c";
 
+// SP item set selector (Japanese address; F1Addr.h is kept unchanged). The SP
+// spot script opcode picks each spot's item with bit 1 of this byte: set = set A,
+// clear = set B. Written at scenario start; online joiners copy the host's value.
+const int F1_SPSetSelector = 0x23BB28;
+
 int F1_Release = F1_RELEASE_JP;
 
 typedef struct
@@ -64,6 +69,7 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x6E6C70, 12 * 4,     0x34140 },  // virus maximum per character type (byte-identical table)
     { 0x23BD90, 4,          0x1793D0 }, // room-item pointer (supported); the records it names are read as is
     { 0x23BB20, 4,          0x7D2B8 },  // ItemRandom: same start-up clear and running-maximum code as Japan
+    { 0x23BB28, 1,          0x7D2C0 },  // SP set selector: read by the same generator call (supported)
     { 0x23BBA0, 2,          0xE8918 },  // PuzzleRandom / ItemRandom2: state of the same 0xFF53 random generator
     { 0x629600, 30 * 0x15C, 0xA3EA0 },  // room-list slots: same 0x28C8 clear and field offsets in the lobby code
     { 0x62E230, 1,          0xAAB80 },  // host status, first byte of the lobby state cleared by the same reset code

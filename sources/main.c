@@ -513,6 +513,16 @@ unsigned char GetPuzzleRandom()
 	return buffer;
 }
 
+/* File 1 SP item set selector; File 2 has no SP sets. */
+void UpdateSPSet()
+{
+	unsigned char buffer = 0;
+	info.SPSetAvailable = info.CurrentFile == 1 && F1_IsMapped(F1_SPSetSelector, 1);
+	if (info.SPSetAvailable)
+	    ReadF1(F1_SPSetSelector, &buffer, 1);
+	info.SPSetSelector = buffer;
+}
+
 unsigned char GetCoin()
 {
 	unsigned char buffer1;
@@ -1495,6 +1505,7 @@ static int LUpdate (lua_State* L)
 	info.ItemRandom = GetItemRandom();
 	info.ItemRandom2 = GetItemRandom2();
 	info.PuzzleRandom = GetPuzzleRandom();
+	UpdateSPSet();
 	info.Coin = GetCoin();
 	info.KilledZombie = GetKilledZombies();
 	info.PassWT = GetPassWT();
@@ -2181,6 +2192,12 @@ static int LGetGameInfo (lua_State* L)
 		lua_rawset(L, -3);
 		lua_pushstring(L, "puzzlerandom");
 			lua_pushnumber(L, (double)info.PuzzleRandom);
+		lua_rawset(L, -3);
+		lua_pushstring(L, "spsetavailable");
+			lua_pushboolean(L, info.SPSetAvailable);
+		lua_rawset(L, -3);
+		lua_pushstring(L, "spsetselector");
+			lua_pushnumber(L, (double)info.SPSetSelector);
 		lua_rawset(L, -3);
 		lua_pushstring(L, "coin");
 			lua_pushnumber(L, (double)info.Coin);
