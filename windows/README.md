@@ -5,6 +5,8 @@ The Windows native module reads PCSX2 process memory directly. It does not requi
 U.S. host rooms show the selected room's player count when its lobby data is
 available. Hive puzzle hints read the current updated-game codes and hide while
 the loaded code tables are unavailable; leading zeros are preserved.
+In-game room-master crowns use the loaded U.S. authority table. Unavailable or
+changing data suppresses the crown; a gameplay-screen comparison is pending.
 
 ## Requirements
 

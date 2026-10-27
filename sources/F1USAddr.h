@@ -27,6 +27,10 @@ const int F1_US_HostStatus = 0x6D8DB0;
 const int F1_US_RoomPlayerCount = 0x648EE6;
 const int F1_US_RoomEntrySize = 0x34;
 
+// Gameplay room authority: 128 rooms, four ordered player-slot bytes each.
+// The first byte is the room master (0-3), or 0xFF for no master.
+const int F1_US_RoomPriorityLookup = 0x8115F8;
+
 // The loaded Hive module compares four separate digit bytes per code.
 // The community update copies each selected code into three table entries.
 const int F1_US_HiveCodes = 0x7087E0;
@@ -36,6 +40,11 @@ const unsigned int F1_US_HiveB2FInstruction = 0x244287E0;
 const unsigned int F1_US_HiveRoofInstruction = 0x902287EC;
 const int F1_US_UpdateTag = 0x367080;
 const char F1_US_UpdateTagText[] = "BIO-V1-2c";
+
+// SP item set selector (Japanese address; F1Addr.h is kept unchanged). The SP
+// spot script opcode picks each spot's item with bit 1 of this byte: set = set A,
+// clear = set B. Written at scenario start; online joiners copy the host's value.
+const int F1_SPSetSelector = 0x23BB28;
 
 int F1_Release = F1_RELEASE_JP;
 
@@ -52,6 +61,7 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x39680C, 255 * 60,   0x2EE60 },  // pickup array, 60-byte records
     { 0x420000, 12 * 0xD90, 0x2EE60 },  // enemy slots 1-12
     { 0x71A030, 80 * 0x60,  0x35220 },  // enemy list, 0x60-byte entries
+    { 0x825810, 128 * 4,   -0xFFE0 },   // room-priority table (supported by game code/saved states)
     { 0x472F90, 0xAF0,      0x2EE60 },  // door HP words (supported)
     { 0x48AD90, 0x4E0,      0x2EE70 },  // door flag words (supported)
     { 0x48BDE2, 4 * 8,      0x2EE70 },  // dead inventories
@@ -64,6 +74,7 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x6E6C70, 12 * 4,     0x34140 },  // virus maximum per character type (byte-identical table)
     { 0x23BD90, 4,          0x1793D0 }, // room-item pointer (supported); the records it names are read as is
     { 0x23BB20, 4,          0x7D2B8 },  // ItemRandom: same start-up clear and running-maximum code as Japan
+    { 0x23BB28, 1,          0x7D2C0 },  // SP set selector: read by the same generator call (supported)
     { 0x23BBA0, 2,          0xE8918 },  // PuzzleRandom / ItemRandom2: state of the same 0xFF53 random generator
     { 0x629600, 30 * 0x15C, 0xA3EA0 },  // room-list slots: same 0x28C8 clear and field offsets in the lobby code
     { 0x62E230, 1,          0xAAB80 },  // host status, first byte of the lobby state cleared by the same reset code

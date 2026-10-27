@@ -4,6 +4,14 @@ The plugin starts a read-only PCSX2 PINE reader and serves a phone view on
 LAN port 28080. Scan the QR code in Decky or open its link on another device
 on the same network. The page draws the original shared Lua tracker UI with its
 existing sprite atlases, fonts, card logic, release limits and keyboard controls.
+
+The drawing bridge also handles ellipse, polygon, rotation and line-width
+commands for the shared SP counter/radar component. Its layout is generated
+from Penpot into `sources/layout.lua`; text uses the password-hint font.
+`sources/SPTracking.lua` draws the counter and player-relative compass from a
+validated reader state; the private Decky facing probe supplies that state.
+The native reader does not yet supply SP state, so this component stays hidden
+in ordinary gameplay until that data interface is implemented.
 Touch buttons mirror those controls; every connected device shares one view.
 
 The page has no header: the tracker is scaled to fit the visible screen (width and

@@ -84,6 +84,8 @@ typedef struct
 	unsigned short Pass4;
 	unsigned char Pass5;
 	unsigned char Pass6;
+	unsigned char SPSetAvailable;
+	unsigned char SPSetSelector;
 	unsigned char HiveCodesAvailable;
 	unsigned short HiveB2FCode;
 	unsigned short HiveRoofCode;

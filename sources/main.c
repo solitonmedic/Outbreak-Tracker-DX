@@ -513,6 +513,16 @@ unsigned char GetPuzzleRandom()
 	return buffer;
 }
 
+/* File 1 SP item set selector; File 2 has no SP sets. */
+void UpdateSPSet()
+{
+	unsigned char buffer = 0;
+	info.SPSetAvailable = info.CurrentFile == 1 && F1_IsMapped(F1_SPSetSelector, 1);
+	if (info.SPSetAvailable)
+	    ReadF1(F1_SPSetSelector, &buffer, 1);
+	info.SPSetSelector = buffer;
+}
+
 unsigned char GetCoin()
 {
 	unsigned char buffer1;
@@ -1110,40 +1120,50 @@ char GetCharacterInGame(int characterID)
 
 void UpdateRoomMasters()
 {
-	if (info.CurrentFile == 1 && !F1_IsMapped(F1_RoomPriorty, 128 * MAX_PLAYER_SLOTS))
-	{
-		Rooms.Enabled = false;
+	unsigned char buffer[128 * MAX_PLAYER_SLOTS];
+	Rooms.Enabled = false;
+	memset(Rooms.Room, 0, sizeof(Rooms.Room));
+	if (info.CurrentFile != 1 && info.CurrentFile != 2)
 		return;
-	}
-
-	unsigned int* buffer = malloc(128 * MAX_PLAYER_SLOTS);
+	if (info.CurrentFile == 1 && !F1_IsMapped(F1_RoomPriorty, 128 * MAX_PLAYER_SLOTS))
+		return;
 
 	if (info.CurrentFile == 1)
 	{
-		ReadF1(F1_RoomPriorty, buffer, 128 * MAX_PLAYER_SLOTS);
-	}
-	else
-	{
-		ReadProcessMemory(ProcessHandle, (char*)BasePointer + F2_RoomPriorty, buffer, 128 * MAX_PLAYER_SLOTS, NULL);
-	}
-
-	//ReadProcessMemory(ProcessHandle, (char*)0x1000000000, buffer, 128 * MAX_PLAYER_SLOTS, NULL);
-
-	Rooms.Enabled = true;
-
-	/* Iterate through the rooms and there slots to grab the room master index */
-	for (int i = 0; i < 128; i++)
-	{
-		Rooms.Room[i].RoomMaster = 5; // Default Value to check against in LUA
-		char roomData = *((char*)buffer + i * 4);
-		if (roomData != (char) 0x00 && roomData != (char) 0x01 && roomData != (char) 0x02 && roomData != (char) 0x03 && roomData != (char) 0xff)
+		if (F1_Release == F1_RELEASE_US)
 		{
-			Rooms.Enabled = false;
-			break;
+			unsigned int code[7];
+			unsigned int codeAfter[7];
+			unsigned char after[sizeof(buffer)];
+			unsigned short scenarioAfter = 0;
+			unsigned char stateAfter = 0;
+			if (info.FrameCounter == 0 || info.Cleared < 2 || info.Cleared > 4 ||
+				!ReadUSFile1(F1_US_RoomPriorityLookup, code, sizeof(code)) ||
+				code[0] != 0x3C020081 || code[4] != 0x24425830 || code[6] != 0x90420000)
+				return;
+			int address = F1_US_Translate(F1_RoomPriorty, sizeof(buffer));
+			if (!ReadUSFile1(address, buffer, sizeof(buffer)) ||
+				!ReadUSFile1(address, after, sizeof(after)) || memcmp(buffer, after, sizeof(buffer)) != 0 ||
+				!ReadUSFile1(F1_US_RoomPriorityLookup, codeAfter, sizeof(codeAfter)) || memcmp(code, codeAfter, sizeof(code)) != 0 ||
+				!ReadUSFile1(0x3243DA, &scenarioAfter, 2) || scenarioAfter != info.ScenarioID ||
+				!ReadUSFile1(0x4BADD0, &stateAfter, 1) || stateAfter < 2 || stateAfter > 4)
+				return;
 		}
-		Rooms.Room[i].RoomMaster = roomData + 1; // Lua Index's start at 1
+		else if (!ReadProcessMemory(ProcessHandle, (char*)BasePointer + F1_RoomPriorty, buffer, sizeof(buffer), NULL))
+			return;
 	}
-	free(buffer);
+	else if (!ReadProcessMemory(ProcessHandle, (char*)BasePointer + F2_RoomPriorty, buffer, sizeof(buffer), NULL))
+		return;
+
+	/* An unloaded or partially replaced table must not produce crowns. */
+	for (int i = 0; i < sizeof(buffer); i++)
+	{
+		if (buffer[i] > 3 && buffer[i] != 0xFF)
+			return;
+	}
+	for (int i = 0; i < 128; i++)
+		Rooms.Room[i].RoomMaster = buffer[i * 4] < 4 ? buffer[i * 4] + 1 : 0;
+	Rooms.Enabled = true;
 }
 
 void GetRoomItemF1()
@@ -1470,8 +1490,12 @@ static int LUpdateRoom (lua_State* L)
 
 static int LUpdate (lua_State* L)
 {
+	int previousFile = info.CurrentFile;
+	int previousRelease = F1_Release;
 	info.HiveCodesAvailable = 0;
 	info.CurrentFile = GetFile();
+	if (info.CurrentFile != previousFile || F1_Release != previousRelease || info.CurrentFile == 255)
+		Rooms.Enabled = false;
 	if (info.CurrentFile == -1)
 		return 0;
 	info.HostStatus = GetHostStatus();
@@ -1495,6 +1519,7 @@ static int LUpdate (lua_State* L)
 	info.ItemRandom = GetItemRandom();
 	info.ItemRandom2 = GetItemRandom2();
 	info.PuzzleRandom = GetPuzzleRandom();
+	UpdateSPSet();
 	info.Coin = GetCoin();
 	info.KilledZombie = GetKilledZombies();
 	info.PassWT = GetPassWT();
@@ -2182,6 +2207,12 @@ static int LGetGameInfo (lua_State* L)
 		lua_pushstring(L, "puzzlerandom");
 			lua_pushnumber(L, (double)info.PuzzleRandom);
 		lua_rawset(L, -3);
+		lua_pushstring(L, "spsetavailable");
+			lua_pushboolean(L, info.SPSetAvailable);
+		lua_rawset(L, -3);
+		lua_pushstring(L, "spsetselector");
+			lua_pushnumber(L, (double)info.SPSetSelector);
+		lua_rawset(L, -3);
 		lua_pushstring(L, "coin");
 			lua_pushnumber(L, (double)info.Coin);
 		lua_rawset(L, -3);
@@ -2249,16 +2280,17 @@ static int LGetGameInfo (lua_State* L)
 static int LGetRoomMaster(lua_State* L)
 {
 	double roomID = lua_tonumber(L, 1);
-	int i = (int)(roomID);
+	int valid = lua_isnumber(L, 1) && roomID >= 0 && roomID < 128 && roomID == (int)roomID;
+	int i = valid ? (int)roomID : 0;
 
 	lua_newtable(L);
 
 	lua_pushstring(L, "enabled");
-	lua_pushboolean(L, Rooms.Enabled);
+	lua_pushboolean(L, valid && Rooms.Enabled);
 	lua_rawset(L, -3);
 
 	lua_pushstring(L, "roommaster");
-	lua_pushnumber(L, Rooms.Room[i].RoomMaster);
+	lua_pushnumber(L, valid && Rooms.Enabled ? Rooms.Room[i].RoomMaster : 0);
 	lua_rawset(L, -3);
 
 	return 1;

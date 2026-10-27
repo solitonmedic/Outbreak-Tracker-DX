@@ -11,6 +11,7 @@ require "DoorCard"
 require "LobbyCard"
 require "SPlayerCard"
 require "language"
+local SPTracking = require "SPTracking"
 
 local InitResult = false
 local RetryTimer = 0
@@ -76,6 +77,15 @@ function HostPlayerText(players)
 		return "-"
 	end
 	return players
+end
+
+-- File 1 SP item set: bit 1 of the selector set means set A, clear means set B.
+-- Returns nil when the reader has no set for the loaded game (File 2 has none).
+function SPSetLetter()
+	if GameInfo.spsetavailable ~= true or type(GameInfo.spsetselector) ~= "number" then
+		return nil
+	end
+	return math.floor(GameInfo.spsetselector / 2) % 2 == 1 and "A" or "B"
 end
 
 function love.load(args)
@@ -332,7 +342,9 @@ function love.draw()
 			itemcard_y = (2+145*p)*(1/0.6)+(100/0.6)
 			itemset_x = 0
 			itemset_y = 720
-			itemr_y = 145*p+110
+			itemr_y = 145*p+105
+			spset_x = 6
+			spset_y = 145*p+142
 			door_x = 238
 			door_y = p*145+100
 		else
@@ -462,6 +474,14 @@ function love.draw()
 				end
 				if not(s == "") and (f > 0) and ItemSwitch ==1 then
 					love.graphics.printf(itemset+1 .."\n"..math.floor(r/10)+1, 0, itemr_y, 24, "center")
+					-- The Penpot design places the SP set letter below the item set in the vertical layout.
+					local spSet = SPSetLetter()
+					if Style == 0 and spSet then
+						local itemSetFont = love.graphics.getFont()
+						love.graphics.setFont(DefaultFont)
+						love.graphics.print(spSet, spset_x, spset_y)
+						love.graphics.setFont(itemSetFont)
+					end
 					for i=1, 1 do
 						ItemCards[i]:draw(itemcard_x, itemcard_y)
 					end
@@ -832,6 +852,11 @@ function love.draw()
 		end
 		love.graphics.setFont(TimeFont)
 		if EnemyHPSwitch<3 and f > 0 and EnemyList == 0 and ItemList ==0 then
+			-- The Penpot pilot covers the vertical layout. No sample SP state is
+			-- substituted when the native reader does not provide this interface.
+			if Style == 0 and s ~= "" then
+				SPTracking.draw(GameInfo.spTracking, time_x, time_y, DefaultFont)
+			end
 			if (s == "wild things") then
 				if(GameInfo.wttime > 0) and not (GameInfo.wttime == 0xffff) then
 					love.graphics.printf(Time2string3(GameInfo.wttime), timeleft_x, timeleft_y, 300, "left")
@@ -1183,7 +1208,7 @@ function love.update(dt)
 				end
 			end
 			if not(s == "") and (f > 0) then
-				for i=1, 128 do
+				for i=0, 127 do
 					RoomMasters[i] = tracker.getRoomMaster(i)
 				end
 			end

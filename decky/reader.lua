@@ -2,6 +2,7 @@
 -- Runtime/location: LuaJIT, plugin reader.lua; shared Lua, fonts and native module.
 -- Inputs: newline-delimited comma-separated whitelisted keys on stdin, live PINE.
 -- Outputs: one JSON drawing frame per input tick on stdout, in memory only.
+-- Includes ellipse/polygon/rotation/line-width commands for the shared SP UI.
 -- Safety: native reader performs reads only; no recording, game writes or disk frames.
 -- Run: launched by tracker_service.py from the installed plugin directory.
 -- Check: browser displays original cards; offline synthetic checks use a fake tracker.
@@ -10,6 +11,7 @@ package.cpath = "bin/?.so;" .. package.cpath
 local metrics = dofile("fontmetrics.lua")
 local commands, color, font = {}, {1, 1, 1, 1}, nil
 local width, height = 300, 740
+local lineWidth = 1
 local function emit(op, ...)
     local values = {op, ...}
     commands[#commands + 1] = values
@@ -108,8 +110,17 @@ function g.push() emit("push") end
 function g.pop() emit("pop") end
 function g.translate(x,y) emit("translate",x,y) end
 function g.scale(x,y) emit("scale",x,y or x) end
+function g.rotate(angle) emit("rotate",angle) end
+function g.getLineWidth() return lineWidth end
+function g.setLineWidth(value) lineWidth=value; emit("lineWidth",value) end
 function g.rectangle(mode,x,y,w,h,rx,ry) emit("rectangle",mode,x,y,w,h,color,rx or 0,ry or rx or 0) end
 function g.circle(mode,x,y,r) emit("circle",mode,x,y,r,color) end
+function g.ellipse(mode,x,y,rx,ry) emit("ellipse",mode,x,y,rx,ry,color) end
+function g.polygon(mode,...)
+    local points={...}
+    if type(points[1])=="table" then points=points[1] end
+    emit("polygon",mode,points,color)
+end
 function love.window.getMode() return width,height,{} end
 function love.window.setMode(w,h) width,height=w,h end
 function love.window.getPosition() return 0,0,1 end
