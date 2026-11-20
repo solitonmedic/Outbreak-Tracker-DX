@@ -1240,14 +1240,15 @@ function love.update(dt)
 					SPlayers[i] = tracker.getSlotPlayer(i)
 				end
 			--end
-			-- Map views draw the current room's items, so poll them there too.
-			if not(s == "") and (f > 0) and (ItemSwitch ==1 or MapView.mode > 0) then
+			-- Keep run-local observations current even when their main-screen widgets are hidden.
+            -- These getters export the arrays the native reader already refreshed.
+			if not(s == "") and (f > 0) then
 				for i=1, 1 do
 					Items[i] = tracker.getItem(i)
 				end
 				if MapView.mode>0 and tracker.getMapItems then GameInfo.mapItems=tracker.getMapItems() end
 			end
-			if not(s == "") and PlayerList ==1 then
+			if not(s == "") then
 				for i=1, 4 do
 					Players[i] = tracker.getPlayer(i)
 				end

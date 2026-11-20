@@ -169,7 +169,8 @@ function V.update(game,players,dt,items)
         local selected=contains(choices,V.floor) and V.floor or choices[1]
         if selected and V.floor~=selected then V.floor=selected;V.panX=0;V.panY=0;V.frozenCenter=nil;V.tabsManual=false end
     end
-    Session.update(game,players,V.you,items,V.floor)
+    local ownFloors=V.map and V.candidates(V.map,players[V.you or 0]) or {}
+    Session.update(game,players,V.you,items,#ownFloors==1 and ownFloors[1] or nil)
     V.gasRooms=V.gas(game)
     game.mapview={mode=V.mode,following=V.follow,floor=V.floor,target=V.target or 0,available=V.map~=nil}
 end
@@ -602,7 +603,8 @@ function V.draw(game,players,enemies,items)
     if V.mode==0 then return end
     -- Private providers publish after love.update; observe their current frame
     -- here as well. This only consumes snapshots and never reads memory.
-    Session.update(game,players,V.you,items,V.floor)
+    local ownFloors=V.map and V.candidates(V.map,players[V.you or 0]) or {}
+    Session.update(game,players,V.you,items,#ownFloors==1 and ownFloors[1] or nil)
     local g=love.graphics
     local key=V.mode==1 and "wide" or (love.isDecky and "phone" or "vertical")
     if game.scenario=="desperate times" and key~="phone" then key=key=="wide" and "gasWide" or "gasVertical" end
