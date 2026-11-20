@@ -149,6 +149,18 @@ const int F1_Door8HP = 0x4737D2;//room 202
 const int F1_Door9HP = 0x4739B6;//4739B6/473A70 dd t-shaped
 const int F1_Door10HP = 0x473A40;//473A40/473A72 store room
 
+// Per-room interaction table (Japanese File 1). The room rebuilds these
+// records when it loads; slot numbers are not fixed per lock.
+// Record: +0x00..+0x1C area box as four int x/y corners, +0x34 the player
+// struct that last used it, and a signed 16-bit lock counter that each pick
+// attempt sets to 200 and lowers; the lock opens at <= 0.
+const int F1_InteractTable = 0x3B5D84;
+const int F1_InteractStride = 0xC4;
+const int F1_InteractSlots = 64;
+const int F1_InteractActorOffset = 0x34;
+const int F1_DoorLockCounterOffset = 0x64;      // doors
+const int F1_ContainerLockCounterOffset = 0x60; // cabinets, lockers, drawers
+
 int F1_GetDoorHP(int doorID)
 {
     switch (doorID)

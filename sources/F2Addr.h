@@ -188,6 +188,14 @@ const int F2_Door17HP = 0x4779A0;//4779E0 Í£Ê¬·¿
 const int F2_Door18HP = 0x477A62;//477AA0 ¹·ÎÝ
 const int F2_Door19HP = 0x477B00;//eotr hole hp
 
+// Per-room interaction table (Japanese File 2). Same record layout as File 1
+// (box corners at +0x00..+0x1C, last player struct at +0x34, lock counter set
+// to 200 per pick attempt) with 0xC0-byte records. The disc code keeps the
+// door counter at +0x64 and the container counter at +0x60.
+const int F2_InteractTable = 0x3BA100;
+const int F2_InteractStride = 0xC0;
+const int F2_InteractSlots = 64;
+
 int F2_GetDoorHP(int doorID)
 {
     switch (doorID)

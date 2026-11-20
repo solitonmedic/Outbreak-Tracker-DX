@@ -2296,6 +2296,207 @@ static int LGetRoomMaster(lua_State* L)
 	return 1;
 }
 
+/* Alyssa's lock-pick progress: Japanese and U.S. File 1, Japanese File 2.
+   The caller passes the hint spot it already matched and whether the lock is
+   a door (counter at +0x64), a container (+0x60) or not known (nil: either).
+   Several interaction records can lie near a spot (room zones, items, both
+   sides of a door), so the lock's record is the one near the spot that was
+   last used by this player and holds an active counter (1..200). Its address
+   and counter offset are remembered and re-checked on every call, because a
+   room change rebuilds the table. Until an attempt starts, the records whose
+   box is near the spot are remembered from one table read and only those are
+   re-read on each call, so the bar appears on the first call after a pick
+   starts. Returns the signed counter (<= 0 once the lock opens), or nil when
+   the release has no table or no record matches. */
+typedef struct
+{
+	int Corner[8];
+	unsigned int Actor;
+	short Door;
+	short Container;
+} LockRecord;
+
+static void ParseLockRecord(const unsigned char* bytes, LockRecord* record)
+{
+	memcpy(record->Corner, bytes, sizeof(record->Corner));
+	memcpy(&record->Actor, bytes + F1_InteractActorOffset, sizeof(record->Actor));
+	memcpy(&record->Door, bytes + F1_DoorLockCounterOffset, sizeof(record->Door));
+	memcpy(&record->Container, bytes + F1_ContainerLockCounterOffset, sizeof(record->Container));
+}
+
+/* Distance from the spot to the bounding box of the record's four corner
+   points, or -1 if they do not form an area. File 1 lists the corners as
+   x0,y0 x0,y1 x1,y1 x1,y0; File 2 as x0,y0 x1,y0 x1,y1 x0,y1, and its areas
+   need not be exact rectangles (a corner can be a unit off). */
+static double LockBoxDistance(const LockRecord* record, double x, double y)
+{
+	const int* c = record->Corner;
+	double minX = c[0], maxX = c[0], minY = c[1], maxY = c[1];
+	for (int i = 0; i < 8; i += 2)
+	{
+		if (c[i] < -100000 || c[i] > 100000 || c[i + 1] < -100000 || c[i + 1] > 100000)
+			return -1;
+		if (c[i] < minX) minX = c[i];
+		if (c[i] > maxX) maxX = c[i];
+		if (c[i + 1] < minY) minY = c[i + 1];
+		if (c[i + 1] > maxY) maxY = c[i + 1];
+	}
+	if (maxX - minX < 1 || maxY - minY < 1 || maxX - minX > 20000 || maxY - minY > 20000)
+		return -1;
+	double dx = x < minX ? minX - x : (x > maxX ? x - maxX : 0);
+	double dy = y < minY ? minY - y : (y > maxY ? y - maxY : 0);
+	return dx > dy ? dx : dy;
+}
+
+/* Table address, record size, slot count and player struct address for the loaded release. */
+static int LockTableForRelease(int playerIndex, int* table, int* stride, int* slots, unsigned int* actor)
+{
+	if (info.CurrentFile == 1)
+	{
+		*table = F1_InteractTable;
+		*stride = F1_InteractStride;
+		*slots = F1_InteractSlots;
+		*actor = (unsigned int)F1_GetCharAddress(playerIndex);
+		if (F1_Release == F1_RELEASE_US)
+		{
+			*table = F1_US_Translate(F1_InteractTable, F1_InteractSlots * F1_InteractStride);
+			*actor = (unsigned int)F1_US_Translate((int)*actor, 4);
+		}
+		return *table != 0 && *actor != 0;
+	}
+	if (info.CurrentFile == 2)
+	{
+		*table = F2_InteractTable;
+		*stride = F2_InteractStride;
+		*slots = F2_InteractSlots;
+		*actor = (unsigned int)F2_GetCharAddress(playerIndex);
+		return 1;
+	}
+	return 0;
+}
+
+/* Counter at the chosen offset (0 door, 1 container); for "either" (-1) the
+   first offset whose value is an active counter, else the door offset. */
+static int LockCounterOffset(const LockRecord* record, int kind)
+{
+	if (kind >= 0)
+		return kind;
+	if (record->Door >= 1 && record->Door <= 200)
+		return 0;
+	if (record->Container >= 1 && record->Container <= 200)
+		return 1;
+	return 0;
+}
+
+static int LGetLockCounter(lua_State* L)
+{
+	enum { MaxCandidates = 16 };
+	static int cachedRecord = -1;
+	static int cachedOffset = 0;
+	static int candidates[MaxCandidates];
+	static int candidateCount = -1; /* -1: the spot's records have not been listed yet */
+	static int listedTable = 0;
+	static double listedX = 0, listedY = 0;
+	static unsigned int emptyCooldown = 0;
+	static unsigned char table[0xC4 * 64]; /* largest stride x slots */
+	const double hintRange = 250.0; /* same square the pick hints use */
+	int playerIndex = (int)lua_tonumber(L, 1) - 1;
+	double spotX = lua_tonumber(L, 2);
+	double spotY = lua_tonumber(L, 3);
+	int kind = lua_isnoneornil(L, 4) ? -1 : (lua_toboolean(L, 4) ? 1 : 0);
+	int tableAddress, stride, slots;
+	unsigned int actor;
+	unsigned char bytes[0xC4];
+	LockRecord record;
+	double distance;
+
+	if (playerIndex < 0 || playerIndex > 3 || !LockTableForRelease(playerIndex, &tableAddress, &stride, &slots, &actor) ||
+		(SIZE_T)stride * slots > sizeof(table))
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	/* An active attempt found earlier: one record read per call. */
+	if (cachedRecord >= 0)
+	{
+		ReadProcessMemory(ProcessHandle, (char *)BasePointer+cachedRecord, bytes, sizeof(bytes), NULL);
+		ParseLockRecord(bytes, &record);
+		distance = LockBoxDistance(&record, spotX, spotY);
+		if (distance >= 0 && distance <= hintRange && record.Actor == actor && (kind < 0 || kind == cachedOffset))
+		{
+			lua_pushnumber(L, cachedOffset ? record.Container : record.Door);
+			return 1;
+		}
+		cachedRecord = -1;
+	}
+
+	/* List the records near this spot from one table read (again after a
+	   different spot, release or room). */
+	if (candidateCount < 0 || listedTable != tableAddress || listedX != spotX || listedY != spotY)
+	{
+		if (emptyCooldown > 0 && listedTable == tableAddress && listedX == spotX && listedY == spotY)
+		{
+			emptyCooldown--;
+			lua_pushnil(L);
+			return 1;
+		}
+		ReadProcessMemory(ProcessHandle, (char *)BasePointer+tableAddress, table, (SIZE_T)stride * slots, NULL);
+		candidateCount = 0;
+		for (int slot = 0; slot < slots && candidateCount < MaxCandidates; slot++)
+		{
+			ParseLockRecord(table + slot * stride, &record);
+			distance = LockBoxDistance(&record, spotX, spotY);
+			if (distance >= 0 && distance <= hintRange)
+				candidates[candidateCount++] = tableAddress + slot * stride;
+		}
+		listedTable = tableAddress;
+		listedX = spotX;
+		listedY = spotY;
+		if (candidateCount == 0)
+		{
+			/* Nothing near the spot yet (for example while the room loads). */
+			candidateCount = -1;
+			emptyCooldown = 5;
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+
+	/* Re-read only the listed records and take the nearest active one. */
+	double best = hintRange;
+	short counter = 0;
+	for (int i = 0; i < candidateCount; i++)
+	{
+		ReadProcessMemory(ProcessHandle, (char *)BasePointer+candidates[i], bytes, sizeof(bytes), NULL);
+		ParseLockRecord(bytes, &record);
+		distance = LockBoxDistance(&record, spotX, spotY);
+		if (distance < 0 || distance > hintRange)
+		{
+			/* The room rebuilt its table: list the records again next call. */
+			candidateCount = -1;
+			cachedRecord = -1;
+			lua_pushnil(L);
+			return 1;
+		}
+		int offset = LockCounterOffset(&record, kind);
+		short value = offset ? record.Container : record.Door;
+		if (distance > best || record.Actor != actor || value < 1 || value > 200)
+			continue;
+		best = distance;
+		cachedRecord = candidates[i];
+		cachedOffset = offset;
+		counter = value;
+	}
+	if (cachedRecord < 0)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushnumber(L, counter);
+	return 1;
+}
+
 static const struct luaL_Reg library_functions [] = {
 	{"init", LInit},
 	{"updateLobby", LUpdateLobby},
@@ -2309,6 +2510,7 @@ static const struct luaL_Reg library_functions [] = {
 	{"getItem", LGetItem},
 	{"getItem2", LGetItem2},
 	{"getDoor", LGetDoor},
+	{"getLockCounter", LGetLockCounter},
 	{"getRoomMaster", LGetRoomMaster},
 	{"getGameInfo", LGetGameInfo},
 	{NULL, NULL}

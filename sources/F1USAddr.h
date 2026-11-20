@@ -63,6 +63,7 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x71A030, 80 * 0x60,  0x35220 },  // enemy list, 0x60-byte entries
     { 0x825810, 128 * 4,   -0xFFE0 },   // room-priority table (supported by game code/saved states)
     { 0x472F90, 0xAF0,      0x2EE60 },  // door HP words (supported)
+    { 0x3B5D84, 64 * 0xC4,  0x2EE60 },  // per-room interaction records, incl. lock counters (supported)
     { 0x48AD90, 0x4E0,      0x2EE70 },  // door flag words (supported)
     { 0x48BDE2, 4 * 8,      0x2EE70 },  // dead inventories
     { 0x48BF60, 1,          0x2EE70 },  // scenario state (cleared)
