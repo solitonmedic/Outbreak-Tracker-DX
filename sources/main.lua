@@ -1246,11 +1246,14 @@ function love.update(dt)
 					Enemies[i] = tracker.getEnemy(i)
 				end
 			end
-			if not(s == "") and (f > 0) and EnemyList ==1 then
+			-- Elimination/Showdown map views count enemies left per room from this list.
+			local arenaMap = MapView.mode > 0 and MapView.arena
+			if not(s == "") and (f > 0) and (EnemyList ==1 or arenaMap) then
 				for i=1, 80 do
 					Enemies2[i] = tracker.getEnemyList(i)
 				end
 			end
+			MapView.enemyList = arenaMap and Enemies2 or nil
 			if not(s == "") and (f > 0) and ItemList >0 then
 				for i=1, 255 do
 					Items2[i] = tracker.getItem2(i)

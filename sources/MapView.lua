@@ -15,6 +15,7 @@ local Session=require "MapSession"
 local Effects=require "PlayerEffects"
 local Catalog=require "MapCatalog"
 local Hints=require "PuzzleHints"
+local Arena=require "MapArena"
 local okER,ER=pcall(require,"MapER")
 if not okER then ER={} end
 local V={mode=0,follow=true,target=nil,floor=1,zoom=1,panX=0,panY=0,hits={},cacheKey=""}
@@ -161,6 +162,8 @@ function V.update(game,players,dt,items)
     local key=tostring(game.currentFile)..":"..tostring(game.scenario)..":"..tostring(game.release)
     if V.cacheKey~=key then
         V.cacheKey=key; V.map=nil; V.er=nil; V.error=nil; V.floor=1; V.target=nil; V.follow=true; V.reset()
+        -- Elimination and Showdown have no game map: Room View / Grid View.
+        V.arena=Arena.isArena(game.scenario);V.arenaSeen={};V.arenaRoom=nil;V.arenaView=V.arenaView or "grid"
         -- U.S. File 1 map files (mapNNNe.dat) equal the Japanese ones in rooms,
         -- floors and placements (2026-11-20), so the bundled jp1 maps serve both.
         if game.release=="us" and game.currentFile~=1 then V.error="U.S. maps are not enabled yet"
@@ -214,6 +217,13 @@ function V.update(game,players,dt,items)
     local ownFloors=V.map and V.candidates(V.map,players[V.you or 0]) or {}
     Session.update(game,players,V.you,items,#ownFloors==1 and ownFloors[1] or nil)
     V.gasRooms=V.gas(game)
+    if V.arena then
+        -- Rooms YOU has entered are known even with no enemy entries (count 0).
+        if V.arenaFrames and (tonumber(game.frames) or 0)+60<V.arenaFrames then V.arenaSeen={} end
+        V.arenaFrames=tonumber(game.frames) or 0
+        local you=players[V.you or 0]
+        if active(you) then V.arenaSeen[you.roomID]=true end
+    end
     game.mapview={mode=V.mode,following=V.follow,floor=V.floor,target=V.target or 0,available=V.map~=nil}
 end
 local Layout=require "MapPresentationLayout"
@@ -806,6 +816,175 @@ local function drawMap(l,game,players,enemies,items)
         rect(chip);gasTimer(game,l.gasChipContent or chip)
     end
 end
+-- Elimination / Showdown ------------------------------------------------------
+local enemyBlue={.35,.65,1,1}
+local function roomLabel(game,id)
+    local name=GetRoomName and GetRoomName(game.scenario,id)
+    if type(name)~="string" or name=="" or id==0 then return "Room "..tostring(id) end
+    return name
+end
+-- One room box: name, enemies left ("x 02", gray when none or unknown) and the
+-- icons of players inside. A Danger/Down occupant makes it flash and glow red.
+local function arenaBox(game,id,b,occupants,alive,known,current)
+    local g=love.graphics
+    local alert=nil
+    for _,i in ipairs(occupants) do alert=Effects.worst(alert,Effects.health(V.players[i])) end
+    if alert then
+        for n=3,1,-1 do
+            Effects.pulseColor(alert,V.elapsed,1,.05,.05,.18*n/3+.1,.15)
+            g.rectangle("fill",b.x-2*n,b.y-2*n,b.w+4*n,b.h+4*n,4+2*n,4+2*n)
+        end
+        Effects.endPulse()
+    end
+    rect(b,{.025,.045,.085,1})
+    if alert then
+        Effects.pulseColor(alert,V.elapsed,1,0,0,.55,.1);g.rectangle("fill",b.x,b.y,b.w,b.h);Effects.endPulse()
+    end
+    g.setLineWidth(current and 2 or 1)
+    rect(b,current and {.95,.85,.35,1} or {.3,.45,.75,1},"line");g.setLineWidth(1)
+    local size=b.w>=150 and 13 or (b.w>=95 and 11 or (b.w>=70 and 10 or 9))
+    local font=MapFonts and MapFonts[size] or MiniFont
+    local lineHeight=font:getHeight()
+    local nameLines=b.h>=lineHeight*3+6 and 2 or 1
+    local name=roomLabel(game,id)
+    if nameLines==1 then text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size,fit=true})
+    else
+        g.setScissor(b.x+2,b.y+1,b.w-4,lineHeight*2+1)
+        text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size});g.setScissor()
+    end
+    -- Enemies left, bottom left.
+    local count=alive[id];local y=b.y+b.h-lineHeight-3
+    local none=not known[id] or (count or 0)==0
+    local d=math.max(3,lineHeight*.3);local cx,cy=b.x+4+d,y+lineHeight/2
+    g.setColor(unpack(none and muted or enemyBlue))
+    g.polygon("fill",{cx,cy-d,cx+d,cy,cx,cy+d,cx-d,cy})
+    local value=known[id] and string.format("x %02d",math.min(99,count or 0)) or "x --"
+    text(value,{x=cx+d+3,y=y,w=b.w/2,size=size},none and muted or white)
+    -- Players inside, bottom right.
+    local iconSize=math.min(lineHeight+4,(b.w/2-4)/math.max(1,#occupants))
+    local xx=b.x+b.w-3-#occupants*(iconSize+1)
+    for _,i in ipairs(occupants) do icon(V.players[i],xx,b.y+b.h-iconSize-3,iconSize);xx=xx+iconSize+1 end
+end
+-- A straight connector as a filled quad (the Decky bridge has no line command).
+local function segment(x1,y1,x2,y2,width)
+    local len=math.sqrt((x2-x1)^2+(y2-y1)^2)
+    if len<.5 then return end
+    local nx,ny=-(y2-y1)/len*width/2,(x2-x1)/len*width/2
+    love.graphics.polygon("fill",{x1+nx,y1+ny,x2+nx,y2+ny,x2-nx,y2-ny,x1-nx,y1-ny})
+end
+local function arrow(x1,y1,x2,y2,color)
+    local g=love.graphics
+    g.setColor(unpack(color));segment(x1,y1,x2,y2,2)
+    local a=math.atan2(y2-y1,x2-x1);local s=8
+    g.polygon("fill",{x2,y2,x2-s*math.cos(a-.45),y2-s*math.sin(a-.45),x2-s*math.cos(a+.45),y2-s*math.sin(a+.45)})
+end
+-- Point where the segment from a box centre toward (tx,ty) leaves the box.
+local function edgePoint(b,tx,ty)
+    local cx,cy=b.x+b.w/2,b.y+b.h/2;local dx,dy=tx-cx,ty-cy
+    local t=math.min(dx~=0 and (b.w/2)/math.abs(dx) or math.huge,dy~=0 and (b.h/2)/math.abs(dy) or math.huge)
+    return cx+dx*t,cy+dy*t
+end
+local function drawArena(l,game,players,key)
+    local g=love.graphics
+    local graph=Arena.graphs[game.scenario]
+    local left=V.mode==1 and 300 or 0
+    local stripWidth=V.mode==1 and 460 or l.width
+    V.tabStrip=nil;V.viewport=nil
+    -- Room View / Grid View replace the floor tabs. Grid View flashes red while
+    -- a teammate is in Danger or Down and the Room View is shown.
+    local teammate=nil
+    for i=1,4 do if i~=V.you and active(players[i]) then teammate=Effects.worst(teammate,Effects.health(players[i])) end end
+    local half=stripWidth/2
+    for i,view in ipairs{"room","grid"} do
+        local b={x=left+(i-1)*half+4,y=l.tabs[1].y-4,w=half-8,h=42}
+        local on=V.arenaView==view
+        rect(b,on and {.08,.13,.25,.95} or {.025,.045,.085,.85})
+        if view=="grid" and teammate and not on then
+            Effects.pulseColor(teammate,V.elapsed,1,0,0,.7,.1);g.rectangle("fill",b.x,b.y,b.w,b.h);Effects.endPulse()
+        end
+        g.setLineWidth(1);rect(b,on and {.4,.6,1,1} or {.18,.28,.48,1},"line")
+        text(view=="room" and "ROOM VIEW" or "GRID VIEW",{x=b.x+4,y=b.y+12,w=b.w-8,size=key=="phone" and 15 or 13,fit=true,align="center"},on and yellow or muted)
+        hit(b,function() V.arenaView=view end)
+    end
+    local vp=l.viewport
+    rect(vp,{0,0,0,1})
+    local alive,known=Arena.counts(V.enemyList,V.arenaSeen,V.isHazard)
+    local occupants={}
+    for i=1,4 do
+        if active(players[i]) then
+            local list=occupants[players[i].roomID] or {};list[#list+1]=i;occupants[players[i].roomID]=list
+        end
+    end
+    local target=players[V.target or 0]
+    local room=(not V.follow and V.arenaRoom) or (active(target) and target.roomID) or V.arenaRoom
+    V.arenaDrawn={}
+    local function box(id,b)
+        arenaBox(game,id,b,occupants[id] or {},alive,known,id==room)
+        V.arenaDrawn[#V.arenaDrawn+1]=id
+        hit(b,function() V.arenaRoom=id;V.follow=false;V.arenaView="room" end)
+    end
+    if V.arenaView=="grid" then
+        local cells,columns,rows={}, graph and graph.columns or 4,graph and graph.rows or 1
+        if graph then cells=graph.cells
+        else
+            -- Showdown: no transcribed layout; show the rooms seen so far in order.
+            local ids={};for id in pairs(known) do ids[#ids+1]=id end
+            for id in pairs(occupants) do if not known[id] then ids[#ids+1]=id end end
+            table.sort(ids)
+            for n,id in ipairs(ids) do cells[id]={(n-1)%columns,math.floor((n-1)/columns)} end
+            rows=math.max(1,math.ceil(#ids/columns))
+            text("Showdown room layout is not mapped yet",{x=vp.x+8,y=vp.y+4,w=vp.w-16,size=11,align="center"},muted)
+        end
+        -- Leave the bottom strip free for the FOLLOW button drawn over the view.
+        local top=vp.y+(graph and 4 or 24);local usable=vp.h-(top-vp.y)-40
+        local cellW=(vp.w-8)/columns;local cellH=math.min(96,usable/rows)
+        local bw=cellW-8;local bh=math.min(cellH-10,70)
+        local function centre(id)
+            local c=cells[id];return vp.x+4+(c[1]+.5)*cellW,top+(c[2]+.5)*cellH
+        end
+        for _,link in ipairs(graph and graph.links or {}) do
+            if cells[link[1]] and cells[link[2]] then
+                local x1,y1=centre(link[1]);local x2,y2=centre(link[2])
+                local lit=link[1]==room or link[2]==room
+                g.setColor(unpack(lit and {.95,.85,.35,.9} or {.85,.55,.15,.7}))
+                segment(x1,y1,x2,y2,lit and 3 or 2)
+            end
+        end
+        for id in pairs(cells) do
+            local x,y=centre(id);box(id,{x=x-bw/2,y=y-bh/2,w=bw,h=bh})
+        end
+    else
+        if not room or room==0 then
+            text("Waiting for a room",{x=vp.x,y=vp.y+vp.h/2-8,w=vp.w,size=13,align="center"},muted)
+            return
+        end
+        -- Room View: the room in the middle; each room its doors lead to sits
+        -- outside it in the direction it lies on the room diagram, with an arrow.
+        local cw,ch=math.min(vp.w*.46,220),math.min(vp.h*.26,130)
+        local main={x=vp.x+(vp.w-cw)/2,y=vp.y+(vp.h-ch)/2,w=cw,h=ch}
+        local list=graph and Arena.neighbours(graph,room) or {}
+        local nw,nh=math.min(vp.w*.3,140),58
+        local here=graph and graph.cells[room]
+        local angles={}
+        for n,id in ipairs(list) do
+            local c=graph.cells[id]
+            local a=here and c and math.atan2(c[2]-here[2],c[1]-here[1]) or (n/#list*2*math.pi)
+            -- Keep neighbours that share a direction apart.
+            for _,other in ipairs(angles) do if math.abs(other-a)<.5 then a=a+.55 end end
+            angles[n]=a
+        end
+        local rx,ry=(vp.w-nw)/2-6,(vp.h-nh)/2-24
+        for n,id in ipairs(list) do
+            local a=angles[n]
+            local x=vp.x+vp.w/2+rx*math.cos(a);local y=vp.y+vp.h/2+ry*math.sin(a)
+            local b={x=x-nw/2,y=y-nh/2,w=nw,h=nh}
+            local x1,y1=edgePoint(main,x,y);local x2,y2=edgePoint(b,main.x+cw/2,main.y+ch/2)
+            arrow(x1,y1,x2,y2,{.95,.6,.15,.9})
+            box(id,b)
+        end
+        box(room,main)
+    end
+end
 function V.draw(game,players,enemies,items)
     if V.mode==0 then return end
     -- Private providers publish after love.update; observe their current frame
@@ -820,72 +999,77 @@ function V.draw(game,players,enemies,items)
     plate(l.floorFill,l.floorFrame);plate(l.roomFill,l.roomFrame,"slot bar")
     local f=V.map and V.map.floors[V.floor]
     local title=f and f.name or "MAP"
-    if game.scenario=="desperate times" and f then title="R.P.D. "..shortFloor(f.name)
+    if V.arena then title=tostring(game.scenario):upper()
+    elseif game.scenario=="desperate times" and f then title="R.P.D. "..shortFloor(f.name)
     elseif game.scenario=="wild things" and f then title=shortFloor(f.name) end
     text(title,l.floorText,yellow)
     local p=players[V.target or 0]
     text(p and GetRoomName(game.scenario,p.roomID) or "",l.roomText)
-    local groups=V.floorGroups();local selected=1
-    for i,group in ipairs(groups) do if contains(group.indices,V.floor) then selected=i end end
-    local left=V.mode==1 and 300 or 0
-    local stripWidth=V.mode==1 and 460 or l.width
-    -- Two rows and a minimum cell width keep four portraits plus gas readable.
-    local count=math.min(5,#groups,math.max(1,math.floor(stripWidth/110)))
-    V.tabCount=count
-    V.tabStrip={x=left,y=l.tabs[1].y-4,w=stripWidth,h=42}
-    local start=math.max(1,math.min(V.tabOffset or 1,math.max(1,#groups-count+1)))
-    if not V.tabsManual then
-        if selected<start then start=selected elseif selected>=start+count then start=selected-count+1 end
-    end
-    V.tabOffset=start
-    local tabWidth=stripWidth/math.max(1,count)
-    for i=1,count do
-        local group=groups[start+i-1]
-        local b={x=left+(i-1)*tabWidth+4,y=V.tabStrip.y,w=tabWidth-8,h=V.tabStrip.h}
-        local occupants={};local hasGas=false;local danger=nil
-        for id=1,4 do
-            local choices=V.map and V.candidates(V.map,players[id]) or {}
-            for _,index in ipairs(group.indices) do
-                if contains(choices,index) then
-                    occupants[#occupants+1]=id
-                    danger=Effects.worst(danger,Effects.health(players[id]))
-                    break
+    if V.arena then drawArena(l,game,players,key) else
+        local groups=V.floorGroups();local selected=1
+        for i,group in ipairs(groups) do if contains(group.indices,V.floor) then selected=i end end
+        local left=V.mode==1 and 300 or 0
+        local stripWidth=V.mode==1 and 460 or l.width
+        -- Two rows and a minimum cell width keep four portraits plus gas readable.
+        local count=math.min(5,#groups,math.max(1,math.floor(stripWidth/110)))
+        V.tabCount=count
+        V.tabStrip={x=left,y=l.tabs[1].y-4,w=stripWidth,h=42}
+        local start=math.max(1,math.min(V.tabOffset or 1,math.max(1,#groups-count+1)))
+        if not V.tabsManual then
+            if selected<start then start=selected elseif selected>=start+count then start=selected-count+1 end
+        end
+        V.tabOffset=start
+        local tabWidth=stripWidth/math.max(1,count)
+        for i=1,count do
+            local group=groups[start+i-1]
+            local b={x=left+(i-1)*tabWidth+4,y=V.tabStrip.y,w=tabWidth-8,h=V.tabStrip.h}
+            local occupants={};local hasGas=false;local danger=nil
+            for id=1,4 do
+                local choices=V.map and V.candidates(V.map,players[id]) or {}
+                for _,index in ipairs(group.indices) do
+                    if contains(choices,index) then
+                        occupants[#occupants+1]=id
+                        danger=Effects.worst(danger,Effects.health(players[id]))
+                        break
+                    end
                 end
             end
-        end
-        local selectedFloor=contains(group.indices,V.floor)
-        rect(b,selectedFloor and {.08,.13,.25,.95} or {.025,.045,.085,.85})
-        if danger then
-            Effects.pulseColor(danger,V.elapsed,1,0,0,.6,.25)
-            g.rectangle("fill",b.x,b.y,b.w,b.h);Effects.endPulse()
-        end
-        g.setLineWidth(1);rect(b,selectedFloor and {.4,.6,1,1} or {.18,.28,.48,1},"line")
-        text(group.label,{x=b.x+4,y=b.y+1,w=b.w-8,size=key=="phone" and 15 or 12,fit=true,align="center"},selectedFloor and yellow or muted)
-        for _,index in ipairs(group.indices) do
-            for _,place in ipairs(V.map.floors[index].places) do
-                if V.gasRooms[V.map.rooms[place.record].id] then hasGas=true end
+            local selectedFloor=contains(group.indices,V.floor)
+            rect(b,selectedFloor and {.08,.13,.25,.95} or {.025,.045,.085,.85})
+            if danger then
+                Effects.pulseColor(danger,V.elapsed,1,0,0,.6,.25)
+                g.rectangle("fill",b.x,b.y,b.w,b.h);Effects.endPulse()
             end
+            g.setLineWidth(1);rect(b,selectedFloor and {.4,.6,1,1} or {.18,.28,.48,1},"line")
+            text(group.label,{x=b.x+4,y=b.y+1,w=b.w-8,size=key=="phone" and 15 or 12,fit=true,align="center"},selectedFloor and yellow or muted)
+            for _,index in ipairs(group.indices) do
+                for _,place in ipairs(V.map.floors[index].places) do
+                    if V.gasRooms[V.map.rooms[place.record].id] then hasGas=true end
+                end
+            end
+            local number=#occupants+(hasGas and 1 or 0)
+            local gap=3
+            local size=math.min(key=="phone" and 24 or 18,(b.w-8-math.max(0,number-1)*gap)/math.max(1,number))
+            local rowWidth=number*size+math.max(0,number-1)*gap
+            local xx=b.x+(b.w-rowWidth)/2
+            for _,id in ipairs(occupants) do icon(players[id],xx,b.y+16,size);xx=xx+size+gap end
+            if hasGas then sprite("2/11511",{x=xx,y=b.y+16,w=size,h=size},ItemIcons) end
+            hit({x=left+(i-1)*tabWidth,y=b.y,w=tabWidth,h=V.tabStrip.h},function()
+                V.floor=group.indices[1];V.follow=false;V.tabsManual=false;V.reset()
+            end)
         end
-        local number=#occupants+(hasGas and 1 or 0)
-        local gap=3
-        local size=math.min(key=="phone" and 24 or 18,(b.w-8-math.max(0,number-1)*gap)/math.max(1,number))
-        local rowWidth=number*size+math.max(0,number-1)*gap
-        local xx=b.x+(b.w-rowWidth)/2
-        for _,id in ipairs(occupants) do icon(players[id],xx,b.y+16,size);xx=xx+size+gap end
-        if hasGas then sprite("2/11511",{x=xx,y=b.y+16,w=size,h=size},ItemIcons) end
-        hit({x=left+(i-1)*tabWidth,y=b.y,w=tabWidth,h=V.tabStrip.h},function()
-            V.floor=group.indices[1];V.follow=false;V.tabsManual=false;V.reset()
-        end)
+        drawMap(l,game,players,enemies,items)
     end
-    drawMap(l,game,players,enemies,items)
     local function control(box,labelBox,label,action,color)
         rect(box,color or {.35,.35,.38,.85});text(label,labelBox,color and {0,0,0,1} or white);hit(box,action)
     end
-    control(l.plus,l.plusText,"+",function() V.scale(1.25) end)
-    control(l.minus,l.minusText,"−",function() V.scale(.8) end)
-    if l.fit then control(l.fit,l.fitText,"FIT",function() V.follow=false;V.reset() end) end
+    if not V.arena then
+        control(l.plus,l.plusText,"+",function() V.scale(1.25) end)
+        control(l.minus,l.minusText,"−",function() V.scale(.8) end)
+        if l.fit then control(l.fit,l.fitText,"FIT",function() V.follow=false;V.reset() end) end
+    end
     local c=V.colors[V.target or 1]
-    control(l.follow,l.followText,V.mode==1 and ("FOLLOW P"..tostring(V.target or 1)) or "FOLLOW",function() V.follow=true;V.reset() end,V.follow and {c[1],c[2],c[3],1} or nil)
+    control(l.follow,l.followText,V.mode==1 and ("FOLLOW P"..tostring(V.target or 1)) or "FOLLOW",function() V.follow=true;V.arenaRoom=nil;V.reset() end,V.follow and {c[1],c[2],c[3],1} or nil)
     plate(l.legendFill,l.legendFrame)
     local cellWidth=(l.legendFrame.w-16)/4
     for i=1,4 do
