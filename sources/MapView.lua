@@ -75,6 +75,25 @@ end
 -- enabled, in-game, living slots hold a live position; the others keep stale
 -- values from earlier rooms, so they are never drawn. Positions are shown as
 -- read, even just outside the drawn room (doorways, the Desperate Times gate).
+-- Screen rotation for a player's chevron: forward (map X, map Y) is the
+-- transform's (+0x70, +0x50); 0 means pointing up the map.
+function V.heading(p)
+    local fx,fy=p and p.forwardX,p and p.forwardY
+    if finite(fx) and finite(fy) and fx*fx+fy*fy>.25 then return math.atan2(fx,-fy) end
+    return 0
+end
+-- Room items are shown only for the room YOU are in (the loaded room, whose
+-- item list the reader keeps current). Pickup X/Z sit at record +8/+16.
+-- Taken items (no ID, 0xFFFF count, mix flag 0x20, or picked but absent) are skipped.
+function V.itemMarker(map,floor,room,it)
+    if not (it and it.id and it.id~=-1 and (it.type or 0)>0 and it.count~=0xFFFF and it.mix~=0x20) then return end
+    if (it.pick or 0)>0 and (it.present or 0)==0 then return end
+    if not (finite(it.positionX) and finite(it.positionY)) or (it.positionX==0 and it.positionY==0) then return end
+    local f=map.floors[floor]
+    for _,p in ipairs(f.places) do
+        if map.rooms[p.record].id==room then return Data.position(f,it.positionX,it.positionY) end
+    end
+end
 function V.enemyMarker(map,floor,e)
     if not (e and e.enabled and e.inGame and finite(e.positionX) and finite(e.positionY)) then return end
     local hp,maxHP=e.HP or 0,e.maxHP or 0
@@ -107,14 +126,19 @@ function V.update(game,players)
             end
         end
     end
+    V.players=players
+    -- YOU comes from the game's local-slot byte (0-based, frames + 5). The
+    -- first active record is not the local player online (slot order follows
+    -- the room, not the console), so it is only a fallback without that byte.
+    V.you=nil
+    local slot=tonumber(game.localSlot)
+    if slot and slot>=0 and slot<=3 and players[slot+1] and players[slot+1].enabled then V.you=slot+1
+    else for i=1,4 do if active(players[i]) then V.you=i; break end end end
     if not active(players[V.target or 0]) then
         V.target=nil
-        -- The reader's first active gameplay record is the local player. The
-        -- playernum field controls card count; it is not a local slot ID.
-        for i=1,4 do if active(players[i]) then V.target=i; break end end
+        if active(players[V.you or 0]) then V.target=V.you
+        else for i=1,4 do if active(players[i]) then V.target=i; break end end end
     end
-    V.you=nil
-    for i=1,4 do if active(players[i]) then V.you=i; break end end
     if V.map and V.follow and V.target then
         local choices=V.candidates(V.map,players[V.target])
         local selected=contains(choices,V.floor) and V.floor or choices[1]
@@ -157,7 +181,16 @@ end
 local function hit(b,action)
     V.hits[#V.hits+1]={x=b.x,y=b.y,w=b.w,h=b.h,action=action}
 end
-local function follow(i) V.target=i; V.follow=true; V.reset() end
+-- Following a player jumps straight to their floor, so a tap on a card or
+-- portrait shows where they are at once instead of on the next update.
+local function follow(i)
+    V.target=i; V.follow=true; V.reset()
+    local p=V.players and V.players[i]
+    if V.map and p then
+        local choices=V.candidates(V.map,p)
+        if #choices>0 and not contains(choices,V.floor) then V.floor=choices[1] end
+    end
+end
 local function icon(player,x,y,size)
     sprite("icon"..tostring(player.type),{x=x,y=y,w=size,h=size})
 end
@@ -239,9 +272,13 @@ end
 local function clock(game,b)
     if (game.frames or 0)<=0 then return end
     local g=love.graphics
-    g.push();g.translate(b.x,b.y);g.scale(b.w/194,b.h/26)
+    -- Reproduce the tracker's own time row: the SP counter is laid out at x 141
+    -- of a 300-wide row and the clock is right-aligned to 300. Draw that span
+    -- (141-300) uniformly scaled into the box so the two never overlap.
+    local s=math.min(b.w/159,b.h/26)
+    g.push();g.translate(b.x+b.w-159*s,b.y);g.scale(s);g.translate(-141,0)
     g.setColor(1,1,1,1);g.setFont(TimeFont)
-    g.printf(Time2string(game.frames/.03),0,0,194,"right")
+    g.printf(Time2string(game.frames/.03),0,0,300,"right")
     SP.draw(game.spTracking,0,0,DefaultFont)
     g.pop()
 end
@@ -308,7 +345,7 @@ local function scenario(l,game)
         end
     end
 end
-local function drawMap(l,game,players,enemies)
+local function drawMap(l,game,players,enemies,items)
     local g=love.graphics;local vp=l.viewport;local f=V.map and V.map.floors[V.floor]
     V.viewport=vp
     rect(vp,{0,0,0,1})
@@ -344,6 +381,22 @@ local function drawMap(l,game,players,enemies)
     g.pop()
     -- Scanlines and slot-coloured full-viewport crosshair are in the board.
     for y=vp.y,vp.y+vp.h,3 do rect({x=vp.x,y=y,w=vp.w,h=1},{0,0,0,.22}) end
+    -- Room items: tracker item icons on a dark tile, under enemies and players.
+    V.itemsDrawn=0
+    local you=players[V.you or 0]
+    local list=items and items[1] and items[1].roomitem
+    if list and active(you) then
+        for _,it in ipairs(list) do
+            local ix,iy=V.itemMarker(V.map,V.floor,you.roomID,it)
+            if ix then
+                local x,y=ox+(ix-cx)*scale,oy+(iy-cy)*scale
+                rect({x=x-9,y=y-9,w=18,h=18},{0,0,0,.7})
+                g.setColor(1,1,1,1)
+                ItemIcons:draw(tostring(game.currentFile).."/"..tostring(it.type),x-8,y-8,0,16/48,16/48)
+                V.itemsDrawn=V.itemsDrawn+1
+            end
+        end
+    end
     -- Enemies: small white diamonds with a dark edge, under the player markers.
     V.enemiesDrawn=0
     for _,e in ipairs(enemies or {}) do
@@ -352,6 +405,9 @@ local function drawMap(l,game,players,enemies)
             local x,y=ox+(ex-cx)*scale,oy+(ey-cy)*scale
             g.setColor(0,0,0,.85);g.polygon("fill",{x,y-7,x+7,y,x,y+7,x-7,y})
             g.setColor(1,1,1,1);g.polygon("fill",{x,y-5,x+5,y,x,y+5,x-5,y})
+            -- Remaining HP as a percentage beside the marker.
+            local pct=math.floor(e.HP/e.maxHP*100+.5)
+            text(pct.."%",{x=x+7,y=y-15,w=40,size=10},{1,1,1,1})
             V.enemiesDrawn=V.enemiesDrawn+1
         end
     end
@@ -369,9 +425,11 @@ local function drawMap(l,game,players,enemies)
             if fallback then
                 g.circle("line",x,y,11);icon(players[i],x-9,y-9,18)
             else
-                -- Fixed locator chevron, not a claimed facing read. The reader
-                -- does not yet export validated map heading.
-                g.polygon("fill",{x,y-12,x+10,y+10,x,y+4,x-10,y+10})
+                -- The chevron points along the player's forward axis (map X/Y,
+                -- y down like the map). Without a usable facing it stays upright.
+                g.push();g.translate(x,y);g.rotate(V.heading(players[i]))
+                g.polygon("fill",{0,-12,10,10,0,4,-10,10})
+                g.pop()
             end
             text(i==V.you and "YOU" or "P"..i,{x=x+12,y=y-24,w=35,size=13},c)
         end
@@ -382,7 +440,7 @@ local function drawMap(l,game,players,enemies)
         rect(chip);gasTimer(game,l.gasChipContent or chip)
     end
 end
-function V.draw(game,players,enemies)
+function V.draw(game,players,enemies,items)
     if V.mode==0 then return end
     local g=love.graphics
     local key=V.mode==1 and "wide" or (love.isDecky and "phone" or "vertical")
@@ -432,7 +490,7 @@ function V.draw(game,players,enemies)
             end)
         end
     end
-    drawMap(l,game,players,enemies)
+    drawMap(l,game,players,enemies,items)
     local function control(box,labelBox,label,action,color)
         rect(box,color or {.35,.35,.38,.85});text(label,labelBox,color and {0,0,0,1} or white);hit(box,action)
     end
@@ -452,14 +510,20 @@ function V.draw(game,players,enemies)
             label.x=label.x+extra;label.w=label.w-extra
         end
         label.fit=true
-        text(p and p.enabled and tostring(p.type):upper() or "--",label)
+        -- The player's in-game name, as on their card, not the character type.
+        local name=p and p.enabled and (p.name~=nil and tostring(p.name)~="" and tostring(p.name) or tostring(p.type))
+        text(name and name:upper() or "--",label)
         hit({x=b.slot.x,y=l.legendFrame.y,w=label.x+label.w-b.slot.x,h=l.legendFrame.h},function() follow(i) end)
     end
     scenario(l,game)
     if l.cards then compactCards(l,game,players)
     else
         for i=1,4 do
-            if players[i] and players[i].enabled then text("P"..i,{x=283,y=(i-1)*145+77,w=17,size=13},V.colors[i]) end
+            if players[i] and players[i].enabled then
+                text("P"..i,{x=283,y=(i-1)*145+77,w=17,size=13},V.colors[i])
+                -- Tapping a full card (portrait included) follows that player.
+                hit({x=0,y=(i-1)*145,w=300,h=145},function() follow(i) end)
+            end
         end
     end
     g.setLineWidth(1);g.setColor(1,1,1,1)

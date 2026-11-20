@@ -351,7 +351,7 @@ function love.draw()
 			}
 			MapView.setLetter = SPSetLetter()
 			MapView.hint = PuzzleSwitch == 1 and PuzzleHintsAvailable(s) and hints[s] or ""
-			if MapView.mode == 2 then MapView.draw(GameInfo, Players, Enemies); return end
+			if MapView.mode == 2 then MapView.draw(GameInfo, Players, Enemies, Items); return end
 		end
 		if Style==0 then
 			time_x = 0
@@ -1175,7 +1175,7 @@ function love.draw()
 		love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
 		love.graphics.printf(_l("Hotkeys list"), 4, 64, 300, "left")
 	end
-	MapView.draw(GameInfo, Players, Enemies)
+	MapView.draw(GameInfo, Players, Enemies, Items)
 end
 
 function love.update(dt)
@@ -1228,7 +1228,8 @@ function love.update(dt)
 					SPlayers[i] = tracker.getSlotPlayer(i)
 				end
 			--end
-			if not(s == "") and (f > 0) and ItemSwitch ==1 then
+			-- Map views draw the current room's items, so poll them there too.
+			if not(s == "") and (f > 0) and (ItemSwitch ==1 or MapView.mode > 0) then
 				for i=1, 1 do
 					Items[i] = tracker.getItem(i)
 				end
