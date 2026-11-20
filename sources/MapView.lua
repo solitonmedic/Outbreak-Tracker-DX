@@ -116,6 +116,10 @@ function V.itemMarker(map,floor,room,it)
         if map.rooms[p.record].id==room then return Data.position(f,it.positionX,it.positionY) end
     end
 end
+-- Enemy identity comes from the reader's existing GetEnemyName table. Include
+-- Giant Moth/Rafflesia and the distinct Gigabyte boss (64, not Megabyte18).
+local bossIds={[9]=true,[15]=true,[19]=true,[20]=true,[29]=true,[32]=true,[40]=true,[41]=true,[42]=true,[43]=true,[44]=true,[45]=true,[46]=true,[47]=true,[51]=true,[64]=true}
+function V.isBoss(e) return e and bossIds[e.nameID] or false end
 function V.enemyMarker(map,floor,e)
     if not (e and e.enabled and e.inGame and finite(e.positionX) and finite(e.positionY)) then return end
     local hp,maxHP=e.HP or 0,e.maxHP or 0
@@ -543,8 +547,7 @@ local function drawMap(l,game,players,enemies,items)
         if ex then
             local x,y=ox+(ex-cx)*scale,oy+(ey-cy)*scale
             g.setColor(0,0,0,.85);g.polygon("fill",{x,y-7,x+7,y,x,y+7,x-7,y})
-            local bosses={[15]=true,[19]=true,[20]=true,[29]=true,[32]=true,[41]=true,[42]=true,[43]=true,[44]=true,[45]=true,[47]=true,[51]=true}
-            g.setColor(1,bosses[e.nameID] and .05 or 1,bosses[e.nameID] and .05 or 1,1);g.polygon("fill",{x,y-5,x+5,y,x,y+5,x-5,y})
+            g.setColor(1,V.isBoss(e) and .05 or 1,V.isBoss(e) and .05 or 1,1);g.polygon("fill",{x,y-5,x+5,y,x,y+5,x-5,y})
             -- Remaining HP as a percentage beside the marker.
             local pct=math.floor(e.HP/e.maxHP*100+.5)
             text(pct.."%",{x=x+7,y=y-15,w=40,size=10},{1,1,1,1})
