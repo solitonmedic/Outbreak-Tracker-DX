@@ -3,6 +3,7 @@
 -- Location/runtime: sources/main.lua; LÖVE 11.5/LuaJIT or the Decky drawing bridge.
 -- Inputs: reader state, packaged assets and keyboard/phone controls.
 -- Outputs: tracker drawing/audio; GameInfo.spsoundenabled reports the sound toggle.
+-- PuzzleHints shares existing learned-clue colors with map hints; values stay here.
 -- B/N add map layouts; mouse callbacks control the bundled map view, and update
 -- deltas drive the Desperate Times gas-room glow without changing game state.
 -- Safety: packaged map assets and reader access are read-only; no disc, cache,
@@ -10,6 +11,7 @@
 -- Run from repo-merged/: ./macos/run.sh, or the installed Decky reader. Check:
 -- luajit tools-n-shit/tracker-tests/sp/check-sp-sound.lua . (synthetic state only).
 local tracker = require "luaoutbreaktracker"
+local PuzzleHints = require "PuzzleHints"
 
 -- Lets the player cards read Alyssa's lock-pick counter for the hint spot
 -- they matched. Returns nil when the reader has no lock data.
@@ -918,11 +920,7 @@ function love.draw()
 				if not (d == "easy") then
 					if(PuzzleSwitch == 1) then
 						love.graphics.setFont(DefaultFont)
-						if (GameInfo.passwt%8 >= 4 and GameInfo.passwt%8 <8) then-- >=4 and <8, >=C and <F
-							love.graphics.setColor( 0, 200/255, 0, 1 )
-						else
-							love.graphics.setColor( 127/255, 127/255, 127/255, 1 )
-						end
+						love.graphics.setColor(unpack(PuzzleHints.color(GameInfo,1)))
 						love.graphics.printf(passwt, passwt_x, passwt_y, 300, "left")
 					end
 				end
@@ -951,11 +949,7 @@ function love.draw()
 				love.graphics.setFont(DefaultFont)
 				if(GameInfo.fighttime == 0) and (GameInfo.fighttime2 == 0xffff) then
 					if(PuzzleSwitch == 1) then
-						if (GameInfo.passdt3%8 >= 4 and GameInfo.passdt3%8 <8) then-- >=4 and <8, >=C and <F						love.graphics.setColor( 0, 200/255, 0, 1 )
-							love.graphics.setColor( 0, 200/255, 0, 1 )
-						else
-							love.graphics.setColor( 127/255, 127/255, 127/255, 1 )
-						end
+						love.graphics.setColor(unpack(PuzzleHints.color(GameInfo,1)))
 						love.graphics.printf(passdt, timeleft_x, timeleft_y, 300, "left")
 					end
 				end
@@ -1119,18 +1113,10 @@ function love.draw()
 				if(GameInfo.escapetime == 0 or GameInfo.escapetime == 0xffff)then
 					if(PuzzleSwitch == 1) then
 						love.graphics.setFont(DefaultFont)
-						if(GameInfo.passub3%64 >=32) then
-							love.graphics.setColor( 0, 200/255, 0, 1 )
-						else
-							love.graphics.setColor( 127/255, 127/255, 127/255, 1 )
-						end
+						love.graphics.setColor(unpack(PuzzleHints.color(GameInfo,1)))
 						love.graphics.printf(passub1, timeleft_x, timeleft_y, 300, "left")
 
-						if(GameInfo.passub3%32 >=16) then
-							love.graphics.setColor( 0, 200/255, 0, 1 )
-						else
-							love.graphics.setColor( 127/255, 127/255, 127/255, 1 )
-						end
+						love.graphics.setColor(unpack(PuzzleHints.color(GameInfo,2)))
 						love.graphics.printf(passub2, timeleft_x+60, timeleft_y, 300, "left")
 					end
 

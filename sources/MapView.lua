@@ -2,6 +2,7 @@
 -- Runtime/location: sources/MapView.lua; LÖVE 11.5 or the Decky Lua drawing bridge.
 -- Inputs: existing GameInfo/Players, update delta, bundled assets and UI actions.
 -- Outputs: map drawing, compact cards and UI-only GameInfo.mapview state.
+-- Hint colors reuse PuzzleHints and existing main-tracker knowledge flags.
 -- Safety: read-only packaged assets and existing state; no disc or user-cache access.
 -- Run: B = cards beside map, N = map above cards; assets load automatically.
 -- Check: luajit tools-n-shit/tracker-tests/maps/check-runtime-maps.lua .
@@ -9,6 +10,7 @@ local Data=require "MapData"
 local Session=require "MapSession"
 local Effects=require "PlayerEffects"
 local Catalog=require "MapCatalog"
+local Hints=require "PuzzleHints"
 local okER,ER=pcall(require,"MapER")
 if not okER then ER={} end
 local V={mode=0,follow=true,target=nil,floor=1,zoom=1,panX=0,panY=0,hits={},cacheKey=""}
@@ -262,11 +264,15 @@ local muted={138/255,143/255,153/255,1}
 local function text(value,b,color)
     local g=love.graphics
     g.setFont(MapFonts and MapFonts[b.size or 11] or MiniFont)
-    local value=tostring(value or "")
+    local plain=value
+    if type(value)=="table" then
+        local parts={};for _,part in ipairs(value) do if type(part)=="string" then parts[#parts+1]=part end end
+        plain=table.concat(parts)
+    else value=tostring(value or "");plain=value end
     local width=b.w
     local scale=b.fit and math.min(1,width/math.max(1,g.getFont():getWidth(value))) or 1
     g.push();g.translate(b.x,b.y);g.scale(scale,1)
-    g.setColor(0,0,0,1);g.printf(value,1,1,width/scale,b.align or "left")
+    g.setColor(0,0,0,1);g.printf(plain,1,1,width/scale,b.align or "left")
     g.setColor(unpack(color or b.color or white));g.printf(value,0,0,width/scale,b.align or "left")
     g.pop()
 end
@@ -390,13 +396,12 @@ local function clock(game,b,sp)
     if (game.frames or 0)<=0 then return end
     local g=love.graphics
     local radar=type(sp)=="table" and sp.available==true
-    local radarWidth=radar and 98 or 0
+    local radarWidth=radar and 70 or 0
     if radar then
-        -- Include the glow's full bounds (-9.2..27.2), and label
-        -- whose facing the compass uses when the map is following someone else.
+        -- Compass direction stays relative to the local player; reserve its
+        -- full glow bounds (-9.2..27.2) without extra caption text.
         g.push();g.translate(b.x+3,b.y+10)
         SP.draw(sp,-141,0,DefaultFont);g.pop()
-        text("YOU",{x=b.x+67,y=b.y+12,w=27,size=9},yellow)
     end
     local value=Time2string(game.frames/.03)
     local width=b.w-radarWidth
@@ -421,11 +426,9 @@ local function scenario(l,game)
     local sp=SP.forMap(game.spTracking,V.players and V.players[V.you or 0])
     clock(game,{x=b.x,y=b.y,w=clockWidth,h=22},sp)
     local setsX=b.x+clockWidth+4
-    local setsWidth=b.w-clockWidth-4
-    text("ITEM",{x=setsX,y=b.y+12,w=27,size=10},yellow)
     local itemNumbers=tostring((game.itemrandom or 0)+1).."\n"..tostring(math.floor((game.itemrandom2 or 0)/10)+1)
-    text(itemNumbers,{x=setsX+29,y=b.y+1,w=23,size=14,align="center"},yellow)
-    text("SP "..tostring(V.setLetter or "—"),{x=setsX+57,y=b.y+12,w=setsWidth-57,size=11,fit=true,align="right"},yellow)
+    text(itemNumbers,{x=setsX+4,y=b.y+1,w=23,size=14,align="center"},yellow)
+    if V.setLetter then text(V.setLetter,{x=setsX+39,y=b.y+12,w=24,size=12,align="center"},yellow) end
     local lines={}
     if game.scenario=="desperate times" then
         local ft=game.fighttime2==65535 and game.fighttime or game.fighttime2
@@ -441,9 +444,15 @@ local function scenario(l,game)
     elseif (game.escapetime or 0)>0 and game.escapetime~=65535 then
         lines[#lines+1]="Escape "..Time2string3(game.escapetime)
     end
-    if V.hint and V.hint~="" then lines[#lines+1]="HINT: "..V.hint end
+    local info=table.concat(lines,"\n")
+    local hint=V.hint and V.hint~="" and Hints.text(game,V.hint) or nil
+    local content=info
+    if hint then
+        content={white,info~="" and info.."\n" or ""}
+        for _,part in ipairs(hint) do content[#content+1]=part end
+    end
     local hintY=39
-    text(table.concat(lines,"\n"),{x=b.x,y=b.y+hintY,w=b.w,h=b.h-hintY,size=V.mode==1 and 13 or 11})
+    text(content,{x=b.x,y=b.y+hintY,w=b.w,h=b.h-hintY,size=V.mode==1 and 13 or 11})
 end
 local function drawMap(l,game,players,enemies,items)
     local g=love.graphics;local vp=l.viewport;local f=V.map and V.map.floors[V.floor]
