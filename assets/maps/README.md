@@ -47,15 +47,3 @@ Evil Resource identifiers, not game room IDs. An explicit room-ID crosswalk and
 validated game-coordinate-to-image transforms are still needed. No calibration,
 item-presence information, navigation graph, extra-mode coverage or new game
 release support is implied by this download.
-
-## Verification
-
-All 68 GIFs passed decoding, dimension and SHA-256 checks. The named region
-shapes have valid coordinate counts and remain within their artwork bounds.
-J's Bar 1F and Raccoon City Zoo were also visually inspected. No in-game map
-alignment has been verified.
-
-The local download/verification helper and exact invocation are documented in
-the workspace research tools. It can verify the complete manifest offline and
-refuses to overwrite downloaded assets. A later refresh should use a separate
-output directory so changes can be reviewed against these originals.
