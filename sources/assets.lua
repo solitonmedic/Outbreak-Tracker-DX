@@ -16,6 +16,9 @@ function LoadAssets()
 	JapaneseUIAtlas = LoadTextureAtlas("assets/ui.png", UIAtlasInfo)
 	USUIAtlas = LoadTextureAtlas("assets/ui-us.png", UIAtlasInfo)
 	UIAtlas = JapaneseUIAtlas
+	MapUIAtlas = USUIAtlas
+	MapFonts = {}
+	for size=9,16 do MapFonts[size] = love.graphics.newFont("assets/arialnb.ttf", size) end
 	ItemIcons = LoadTextureAtlas("assets/icons.png", IconLinks)
 	ItemIcons2 = LoadTextureAtlas("assets/StartingItem.png", IconLinks2)
 	DefaultFont = love.graphics.newFont("assets/arialbd.ttf",18)

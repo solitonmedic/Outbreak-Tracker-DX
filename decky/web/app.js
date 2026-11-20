@@ -7,7 +7,7 @@
 // Sounds: frame.sounds counts plays per file; a rise plays it once (after the first tap).
 // M toggles SP radar sound in the shared UI; frame.game.spsoundenabled updates
 // the On/Off button (default On). Check: offline check-sp-sound-frames.py.
-// Map input: pointer drag, pinch, wheel, double-tap fit; bounded shared map actions.
+// Map input: pointer drag, pinch, wheel, double-tap zoom; bounded shared map actions.
 // Map artwork loads from the bundled assets; there is no disc selection or import.
 "use strict";
 const canvas = document.querySelector("#tracker"), ctx = canvas.getContext("2d");
@@ -289,7 +289,7 @@ function releasePointer(event){
   if(pointers.size===1&&gestureMoved)void mapAction("move",point);
   pointers.delete(event.pointerId);pinchDistance=0;void mapAction("up",point);
   const now=performance.now();
-  if(!gestureMoved&&now-lastTap<300)void mapAction("fit",point);
+  if(!gestureMoved&&now-lastTap<300)void mapAction("in",point);
   lastTap=gestureMoved?0:now;
 }
 canvas.addEventListener("pointerup",releasePointer);

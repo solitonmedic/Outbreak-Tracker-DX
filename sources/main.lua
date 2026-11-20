@@ -153,7 +153,6 @@ function love.draw()
 	GameInfo.spsoundenabled = SPSoundEnabled
 	wx, wy, display = love.window.getMode()-- get window size
 	love.graphics.scale(wx/scalex, wy/scaley)
-	if MapView.mode == 2 then love.graphics.push(); love.graphics.translate(0, 108) end
 
 	local p = GameInfo.playernum
 	if MapView.mode > 0 then p = 4 end
@@ -338,6 +337,21 @@ function love.draw()
 		elseif(gr%16 == 13) then passub2="1127"
 		elseif(gr%16 == 14) then passub2="7840"
 		elseif(gr%16 == 15) then passub2="6910"
+		end
+		if MapView.mode > 0 then
+			local hints = {
+				["below freezing point"] = tostring(passbfp).."-"..tostring(pass2bfp),
+				["the hive"] = HiveCodeText(passhive),
+				["hellfire"] = tostring(hfpass).."-"..tostring(hfmap).."-"..tostring(hfpower),
+				["decisions,decisions"] = tostring(ddpass).."-"..tostring(clocktime),
+				["underbelly"] = tostring(passub1).." "..tostring(passub2),
+				["wild things"] = d ~= "easy" and passwt or "",
+				["desperate times"] = passdt,
+				["end of the road"] = tostring(GameInfo.pass4),
+			}
+			MapView.setLetter = SPSetLetter()
+			MapView.hint = PuzzleSwitch == 1 and PuzzleHintsAvailable(s) and hints[s] or ""
+			if MapView.mode == 2 then MapView.draw(GameInfo, Players); return end
 		end
 		if Style==0 then
 			time_x = 0
@@ -1161,7 +1175,6 @@ function love.draw()
 		love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
 		love.graphics.printf(_l("Hotkeys list"), 4, 64, 300, "left")
 	end
-	if MapView.mode == 2 then love.graphics.pop() end
 	MapView.draw(GameInfo, Players)
 end
 
@@ -1263,7 +1276,7 @@ function love.keypressed(key)
 		PlayerList, EnemyList, ItemList = 1, 0, 0
 		ItemSwitch, EnemyHPSwitch, TimeSwitch, doorList = 1, 1, 1, 1
 		MapView.setMode(mode)
-		scalex, scaley = mode == 1 and 760 or 390, mode == 1 and 740 or 844
+		scalex, scaley = MapView.dimensions()
 		love.window.setMode(scalex, scaley, {resizable=true,vsync=3})
 		return
 	end

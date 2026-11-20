@@ -13,7 +13,7 @@ from PIL import Image, ImageFont
 
 def generate(assets, output):
     records = []
-    for name, size in [("arialbd.ttf", 18), ("arialbd.ttf", 15), ("arialbd.ttf", 13), ("arialnb.ttf", 11)]:
+    for name, size in [("arialbd.ttf", 18), ("arialbd.ttf", 15), ("arialbd.ttf", 13)] + [("arialnb.ttf", size) for size in range(9, 17)]:
         font = ImageFont.truetype(str(assets / name), size, layout_engine=ImageFont.Layout.BASIC)
         ascent, descent = font.getmetrics()
         widths = {cp: float(font.getlength(chr(cp))) for cp in range(32, 1280)}

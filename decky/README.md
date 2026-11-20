@@ -146,14 +146,18 @@ The [script index](scripts/README.md) explains build and synchronization entrypo
 
 In phone Controls, choose **Map + compact cards** or **Cards beside map** (keyboard
 **N** or **B**). Select a player to follow them, or use **F**. Drag to pan, pinch or
-scroll to zoom, double-tap to fit, and switch floors from the floor row. The menu
+scroll to zoom, double-tap to zoom, and switch floors from the floor row. The menu
 button stays visible while using the map. All connected pages share these controls.
 
 The sampled Japanese File 1 and File 2 map assets are bundled with the plugin.
 They load automatically for the five main scenarios in each game. No disc path,
 import, upload, download or user-cache setup is required.
 
-Slot colours are P1 red, P2 blue, P3 yellow and P4 green. A dot marks a usable world
+The wide layout is 760×740, desktop vertical is 300×740 and the phone layout is
+390×844, following the tracker-style design. Floor rows scroll by swipe or wheel
+when a scenario has additional floors.
+
+Slot colours are P1 red, P2 blue, P3 yellow and P4 green. A fixed chevron marks a usable world
 position; a portrait in a ring indicates room-only placement, including ambiguous
 height bands. Select the desired floor manually in those rooms. Height and heading
 reads remain unavailable. Desperate Times gas rooms glow yellow, and puzzle hints,

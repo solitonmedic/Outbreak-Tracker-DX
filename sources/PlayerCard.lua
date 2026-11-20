@@ -63,7 +63,9 @@ function PlayerCard:drawUnlockBar(spotX, spotY, isContainer)
 	love.graphics.setColor(r, g, b, a)
 end
 
-function PlayerCard:draw(x, y)
+-- portraitOnly reuses the bust, effect timers, virus and room-master crown for
+-- compact map cards. Inventory is drawn in its own complete region there.
+function PlayerCard:draw(x, y, portraitOnly)
 	love.graphics.push()
 	love.graphics.translate(x, y)
 
@@ -79,6 +81,9 @@ function PlayerCard:draw(x, y)
 		sb:setColor(1, 1, 1, 1)
 	end
 	UIAtlas:addSB(sb, bustname, 300 - bw * scale, 145 - bh * scale, 0, scale, scale)
+	if portraitOnly then
+		love.graphics.draw(sb)
+	else
 	sb:setColor(1, 1, 1, 1)
 	if not(Players[self.id].status == "Dead" or Players[self.id].status == "Down" or Players[self.id].status == "Zombie") then
 		sb:setColor(unpack(GetConditionColor(GetConditionName(Players[self.id].HP, Players[self.id].maxHP))))
@@ -705,6 +710,7 @@ function PlayerCard:draw(x, y)
 	self.roomLabelShadow.text = GetRoomName(GameInfo.scenario, Players[self.id].roomID)
 	self.roomLabelShadow:draw()
 	self.roomLabel:draw()
+	end
 
 	local a = Players[self.id].antivirustime
 	local b = Players[self.id].antivirusgtime

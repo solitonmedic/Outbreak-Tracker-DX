@@ -73,7 +73,7 @@ local function sprite(image, quad, x,y,r,sx,sy,ox,oy,kx,ky, tint)
     emit("image",image.path,quad,{x or 0,y or 0,r or 0,sx or 1,sy or sx or 1,ox or 0,oy or 0,kx or 0,ky or 0},
         {color[1]*c[1],color[2]*c[2],color[3]*c[3],color[4]*c[4]})
 end
-love = {graphics={},window={},audio={},event={}}
+love = {graphics={},window={},audio={},event={},isDecky=true}
 local g=love.graphics
 function g.newFont(path,size) return makefont(path,size) end
 function g.newImageFont(path,characters) return makefont(path,nil,characters) end
