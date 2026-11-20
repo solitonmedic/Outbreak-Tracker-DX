@@ -46,7 +46,7 @@ function prepareMotion(frame) {
   if(panPreview?.releasedAt&&mapDescriptor&&Math.hypot(panPreview.x-mapDescriptor.panX,panPreview.y-mapDescriptor.panY)<1)panPreview=null;
 }
 async function animate(now) {
-  if(latestFrame&&!painting&&(mapActive||latestFrame!==presentedFrame)) {
+  if(latestFrame&&!painting&&(mapActive||latestFrame.pulsing||latestFrame!==presentedFrame)) {
     painting=true;
     const frame=latestFrame;
     try{await render(frame,now);presentedFrame=frame;}catch(error){message.textContent=error.message;}
@@ -144,8 +144,11 @@ async function image(path) {
   }));
   return images.get(path);
 }
+// Alpha factor from a "pulse" command: raised-cosine wave between floor and 1.
+let pulseFactor=1;
+function pulseAt(rate,floor,now){return floor+(1-floor)*(.5-.5*Math.cos(2*Math.PI*rate*now/1000));}
 function color(value) {
-  const [r,g,b,a=1]=value; ctx.fillStyle=ctx.strokeStyle="rgb("+(r*255)+" "+(g*255)+" "+(b*255)+")"; ctx.globalAlpha=a;
+  const [r,g,b,a=1]=value; ctx.fillStyle=ctx.strokeStyle="rgb("+(r*255)+" "+(g*255)+" "+(b*255)+")"; ctx.globalAlpha=a*pulseFactor;
 }
 function transform(values) {
   const [x,y,r,sx,sy,ox,oy,kx,ky]=values;
@@ -248,10 +251,11 @@ async function render(frame,now=performance.now()) {
   canvas.style.width=cssWidth+"px";canvas.style.height=cssHeight+"px";
   ctx.setTransform(ratio,0,0,ratio,0,0);ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
   ctx.lineWidth=1;
-  let depth=0;
+  let depth=0;pulseFactor=1;
   for(const command of frame.commands) {
     const [op,...a]=command;
-    if(op==="push"){ctx.save();depth++;}
+    if(op==="pulse")pulseFactor=a.length?pulseAt(a[0],a[1],now):1;
+    else if(op==="push"){ctx.save();depth++;}
     else if(op==="pop"){if(depth){ctx.restore();depth--;}}
     else if(op==="translate")ctx.translate(...a);
     else if(op==="mapBegin"){
@@ -294,6 +298,7 @@ async function poll() {
     canvas.style.touchAction=mapActive?"none":"auto";
     updateSoundControl(frame.game?.spsoundenabled);
     message.textContent=frame.state==="connected"?"":frame.message||(frame.state==="waiting"?"Waiting for game":frame.state);canvas.classList.toggle("stale",frame.state!=="connected");
+    frame.pulsing=frame.commands.some(c=>c[0]==="pulse");
     prepareMotion(frame);latestFrame=frame;
     if(!animationStarted){animationStarted=true;requestAnimationFrame(animate);}
     playSounds(frame.sounds).catch(error=>{sounds.clear();soundStats.error=error.message||String(error);});

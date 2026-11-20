@@ -20,17 +20,36 @@ function E.health(p)
     if (p.maxHP or 0)>0 and (p.HP or 0)/p.maxHP<.25 then return "danger" end
     return "normal"
 end
+-- The more urgent of two health states for flashing: down, then danger, else nil.
+function E.worst(a,b)
+    if a=="down" or b=="down" then return "down" end
+    if a=="danger" or b=="danger" then return "danger" end
+end
 function E.pulse(time) return .5+.5*math.sin((time or 0)*math.pi*3) end
+-- Danger breathes slowly; Down flashes faster. Hz.
+E.rates={danger=1,down=2.4}
+-- Smooth raised-cosine wave from 0 to 1.
+function E.wave(time,rate) return .5-.5*math.cos(2*math.pi*rate*(time or 0)) end
+-- Set a pulsing colour whose alpha moves between floor*a and a. On the Decky
+-- bridge the browser animates the alpha at display rate (setPulse); desktop
+-- LÖVE computes it every frame. Call E.endPulse() after the pulsing shapes.
+function E.pulseColor(state,time,r,g,b,a,floor)
+    local gr=love.graphics;local rate=E.rates[state] or E.rates.danger
+    if gr.setPulse then gr.setPulse(rate,floor);gr.setColor(r,g,b,a)
+    else gr.setColor(r,g,b,a*(floor+(1-floor)*E.wave(time,rate))) end
+end
+function E.endPulse() if love.graphics.setPulse then love.graphics.setPulse() end end
 function E.background(p,x,y,w,h,time)
     local state=E.health(p)
     if state~="danger" and state~="down" then return end
-    local g=love.graphics;local pulse=E.pulse(time)
-    g.setColor(1,0,0,state=="down" and pulse or (.12+.25*pulse))
+    local g=love.graphics
+    E.pulseColor(state,time,1,0,0,state=="down" and .8 or .36,state=="down" and .05 or .3)
     g.rectangle("fill",x,y,w,h)
     for n=1,3 do
-        g.setColor(1,.02,.02,(.05+.15*pulse)/n)
+        E.pulseColor(state,time,1,.02,.02,.22/n,.2)
         g.setLineWidth(n*2);g.rectangle("line",x+n,y+n,w-2*n,h-2*n)
     end
+    E.endPulse()
     g.setLineWidth(1);g.setColor(1,1,1,1)
 end
 -- Voice IDs feed the game's map pulse. Rising duration also catches repeats.

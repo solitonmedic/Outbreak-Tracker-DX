@@ -515,7 +515,7 @@ local function scenario(l,game)
         return
     end
     local clockWidth=math.min(222,b.w*.68)
-    local sp=SP.forMap(game.spTracking,V.players and V.players[V.you or 0])
+    local sp=SP.forMap(SP.state(game),V.players and V.players[V.you or 0])
     clock(game,{x=b.x,y=b.y,w=clockWidth,h=22},sp)
     local setsX=b.x+clockWidth+4
     local itemNumbers=tostring((game.itemrandom or 0)+1).."\n"..tostring(math.floor((game.itemrandom2 or 0)/10)+1)
@@ -828,20 +828,23 @@ function V.draw(game,players,enemies,items)
     for i=1,count do
         local group=groups[start+i-1]
         local b={x=left+(i-1)*tabWidth+4,y=V.tabStrip.y,w=tabWidth-8,h=V.tabStrip.h}
-        local occupants={};local hasGas=false;local danger=false
+        local occupants={};local hasGas=false;local danger=nil
         for id=1,4 do
             local choices=V.map and V.candidates(V.map,players[id]) or {}
             for _,index in ipairs(group.indices) do
                 if contains(choices,index) then
                     occupants[#occupants+1]=id
-                    local state=Effects.health(players[id]);danger=danger or state=="danger" or state=="down"
+                    danger=Effects.worst(danger,Effects.health(players[id]))
                     break
                 end
             end
         end
         local selectedFloor=contains(group.indices,V.floor)
         rect(b,selectedFloor and {.08,.13,.25,.95} or {.025,.045,.085,.85})
-        if danger then rect(b,{1,0,0,.15+.45*Effects.pulse(V.elapsed)}) end
+        if danger then
+            Effects.pulseColor(danger,V.elapsed,1,0,0,.6,.25)
+            g.rectangle("fill",b.x,b.y,b.w,b.h);Effects.endPulse()
+        end
         g.setLineWidth(1);rect(b,selectedFloor and {.4,.6,1,1} or {.18,.28,.48,1},"line")
         text(group.label,{x=b.x+4,y=b.y+1,w=b.w-8,size=key=="phone" and 15 or 12,fit=true,align="center"},selectedFloor and yellow or muted)
         for _,index in ipairs(group.indices) do

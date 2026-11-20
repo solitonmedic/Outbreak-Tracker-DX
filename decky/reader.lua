@@ -120,6 +120,9 @@ function g.mapBegin(x,y,w,h,panX,panY,cameraX,cameraY,key) emit("mapBegin",x,y,w
 function g.mapEnd() emit("mapEnd") end
 function g.actorBegin(id,x,y,continuity) emit("actorBegin",id,x,y,continuity) end
 function g.actorEnd() emit("actorEnd") end
+-- Pulsing alpha (danger/down flashes): the browser animates it at display rate
+-- instead of the 5 Hz frame rate. setPulse() with no rate ends it.
+function g.setPulse(rate,floor) if rate then emit("pulse",rate,floor or 0) else emit("pulse") end end
 function g.getLineWidth() return lineWidth end
 function g.setLineWidth(value) lineWidth=value; emit("lineWidth",value) end
 function g.rectangle(mode,x,y,w,h,rx,ry) emit("rectangle",mode,x,y,w,h,color,rx or 0,ry or rx or 0) end
