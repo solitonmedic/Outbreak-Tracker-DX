@@ -1313,6 +1313,39 @@ unsigned short GetEnemyMaxHealth(int enemyID)
   return buffer;
 }
 
+// Enemy slots share the player block layout: float X at +0x38, float map Y
+// (the game's Z) at +0x40 and the room ID at +0x1E2. Only enabled, in-game
+// slots hold a live position; the others keep stale values.
+double GetEnemyPositionX(int enemyID)
+{
+  float buffer;
+  if (info.CurrentFile == 1)
+      ReadF1(F1_GetEnemyAddress(enemyID) + F1_PositionX, &buffer, 4);
+  else
+      ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetEnemyAddress(enemyID) + F2_PositionX, &buffer, 4, NULL);
+  return (double)buffer;
+}
+
+double GetEnemyPositionY(int enemyID)
+{
+  float buffer;
+  if (info.CurrentFile == 1)
+      ReadF1(F1_GetEnemyAddress(enemyID) + F1_PositionY, &buffer, 4);
+  else
+      ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetEnemyAddress(enemyID) + F2_PositionY, &buffer, 4, NULL);
+  return (double)buffer;
+}
+
+unsigned char GetEnemyRoomID(int enemyID)
+{
+  unsigned char buffer;
+  if (info.CurrentFile == 1)
+      ReadF1(F1_GetEnemyAddress(enemyID) + F1_RoomIDOffset, &buffer, 1);
+  else
+      ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetEnemyAddress(enemyID) + F2_RoomIDOffset, &buffer, 1, NULL);
+  return buffer;
+}
+
 char GetEnemyEnabled(int enemyID)
 {
     char buffer;
@@ -1596,6 +1629,9 @@ static int LUpdate (lua_State* L)
 		Enemies[i].MaxHP = GetEnemyMaxHealth(i);
 		Enemies[i].EnemyType = GetEnemyType(i);
 		Enemies[i].NameID = GetEnemyNameID(i);
+		Enemies[i].PositionX = GetEnemyPositionX(i);
+		Enemies[i].PositionY = GetEnemyPositionY(i);
+		Enemies[i].RoomID = GetEnemyRoomID(i);
 	}
 
 	for (int i=0; i < MAX_ENEMY; i++)// for plant boss
@@ -2011,6 +2047,18 @@ static int LGetEnemy (lua_State* L)
 		lua_pushstring(L, "type");
 			lua_pushnumber(L, Enemies[i].EnemyType);
 			//lua_pushstring(L, zombiename);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "positionX");
+			lua_pushnumber(L, Enemies[i].PositionX);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "positionY");
+			lua_pushnumber(L, Enemies[i].PositionY);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "roomID");
+			lua_pushnumber(L, (double)Enemies[i].RoomID);
 		lua_rawset(L, -3);
 
 		lua_pushstring(L, "name");

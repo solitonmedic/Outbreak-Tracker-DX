@@ -203,6 +203,9 @@ typedef struct
     unsigned short MaxHP;
     unsigned char EnemyType;
     unsigned char NameID;
+    double PositionX;
+    double PositionY;
+    unsigned char RoomID;
 } Enemy;
 
 typedef struct
