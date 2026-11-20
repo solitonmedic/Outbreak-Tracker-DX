@@ -101,6 +101,19 @@ function V.heading(p)
     if finite(fx) and finite(fy) and fx*fx+fy*fy>.25 then return math.atan2(fx,-fy) end
     return 0
 end
+-- Screen-space proximity controls only the floating map labels. Hysteresis
+-- restores labels after separation without flickering at the boundary.
+function V.hiddenPlayerLabels(points,previous)
+    local hidden={}
+    for i=1,4 do for j=i+1,4 do
+        local a,b=points[i],points[j]
+        if a and b then
+            local distance=(previous and (previous[i] or previous[j])) and 52 or 44
+            if (a.x-b.x)^2+(a.y-b.y)^2<distance^2 then hidden[i]=true;hidden[j]=true end
+        end
+    end end
+    return hidden
+end
 -- Room items are shown only for the room YOU are in (the loaded room, whose
 -- item list the reader keeps current). Pickup X/Z sit at record +8/+16.
 -- Taken items (no ID, 0xFFFF count, mix flag 0x20, or picked but absent) are skipped.
@@ -289,7 +302,7 @@ local function icon(player,x,y,size)
     local tint=Effects.adlib(player,V.elapsed) and {0,1,.15,1} or white
     if Effects.adlib(player,V.elapsed) then
         love.graphics.setColor(0,1,.15,.3+.3*Effects.pulse(V.elapsed))
-        love.graphics.circle("fill",x+size/2,y+size/2,size*.7)
+        love.graphics.circle("fill",x+size/2,y+size/2,size*.55)
     end
     sprite("icon"..tostring(player.type),{x=x,y=y,w=size,h=size},nil,tint)
 end
@@ -358,8 +371,10 @@ local function compactCards(l,game,players)
             local bust=offset(l.bust,dy)
             cropCard(i,bust,176,26,124,118,l,true)
 
-            text(cardFloor(p),offset(l.cardFloor,dy),yellow)
-            local room=offset(l.cardRoom,dy);room.w=l.inventory.x-room.x-4
+            if game.scenario~="wild things" then text(cardFloor(p),offset(l.cardFloor,dy),yellow) end
+            local room=offset(l.cardRoom,dy)
+            if game.scenario=="wild things" then room.x=l.cardFloor.x end
+            room.w=l.inventory.x-room.x-4
             text(GetRoomName(game.scenario,p.roomID),room)
             if V.gasRooms[p.roomID] then
                 rect(b,{1,.85,0,.08});g.setLineWidth(2);rect({x=1,y=b.y+1,w=b.w-2,h=b.h-2},{1,.85,0,.75},"line")
@@ -526,20 +541,28 @@ local function drawMap(l,game,players,enemies,items)
     local function itemHit(x,y,name)
         V.itemHits[#V.itemHits+1]={x=x-11,y=y-11,w=22,h=22,name=name}
     end
-    for _,it in pairs(Session.items) do
-            local ix,iy=V.itemMarker(V.map,V.floor,it.roomID,it)
-            if ix then
-                local x,y=ox+(ix-cx)*scale,oy+(iy-cy)*scale
-                local key=(it.type or 0)>=10000
-                rect({x=x-10,y=y-10,w=20,h=20},key and {1,.38,0,.95} or {0,0,0,.7})
-                g.setColor(1,1,1,1)
-                ItemIcons:draw(tostring(game.currentFile).."/"..tostring(it.type),x-8,y-8,0,16/48,16/48)
-                V.itemsDrawn=V.itemsDrawn+1
-                itemHit(x,y,Catalog.items[it.type] or ("Item "..tostring(it.type)))
-            end
-    end
     V.spDrawn=0
-    for _,it in pairs(Session.spItems) do
+    local ordinaryItems,scenarioItems={},{}
+    for _,it in pairs(Session.items) do
+        local list=(it.type or 0)>=10000 and scenarioItems or ordinaryItems
+        list[#list+1]=it
+    end
+    local spItems={};for _,it in pairs(Session.spItems) do spItems[#spItems+1]=it end
+    local function byId(a,b) return (a.id or 0)<(b.id or 0) end
+    table.sort(ordinaryItems,byId);table.sort(scenarioItems,byId);table.sort(spItems,byId)
+    local function drawItem(it)
+        local ix,iy=V.itemMarker(V.map,V.floor,it.roomID,it)
+        if ix then
+            local x,y=ox+(ix-cx)*scale,oy+(iy-cy)*scale
+            local key=(it.type or 0)>=10000
+            rect({x=x-10,y=y-10,w=20,h=20},key and {1,.38,0,.95} or {0,0,0,.7})
+            g.setColor(1,1,1,1)
+            ItemIcons:draw(tostring(game.currentFile).."/"..tostring(it.type),x-8,y-8,0,16/48,16/48)
+            V.itemsDrawn=V.itemsDrawn+1
+            itemHit(x,y,Catalog.items[it.type] or ("Item "..tostring(it.type)))
+        end
+    end
+    local function drawSP(it)
         local probe={id=it.id+1,type=0,count=1,positionX=it.positionX,positionY=it.positionY,height=it.height,floor=it.floor}
         local ix,iy=V.itemMarker(V.map,V.floor,it.roomID,probe)
         if ix then
@@ -556,6 +579,7 @@ local function drawMap(l,game,players,enemies,items)
     end
     -- Enemies: small white diamonds with a dark edge, under the player markers.
     V.enemiesDrawn=0
+    local enemyLabels={}
     for _,e in ipairs(enemies or {}) do
         local ex,ey=V.enemyMarker(V.map,V.floor,e)
         if ex then
@@ -564,24 +588,33 @@ local function drawMap(l,game,players,enemies,items)
             g.setColor(1,V.isBoss(e) and .05 or 1,V.isBoss(e) and .05 or 1,1);g.polygon("fill",{x,y-5,x+5,y,x,y+5,x-5,y})
             -- Remaining HP as a percentage beside the marker.
             local pct=math.floor(e.HP/e.maxHP*100+.5)
-            text(pct.."%",{x=x+7,y=y-15,w=40,size=10},{1,1,1,1})
+            enemyLabels[#enemyLabels+1]={value=pct.."%",x=x+7,y=y-15}
             V.enemiesDrawn=V.enemiesDrawn+1
         end
     end
+    local points={}
     for i=1,4 do
         local px,py,fallback=V.marker(V.map,V.floor,players[i])
-        if px then
-            local x,y=ox+(px-cx)*scale,oy+(py-cy)*scale
+        if px then points[i]={x=ox+(px-cx)*scale,y=oy+(py-cy)*scale,fallback=fallback} end
+    end
+    local labelContext=V.cacheKey..":"..V.floor
+    if V.labelContext~=labelContext then V.labelHidden=nil;V.labelContext=labelContext end
+    V.labelHidden=V.hiddenPlayerLabels(points,V.labelHidden)
+    for i=1,4 do
+        local point=points[i]
+        if point then
+            local x,y,fallback=point.x,point.y,point.fallback
             if g.actorBegin then g.actorBegin(i,x,y,V.cacheKey..":"..V.floor..":"..players[i].roomID) end
             local c=Effects.markerColor(players[i],V.colors[i],V.elapsed)
-            if Effects.adlib(players[i],V.elapsed) then
-                g.setColor(0,1,.15,.25+.35*Effects.pulse(V.elapsed));g.circle("fill",x,y,24)
+            local speaking=Effects.adlib(players[i],V.elapsed)
+            if speaking then
+                g.setColor(0,1,.15,.25+.35*Effects.pulse(V.elapsed));g.circle("fill",x,y,14)
             end
             if V.follow and i==V.target then
                 rect({x=vp.x,y=y,w=vp.w,h=1},{c[1],c[2],c[3],.7})
                 rect({x=x,y=vp.y,w=1,h=vp.h},{c[1],c[2],c[3],.7})
             end
-            g.setColor(c[1],c[2],c[3],.15);g.circle("fill",x,y,19)
+            g.setColor(c[1],c[2],c[3],.15);g.circle("fill",x,y,speaking and 12 or 19)
             g.setColor(c[1],c[2],c[3],1);g.setLineWidth(1)
             if fallback then
                 g.circle("line",x,y,11);icon(players[i],x-9,y-9,18)
@@ -592,15 +625,24 @@ local function drawMap(l,game,players,enemies,items)
                 g.polygon("fill",{0,-12,10,10,0,4,-10,10})
                 g.pop()
             end
-            text(i==V.you and "YOU" or "P"..i,{x=x+12,y=y-24,w=35,size=13},c)
+            if not V.labelHidden[i] then text(i==V.you and "YOU" or "P"..i,{x=x+12,y=y-24,w=35,size=13},c) end
             if g.actorEnd then g.actorEnd() end
         end
+    end
+    -- Foreground priority: players < regular items < SP < scenario items < HP.
+    for _,it in ipairs(ordinaryItems) do drawItem(it) end
+    for _,it in ipairs(spItems) do drawSP(it) end
+    for _,it in ipairs(scenarioItems) do drawItem(it) end
+    for _,label in ipairs(enemyLabels) do
+        rect({x=label.x-1,y=label.y-1,w=29,h=13},{0,0,0,.8})
+        text(label.value,{x=label.x,y=label.y,w=40,size=10},white)
     end
     if g.mapEnd then g.mapEnd() end
     g.setScissor()
     local hover=V.hover
     if hover then
-        for _,h in ipairs(V.itemHits) do
+        for i=#V.itemHits,1,-1 do
+            local h=V.itemHits[i]
             if hover.x>=h.x and hover.x<h.x+h.w and hover.y>=h.y and hover.y<h.y+h.h then
                 local width=math.min(vp.w-8,math.max(90,#h.name*6))
                 local x=math.max(vp.x+4,math.min(hover.x+12,vp.x+vp.w-width-4))

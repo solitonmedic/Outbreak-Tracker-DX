@@ -123,5 +123,10 @@ height during dropped samples. English room labels use “Drawing Room”.
 Map10 presentation: the two legacy ITEM values are stacked vertically. Floor
 buttons separate labels from portraits, with wider cells and scrolling when
 needed. Wild Things uses GF for the outside area and Zoo for the interior,
-including the map heading and compact-card floor label. The map9 SP radar remains
+in the map heading and floor buttons; Wild Things compact cards omit floor text. The map9 SP radar remains
 beside the clock and stays relative to YOU. These UI changes add no memory reads.
+
+Map10-r2 overlay priority: player markers, ordinary items, SP, scenario objects,
+then enemy HP text. Overlapping item tooltips select the top-priority object.
+Nearby floating player labels hide with separation hysteresis; cards/legend stay
+identified. Ad-lib circles are smaller on markers and floor portraits.
