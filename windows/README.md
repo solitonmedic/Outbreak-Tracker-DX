@@ -67,8 +67,10 @@ selection, import, download or user-cache setup step.
 Players use red, blue, yellow and green by slot; YOU identifies the local gameplay
 record. A dot marks a usable position. A portrait in a ring marks only the room,
 including rooms spanning multiple height bands. Select the desired floor manually
-in those cases. Heading and height reads are not provided yet. Desperate Times
+in those cases. Player chevrons turn with each character's facing; height is not
+read yet. YOU is the game's own local player. Desperate Times
 highlights the current gas rooms in yellow. Existing puzzle hints and timers stay
-visible. Enemies in play show as small white diamonds under the player markers.
+visible. Enemies in play show as small white diamonds with their HP percentage,
+and the items in your current room show as tracker item icons.
 U.S. File 1 uses the same maps as the Japanese release; extra File 2 scenarios
 are not enabled.

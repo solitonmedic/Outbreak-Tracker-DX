@@ -158,10 +158,13 @@ The wide layout is 760×740, desktop vertical is 300×740 and the phone layout i
 390×844, following the tracker-style design. Floor rows scroll by swipe or wheel
 when a scenario has additional floors.
 
-Slot colours are P1 red, P2 blue, P3 yellow and P4 green. A fixed chevron marks a usable world
-position; a portrait in a ring indicates room-only placement, including ambiguous
-height bands. Select the desired floor manually in those rooms. Height and heading
-reads remain unavailable. Desperate Times gas rooms glow yellow, and puzzle hints,
-medals/passwords and scenario timers remain visible. Enemies in play are small
-white diamonds under the player markers. U.S. File 1 uses the same maps as the
+Slot colours are P1 red, P2 blue, P3 yellow and P4 green. A chevron marks a usable world
+position and points the way that character faces; a portrait in a ring indicates
+room-only placement, including ambiguous height bands. Select the desired floor
+manually in those rooms; height is not read yet. YOU is the game's own local
+player, and the legend shows each player's in-game name. Tap a card, portrait or
+legend entry to follow that player. Desperate Times gas rooms glow yellow, and
+puzzle hints, medals/passwords and scenario timers remain visible. Enemies in play
+are small white diamonds with their HP percentage, and the items in your current
+room show as tracker item icons. U.S. File 1 uses the same maps as the
 Japanese release; extra File 2 scenarios are not enabled.
