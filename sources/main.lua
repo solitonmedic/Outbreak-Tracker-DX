@@ -1,3 +1,11 @@
+-- Purpose: shared tracker UI and session controls, including M for SP radar sound
+-- and the lock-pick counter accessor used by the UNLOCK bar on Alyssa's card.
+-- Location/runtime: sources/main.lua; LÖVE 11.5/LuaJIT or the Decky drawing bridge.
+-- Inputs: reader state, packaged assets and keyboard/phone controls.
+-- Outputs: tracker drawing/audio; GameInfo.spsoundenabled reports the sound toggle.
+-- Safety: reader access is read-only; no recording, workbook or settings writes.
+-- Run from repo-merged/: ./macos/run.sh, or the installed Decky reader. Check:
+-- luajit tools-n-shit/tracker-tests/sp/check-sp-sound.lua . (synthetic state only).
 local tracker = require "luaoutbreaktracker"
 
 -- Lets the player cards read Alyssa's lock-pick counter for the hint spot
@@ -30,6 +38,7 @@ local EnemyHPSwitch=1
 local ItemSwitch=1
 local Style=0
 local HelpMenu=0
+local SPSoundEnabled=true
 local PlayerList=1
 local EnemyList=0
 local ItemList=0
@@ -95,6 +104,10 @@ function SPSetLetter()
 	return math.floor(GameInfo.spsetselector / 2) % 2 == 1 and "A" or "B"
 end
 
+local function SPSoundText()
+	return string.format(_l("M: SP radar sound: %s"), _l(SPSoundEnabled and "On" or "Off"))
+end
+
 function love.load(args)
 	LoadAssets()
 	InitResult = tracker.init()
@@ -134,6 +147,7 @@ function love.load(args)
 end
 
 function love.draw()
+	GameInfo.spsoundenabled = SPSoundEnabled
 	wx, wy, display = love.window.getMode()-- get window size
 	love.graphics.scale(wx/scalex, wy/scaley)
 
@@ -159,6 +173,13 @@ function love.draw()
 	local pass6 = GameInfo.pass6
 
 	if InitResult == true and not(GameInfo.currentFile == 255) then
+		-- SP state arrives just before drawing, so the SP found sound is decided here.
+		if s ~= "" and f > 0 then
+			-- Consume muted alerts too, so enabling sound cannot replay an old sighting.
+			if SPTracking.alert(GameInfo.spTracking) and SPSoundEnabled then SPFoundSound:play() end
+		else
+			SPTracking.reset()
+		end
 		if(pass1 >= 0 and pass1 <= 0x1F or pass1 >= 0x80 and pass1 <= 0x9F) then passbfp="0634"
 		elseif(pass1 >= 0x20 and pass1 <= 0x3F or pass1 >= 0xA0 and pass1 <= 0xBF) then passbfp="4509"
 		elseif(pass1 >= 0x40 and pass1 <= 0x7F or pass1 >= 0xC0 and pass1 <= 0xFF) then passbfp="9741"
@@ -1116,7 +1137,8 @@ function love.draw()
 			love.graphics.setFont(VerySmallFont)
 			love.graphics.setColor( 1, 1, 1, 1 )
 			love.graphics.printf(_l("Language list"), 4, 4, 300, "left")
-			love.graphics.printf(_l("Help Menu"), 4, 60, 300, "left")
+			love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
+			love.graphics.printf(_l("Help Menu"), 4, 64, 300, "left")
 		end
 
 	elseif InitResult == false then
@@ -1124,13 +1146,15 @@ function love.draw()
 		love.graphics.printf(_l("Unable to find a PCSX2 process.\n Will try again in ") .. tostring(math.floor(5-RetryTimer + 0.5)) .. ".", errorX, errorY, 300, "center")
 		love.graphics.setFont(VerySmallFont)
 		love.graphics.printf(_l("Language list"), 4, 4, 300, "left")
-		love.graphics.printf(_l("Hotkeys list"), 4, 60, 300, "left")
+		love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
+		love.graphics.printf(_l("Hotkeys list"), 4, 64, 300, "left")
 	elseif InitResult == true and GameInfo.currentFile == 255 then
 		love.graphics.setFont(DefaultFont)
 		love.graphics.printf(_l("An Outbreak game is not loaded.\n Will try again in ") .. tostring(math.floor(5-RetryTimer + 0.5)) .. ".", errorX, errorY, 300, "center")
 		love.graphics.setFont(VerySmallFont)
 		love.graphics.printf(_l("Language list"), 4, 4, 300, "left")
-		love.graphics.printf(_l("Hotkeys list"), 4, 60, 300, "left")
+		love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
+		love.graphics.printf(_l("Hotkeys list"), 4, 64, 300, "left")
 	end
 end
 
@@ -1231,6 +1255,7 @@ function love.keypressed(key)
 	if key == "escape" then
 		love.event.quit()
 	end
+	if key == "m" then SPSoundEnabled = not SPSoundEnabled end
 	--if key == "f5" then
 	--	if doorList==0 then doorList=1 ItemList=0 ItemSwitch=0 PlayerList =0 EnemyHPSwitch=0 TimeSwitch=0
 		--elseif EnemyList==1 then EnemyList=2

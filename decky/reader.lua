@@ -2,7 +2,8 @@
 -- Runtime/location: LuaJIT, plugin reader.lua; shared Lua, fonts and native module.
 -- Inputs: newline-delimited comma-separated whitelisted keys on stdin, live PINE.
 -- Outputs: one JSON drawing frame per input tick on stdout, in memory only.
--- Includes ellipse/polygon/rotation/line-width commands for the shared SP UI.
+-- Includes ellipse/polygon/rotation/line-width commands for the shared SP UI,
+-- and per-file sound play counts ("sounds") for the browser to play.
 -- Safety: native reader performs reads only; no recording, game writes or disk frames.
 -- Run: launched by tracker_service.py from the installed plugin directory.
 -- Check: browser displays original cards; offline synthetic checks use a fake tracker.
@@ -125,7 +126,13 @@ function love.window.getMode() return width,height,{} end
 function love.window.setMode(w,h) width,height=w,h end
 function love.window.getPosition() return 0,0,1 end
 function love.window.setPosition() end
-function love.audio.newSource() return {play=function() end,stop=function() end,isPlaying=function() return false end,setLooping=function() end} end
+-- Sounds play in the browser: each play() raises that file's count, sent with every frame.
+local soundCounts = {}
+function love.audio.newSource(path)
+    soundCounts[path] = soundCounts[path] or 0
+    return {play=function() soundCounts[path] = soundCounts[path] + 1 end,stop=function() end,
+        isPlaying=function() return false end,setLooping=function() end}
+end
 function love.event.quit() end
 
 local function json(value)
@@ -158,7 +165,7 @@ for input in io.lines() do
         love.update(0.2)
         love.draw()
     end)
-    local frame={width=width,height=height,commands=commands,game=GameInfo,
+    local frame={width=width,height=height,commands=commands,game=GameInfo,sounds=soundCounts,
         state=ok and (GameInfo.currentFile and GameInfo.currentFile~=255 and "connected" or "waiting") or "error"}
     if not ok then frame.message=tostring(err); frame.commands={} end
     io.write(json(frame).."\n"); io.flush()

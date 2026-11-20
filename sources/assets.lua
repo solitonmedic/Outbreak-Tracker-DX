@@ -23,6 +23,7 @@ function LoadAssets()
 	VerySmallFont = love.graphics.newFont("assets/arialbd.ttf",13)
 	MiniFont = love.graphics.newFont("assets/arialnb.ttf",11)
 	--MiniFont = love.graphics.newFont(9)
+	SPFoundSound = love.audio.newSource("assets/sp-found.wav", "static")
 end
 
 function LoadTextureAtlas(texture, links) -- Really dirty stuff here

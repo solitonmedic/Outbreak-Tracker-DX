@@ -4,13 +4,20 @@
 // Safety: no emulator access or saved game data; nothing is stored in the browser.
 // Run: open the private phone link in Decky. Check: cards and controls update.
 // SP vector commands: ellipse, polygon, rotation and line width from shared Lua.
+// Sounds: frame.sounds counts plays per file; a rise plays it once (after the first tap).
+// M toggles SP radar sound in the shared UI; frame.game.spsoundenabled updates
+// the On/Off button (default On). Check: offline check-sp-sound-frames.py.
 "use strict";
 const canvas = document.querySelector("#tracker"), ctx = canvas.getContext("2d");
 const message = document.querySelector("#message");
 const images = new Map(), imageFonts = new Map(), tinted = new Map();
+const sounds = new Map(), soundCounts = new Map();
+let audio = null, soundBaseline = false;
+const soundStats = {played:0, missed:0};
 const groups = [
   ["Views", false, [["f1","Help"],["f2","Item views"],["f3","Next room"],["l","Language"]]],
   ["Show", false, [["i","Room items"],["t","Timers"],["q","Puzzle hints"],["e","Enemy HP"],["f4","Enemy list"]]],
+  ["Sound", false, [["m","SP radar sound: On"]]],
   ["Layout", false, [["v","Vertical"],["h","Horizontal"],["d","Default size"],["a","Auto size"]]],
   ["Players shown", true, [["1","1"],["2","2"],["3","3"],["4","4"]]],
   ["Enemy list shows", true, [["kp0","All"],["kp1","P1"],["kp2","P2"],["kp3","P3"],["kp4","P4"]]],
@@ -23,14 +30,21 @@ async function sendKey(key) {
   } catch(error) { message.textContent=error.message; }
 }
 const controlsRoot = document.querySelector("#controls");
+let spSoundButton = null;
 for(const [title,segmented,keys] of groups) {
   const group=document.createElement("div"), heading=document.createElement("h3"), row=document.createElement("div");
   group.className="group"; heading.textContent=title; row.className=segmented?"row segmented":"row";
   for(const [key,label] of keys) {
     const button=document.createElement("button"); button.type="button"; button.textContent=label; button.title=key.toUpperCase();
+    if(key==="m") { spSoundButton=button; button.setAttribute("aria-pressed","true"); }
     button.addEventListener("click",()=>sendKey(key)); row.append(button);
   }
   group.append(heading,row); controlsRoot.append(group);
+}
+function updateSoundControl(enabled) {
+  const on=enabled!==false;
+  spSoundButton.textContent="SP radar sound: "+(on?"On":"Off");
+  spSoundButton.setAttribute("aria-pressed",String(on));
 }
 const sheet = document.querySelector("#sheet"), menu = document.querySelector("#menu");
 function setSheet(open) { sheet.hidden=!open; menu.setAttribute("aria-expanded",String(open)); }
@@ -46,6 +60,41 @@ addEventListener("keydown",event=>{
     event.preventDefault(); if(!event.repeat) void sendKey(key);
   }
 });
+// Browsers start audio only after a tap or key press. iOS also stops it when a
+// home-screen app goes to the background ("interrupted"), so each tap resumes it
+// until it runs and plays one silent sample, which iOS needs to start output.
+function unlockAudio() {
+  const Context=window.AudioContext||window.webkitAudioContext;
+  if(!audio&&Context)audio=new Context();
+  if(!audio||audio.state==="running")return;
+  audio.resume().catch(()=>{});
+  const silent=audio.createBufferSource();
+  silent.buffer=audio.createBuffer(1,1,22050);silent.connect(audio.destination);silent.start(0);
+}
+for(const type of ["pointerup","touchend","keydown"])addEventListener(type,unlockAudio,{passive:true});
+// Returning to the app: try to resume without a tap (iOS may still need one).
+addEventListener("visibilitychange",()=>{if(!document.hidden&&audio&&audio.state!=="running")audio.resume().catch(()=>{});});
+function sound(path) {
+  if(!sounds.has(path)) sounds.set(path,fetch("/"+path).then(response=>{
+    if(!response.ok)throw new Error("Unable to load tracker sound");
+    return response.arrayBuffer();
+  }).then(data=>new Promise((resolve,reject)=>audio.decodeAudioData(data,resolve,reject))));
+  return sounds.get(path);
+}
+// The first frame only records the counts, so opening the page plays nothing.
+// A lower count means the reader restarted; it is recorded, not played.
+async function playSounds(counts) {
+  for(const [path,count] of Object.entries(counts||{})) {
+    const seen=soundCounts.has(path)?soundCounts.get(path):soundBaseline?0:count;
+    soundCounts.set(path,count);
+    if(count<=seen)continue;
+    if(!audio||audio.state!=="running"){soundStats.missed+=count-seen;continue;}
+    const source=audio.createBufferSource();
+    source.buffer=await sound(path);source.connect(audio.destination);source.start();
+    soundStats.played++;
+  }
+  soundBaseline=true;
+}
 async function image(path) {
   if(!images.has(path)) images.set(path,new Promise((resolve,reject)=>{
     const img=new Image(); img.onload=()=>resolve(img); img.onerror=()=>reject(new Error("Unable to load tracker artwork")); img.src="/"+path;
@@ -182,7 +231,9 @@ async function poll() {
     const response=await fetch("/api/frame",{signal:AbortSignal.timeout(5000)});
     if(!response.ok)throw new Error(response.status===403?"This device is not on the Deck's local network.":"Tracker service unavailable");
     const frame=await response.json();
+    updateSoundControl(frame.game?.spsoundenabled);
     message.textContent=frame.state==="connected"?"":frame.message||(frame.state==="waiting"?"Waiting for game":frame.state);canvas.classList.toggle("stale",frame.state!=="connected");await render(frame);
+    playSounds(frame.sounds).catch(error=>{sounds.clear();soundStats.error=error.message||String(error);});
   }catch(error){message.textContent=error.message;canvas.classList.add("stale");}
   setTimeout(poll,200);
 }

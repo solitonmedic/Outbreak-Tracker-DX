@@ -3,14 +3,35 @@
 -- Inputs: validated current-run SP state, timer position, password-hint font,
 -- and sources/layout.lua; bearing is clockwise from player forward.
 -- Output: drawing commands only; returns whether an SP component was drawn.
+-- SPTracking.alert says when to play the SP found sound (once per room).
 -- Safety: no PINE, recording, workbook, files or game writes.
 -- Run: invoked by sources/main.lua during tracker drawing on supported clients.
--- Check: packaged Decky saved-frame replay checks counter and arrow drawing.
+-- Check: packaged Decky saved-frame replay checks counter and arrow drawing;
+-- tools-n-shit/tracker-tests/sp/check-sp-sound.lua checks the alert.
 local layout = require("layout").spTracking
 local SPTracking = {}
 
 local function integer(value, minimum, maximum)
     return type(value) == "number" and value == math.floor(value) and value >= minimum and value <= maximum
+end
+
+-- SP found alert: true the first time the radar shows an uncollected SP item
+-- (radarState "direction" or "near") after each room change, and not again in
+-- that room. Unavailable samples keep the current room, so a dropped read
+-- cannot replay the sound; reset() forgets the room when gameplay ends.
+local alertRoom, alerted = nil, false
+function SPTracking.alert(state)
+    if type(state) ~= "table" or state.available ~= true or not integer(state.room, 0, 0xFFFF) then
+        return false
+    end
+    if state.room ~= alertRoom then alertRoom, alerted = state.room, false end
+    if alerted or (state.radarState ~= "direction" and state.radarState ~= "near") then return false end
+    alerted = true
+    return true
+end
+
+function SPTracking.reset()
+    alertRoom, alerted = nil, false
 end
 
 -- State contract: current-room/run data only. Missing or invalid data stays hidden.

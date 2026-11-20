@@ -12,6 +12,17 @@ from Penpot into `sources/layout.lua`; text uses the password-hint font.
 validated reader state; the private Decky facing probe supplies that state.
 The native reader does not yet supply SP state, so this component stays hidden
 in ordinary gameplay until that data interface is implemented.
+When the radar first shows an SP item after a room change, the page plays
+`assets/sp-found.wav` once; it does not play again until the room changes. The
+reader sends a play count for each sound with every frame and each open page plays
+a new count. Browsers allow sound only after a tap or key press, so tap the page
+once (opening the controls is enough). iOS stops a home-screen app's sound when it
+goes to the background or the screen locks; tap it once again after returning. On
+an iPhone the ring/silent switch also mutes it.
+Use **SP radar sound: On/Off** in the phone controls, or press **M**, to toggle
+the alert. It defaults on each reader session and changes for every connected
+page. Muted sightings are not replayed when sound is enabled again; the radar
+continues working while muted.
 Touch buttons mirror those controls; every connected device shares one view.
 
 The page has no header: the tracker is scaled to fit the visible screen (width and

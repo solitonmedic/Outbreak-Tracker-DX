@@ -1,5 +1,8 @@
 """Reusable LAN tracker service; Python 3 standard library and native LuaJIT reader.
 Inputs: installed plugin files, read-only PINE, bounded browser keys from the local network.
+The M key toggles shared SP radar sound; it defaults on for each reader session.
+Check the sound control offline from repo-merged/ with:
+python3 tools-n-shit/tracker-tests/sp/check-sp-sound-frames.py
 Outputs: in-memory drawing frames and HTTP on LAN port 28080; no frame files.
 Safety: no login; serves only clients on private/link-local/loopback/Tailscale addresses, only
 for IP-literal, single-label or .local host names (blocks DNS rebinding), and accepts keys only
@@ -28,7 +31,7 @@ import os
 
 TAILSCALE = ipaddress.ip_network("100.64.0.0/10")
 IDLE_SECONDS = 15
-KEYS = {"f1", "f2", "f3", "f4", "d", "h", "v", "l", "t", "i", "q", "e",
+KEYS = {"f1", "f2", "f3", "f4", "d", "h", "v", "l", "t", "i", "q", "e", "m",
         "1", "2", "3", "4", "a", "kp0", "kp1", "kp2", "kp3", "kp4"}
 
 
