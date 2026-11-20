@@ -85,13 +85,15 @@ function V.marker(map,floor,player)
         if f.fullArtwork and x>=f.minX and x<=f.maxX and y>=f.minY and y<=f.maxY then return x,y,false end
         -- The DT Front Gate's playable space extends beyond its small map
         -- outline. Its known room/floor is sufficient to show the actual point.
-        if player.roomID==27 and map.path and map.path:match("/015$") then return x,y,false end
+        if player.roomID==27 and map.path and map.path:match("/015$") then
+            x,y=V.clampToRoom(map,floor,player.roomID,x,y,V.markerMargin);return x,y,false
+        end
         -- Out-of-piece reads (loading/stale state) fall back to the room, never
         -- a plausible-looking marker on a different room or floor.
         for _,p in ipairs(f.places) do
             local r=map.rooms[p.record]
             if r.id==player.roomID and x>=p.x and x<p.x+r.w and y>=p.y and y<p.y+r.h then
-                return x,y,false
+                x,y=V.clampToRoom(map,floor,player.roomID,x,y,V.markerMargin);return x,y,false
             end
         end
     end
@@ -103,7 +105,7 @@ end
 -- Enemy slots share the player layout (X/Z +0x38/+0x40, room +0x1E2). Only
 -- enabled, in-game, living slots hold a live position; the others keep stale
 -- values from earlier rooms, so they are never drawn. Positions are shown as
--- read, even just outside the drawn room (doorways, the Desperate Times gate).
+-- read, then kept inside the drawn room (V.clampToRoom).
 -- Screen rotation for a player's chevron: forward (map X, map Y) is the
 -- transform's (+0x70, +0x50); 0 means pointing up the map.
 function V.heading(p)
@@ -136,7 +138,10 @@ function V.itemMarker(map,floor,room,it)
     if #candidates>1 and it.floor and it.floor~=floor then return end
     local f=map.floors[floor]
     for _,p in ipairs(f.places) do
-        if map.rooms[p.record].id==room then return Data.position(f,it.positionX,it.positionY) end
+        if map.rooms[p.record].id==room then
+            local x,y=Data.position(f,it.positionX,it.positionY)
+            return V.clampToRoom(map,floor,room,x,y,V.markerMargin)
+        end
     end
 end
 -- Enemy identity comes from the reader's existing GetEnemyName table. Include
@@ -154,7 +159,10 @@ function V.enemyMarker(map,floor,e)
     if maxHP<=0 or maxHP>=60000 or hp<=0 or hp>maxHP then return end
     local f=map.floors[floor]
     for _,p in ipairs(f.places) do
-        if map.rooms[p.record].id==e.roomID then return Data.position(f,e.positionX,e.positionY) end
+        if map.rooms[p.record].id==e.roomID then
+            local x,y=Data.position(f,e.positionX,e.positionY)
+            return V.clampToRoom(map,floor,e.roomID,x,y,V.markerMargin)
+        end
     end
 end
 function V.update(game,players,dt,items)
@@ -289,6 +297,81 @@ local function geometry(poly,layer)
     for k=1,#poly,2 do pts[k]=(poly[k]-layer.tx)/layer.sx;pts[k+1]=(poly[k+1]-layer.ty)/layer.sy end
     local tris=triangulate(pts);fittedGeometry[poly]={points=pts,triangles=tris}
     return pts,tris
+end
+-- Marker containment ------------------------------------------------------
+local function insidePolygon(pts,x,y)
+    local inside=false;local n=#pts/2;local j=n
+    for i=1,n do
+        local xi,yi,xj,yj=pts[2*i-1],pts[2*i],pts[2*j-1],pts[2*j]
+        if (yi>y)~=(yj>y) and x<(xj-xi)*(y-yi)/(yj-yi)+xi then inside=not inside end
+        j=i
+    end
+    return inside
+end
+local function nearestOnPolygon(pts,x,y)
+    local bx,by,best=nil,nil,math.huge;local n=#pts/2
+    for i=1,n do
+        local j=i%n+1
+        local ax,ay,cx,cy=pts[2*i-1],pts[2*i],pts[2*j-1],pts[2*j]
+        local dx,dy=cx-ax,cy-ay;local len=dx*dx+dy*dy
+        local t=len>0 and math.max(0,math.min(1,((x-ax)*dx+(y-ay)*dy)/len)) or 0
+        local px,py=ax+t*dx,ay+t*dy;local d=(px-x)^2+(py-y)^2
+        if d<best then bx,by,best=px,py,d end
+    end
+    return bx,by,best
+end
+-- Keep a marker inside its room's drawn shape: the Evil Resource outline when
+-- the shown floor has one, otherwise the game's map piece. A point outside
+-- (doorways, the Desperate Times Front Gate crowd, items by walls) moves to the
+-- nearest point inside, margin floor pixels from the border where the room is
+-- wide enough. Returns the point unchanged when the room has no shape here.
+function V.clampToRoom(map,floor,room,x,y,margin)
+    local f=map and map.floors[floor]
+    if not (f and finite(x) and finite(y)) then return x,y end
+    local shapes={}
+    for _,layer in ipairs(map==V.map and V.er and V.er[floor] or {}) do
+        for _,poly in ipairs(layer.rooms[room] or {}) do shapes[#shapes+1]=(geometry(poly,layer)) end
+    end
+    if #shapes==0 then
+        for _,p in ipairs(f.places) do
+            local r=map.rooms[p.record]
+            if r.id==room and r.w>0 and r.h>0 then shapes[#shapes+1]={p.x,p.y,p.x+r.w,p.y,p.x+r.w,p.y+r.h,p.x,p.y+r.h} end
+        end
+    end
+    if #shapes==0 then return x,y end
+    margin=margin or 2
+    local function inside(px,py)
+        for _,pts in ipairs(shapes) do if insidePolygon(pts,px,py) then return true end end
+        return false
+    end
+    local function border(px,py)
+        local d=math.huge
+        for _,pts in ipairs(shapes) do local _,_,dk=nearestOnPolygon(pts,px,py);d=math.min(d,dk) end
+        return math.sqrt(d)
+    end
+    -- Inside and clear of the border: unchanged.
+    if inside(x,y) and border(x,y)>=margin then return x,y end
+    local bx,by,best
+    for _,pts in ipairs(shapes) do
+        local px,py,d=nearestOnPolygon(pts,x,y)
+        if px and d<(best or math.huge) then bx,by,best=px,py,d end
+    end
+    if inside(x,y) then bx,by=x,y end
+    -- Step inward from there: of eight directions take the inside point that is
+    -- furthest from the border, shrinking the step for narrow rooms.
+    for _,m in ipairs{margin,margin/2,margin/4} do
+        local cx,cy,clear=nil,nil,-1
+        for a=0,7 do
+            local px,py=bx+m*math.cos(a*math.pi/4),by+m*math.sin(a*math.pi/4)
+            if inside(px,py) then
+                local d=border(px,py)
+                if d>clear then cx,cy,clear=px,py,d end
+            end
+        end
+        if cx and clear>=m*.7 then return cx,cy end
+        if cx and m==margin/4 then return cx,cy end
+    end
+    return bx,by
 end
 local SP=require "SPTracking"
 local white={1,1,1,1}
@@ -578,6 +661,8 @@ local function drawMap(l,game,players,enemies,items)
         if px then cx,cy=px,py end
     end
     V.drawScale=scale;V.visibleCenter={cx,cy}
+    -- Markers stay about 9 screen pixels inside their room's border.
+    V.markerMargin=9/math.max(.01,scale)
     local ox,oy=vp.x+vp.w/2+V.panX,vp.y+vp.h/2+V.panY
     if g.mapBegin then
         local continuity=table.concat({V.cacheKey,V.floor,V.mode,vp.w,V.zoom,tostring(V.follow),V.panX,V.panY},":")
