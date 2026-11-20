@@ -42,7 +42,8 @@ function M.update(game,players,you,items,floor)
     for _,it in ipairs(type(game.mapItems)=="table" and game.mapItems or {}) do
         if M.present(it) then
             if it.type>=10000 or M.items[it.id] then
-                M.items[it.id]=copy(it,it.roomID or it.roomid,nil)
+                local old=M.items[it.id];local room=it.roomID or it.roomid
+                M.items[it.id]=copy(it,room,old and old.roomID==room and old.floor or nil)
             end
         elseif it.id and M.items[it.id] then M.items[it.id]=nil end
     end

@@ -33,6 +33,25 @@ function E.background(p,x,y,w,h,time)
     end
     g.setLineWidth(1);g.setColor(1,1,1,1)
 end
+-- Voice IDs feed the game's map pulse. Rising duration also catches repeats.
+-- Baseline the first snapshot; never announce a stale line on opening the UI.
+local voices={};local runKey,frames
+function E.update(game,players,time)
+    local key=tostring(game.currentFile)..":"..tostring(game.release)..":"..tostring(game.scenario)
+    local clock=tonumber(game.frames) or 0
+    if key~=runKey or game.scenario=="" or (frames and clock+60<frames) then voices={};runKey=key end
+    frames=clock
+    for i=1,4 do
+        local p=players[i]
+        if p and p.enabled then
+            local id=tonumber(p.voiceId) or 0;local ticks=tonumber(p.voiceTicks) or 0
+            local old=voices[i]
+            local untilTime=old and old.untilTime or 0
+            if old and clock>0 and id>0 and (id~=old.id or (ticks>0 and ticks>old.ticks)) then untilTime=time+3 end
+            voices[i]={id=id,ticks=ticks,untilTime=untilTime};p.adlibUntil=untilTime
+        else voices[i]=nil end
+    end
+end
 function E.adlib(p,time)
     return p and ((p.adlib==true) or (type(p.adlibUntil)=="number" and p.adlibUntil>(time or 0)))
 end

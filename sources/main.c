@@ -28,6 +28,7 @@ Door Doors[MAX_DOOR];
 Enemy2 Enemies2[80];
 
 long long int BasePointer;
+#include "SPMapReader.h"
 
 int GetProcessID(char* processname)
 {
@@ -1636,7 +1637,14 @@ static int LUpdate (lua_State* L)
 		Players[i].Power = GetPower(i);
 		Players[i].PositionX = GetPositionX(i);
 		Players[i].PositionY = GetPositionY(i);
-        Players[i].PositionHeight = info.CurrentFile == 2 ? GetForward(i, 0, F2_PositionHeight) : 0;
+        Players[i].PositionHeight = GetForward(i, F1_PositionHeight, F2_PositionHeight);
+        if (info.CurrentFile == 1) {
+            ReadF1(F1_GetCharAddress(i)+F1_VoiceID,&Players[i].VoiceID,4);
+            ReadF1(F1_GetCharAddress(i)+F1_VoiceTicks,&Players[i].VoiceTicks,2);
+        } else {
+            ReadProcessMemory(ProcessHandle,(char*)BasePointer+F2_GetCharAddress(i)+F2_VoiceID,&Players[i].VoiceID,4,NULL);
+            ReadProcessMemory(ProcessHandle,(char*)BasePointer+F2_GetCharAddress(i)+F2_VoiceTicks,&Players[i].VoiceTicks,2,NULL);
+        }
 		Players[i].ForwardX = GetForward(i, F1_ForwardX, F2_ForwardX);
 		Players[i].ForwardY = GetForward(i, F1_ForwardY, F2_ForwardY);
 		Players[i].RoomID = GetRoomID(i);
@@ -1903,7 +1911,9 @@ static int LGetPlayer (lua_State* L)
 			lua_pushnumber(L, Players[i].PositionY);
 		lua_rawset(L, -3);
 
-        if (info.CurrentFile == 2) {
+        lua_pushstring(L, "voiceId");lua_pushnumber(L,Players[i].VoiceID);lua_rawset(L,-3);
+        lua_pushstring(L, "voiceTicks");lua_pushnumber(L,Players[i].VoiceTicks);lua_rawset(L,-3);
+        if (info.CurrentFile == 1 || info.CurrentFile == 2) {
             lua_pushstring(L, "heightAvailable");
             lua_pushboolean(L, true);
             lua_rawset(L, -3);
@@ -2642,6 +2652,7 @@ static const struct luaL_Reg library_functions [] = {
 	{"getItem", LGetItem},
 	{"getItem2", LGetItem2},
 	{"getMapItems", LGetMapItems},
+    {"getSPMapState", LGetSPMapState},
 	{"getDoor", LGetDoor},
 	{"getLockCounter", LGetLockCounter},
 	{"getRoomMaster", LGetRoomMaster},

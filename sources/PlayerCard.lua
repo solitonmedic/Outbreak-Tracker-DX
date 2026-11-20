@@ -795,8 +795,12 @@ function PlayerCard:draw(x, y, portraitOnly)
 	local master=player.inGame and player.roomID>0 and roomMaster and roomMaster.enabled and roomMaster.roommaster==self.id
 	if master then UIAtlas:draw("room master crown",267,Effects.timers(player) and 28 or 88.5) end
 	love.graphics.setFont(MiniFont or VerySmallFont)
-	love.graphics.setColor(unpack(Effects.slotColors[self.id]))
-	love.graphics.printf("P"..self.id,276,Effects.badgeY(player,master),22,"right")
+	love.graphics.setColor(unpack(Effects.markerColor(player,Effects.slotColors[self.id],TrackerPresentationTime or 0)))
+	local badgeX,badgeY=276,Effects.badgeY(player,master)
+    -- The compact bust crops off the name row; keep a lifted badge inside the
+    -- portrait, beside the lifted crown when both effect timers and crown show.
+    if portraitOnly and badgeY<26 then badgeX=180;badgeY=28 end
+    love.graphics.printf("P"..self.id,badgeX,badgeY,22,"right")
 	love.graphics.setColor(1,1,1,1)
 
 	--local spd = math.floor(math.floor(Players[self.id].speed*100+0.5))

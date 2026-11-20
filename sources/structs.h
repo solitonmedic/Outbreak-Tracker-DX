@@ -176,6 +176,8 @@ typedef struct
     double ForwardX;
     double ForwardY;
     double PositionHeight;
+    unsigned int VoiceID;
+    short VoiceTicks;
     unsigned short RoomID;
     unsigned char Status;
     unsigned char NameID;

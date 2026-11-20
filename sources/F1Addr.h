@@ -13,7 +13,10 @@ const int F1_LocalSlot = 0x48BF7D; // u8 0-based local player slot (frames + 5)
 const int F1_RoomPriorty = 0x00825810;
 
 const int F1_PositionX = 0x38;
+const int F1_VoiceID = 0xDB4; // u32 voice packet ID; supported code evidence
+const int F1_VoiceTicks = 0xDBC; // s16 voice duration countdown
 const int F1_PositionY = 0x40;
+const int F1_PositionHeight = 0x3C; // float; workbook Addresses row149
 const int F1_ForwardX = 0x70; // facing: map-X component of the forward axis
 const int F1_ForwardY = 0x50; // facing: map-Y component of the forward axis
 const int F1_RoomIDOffset = 0x1E2;

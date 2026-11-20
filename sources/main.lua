@@ -352,7 +352,7 @@ function love.draw()
 				["end of the road"] = tostring(GameInfo.pass4),
 			}
 			MapView.setLetter = SPSetLetter()
-			MapView.hint = PuzzleSwitch == 1 and PuzzleHintsAvailable(s) and hints[s] or ""
+			MapView.hint = PuzzleHintsAvailable(s) and hints[s] or ""
 			if MapView.mode == 2 then MapView.draw(GameInfo, Players, Enemies, Items);TrackerMenu.draw(scalex,scaley,true);return end
 		end
 		if Style==0 then
@@ -1195,6 +1195,14 @@ function love.update(dt)
 		tracker.updateRoom()
 		tracker.update()
 		GameInfo = tracker.getGameInfo()
+        if tracker.getSPMapState and not love.hasSPProvider then
+            local key=tostring(GameInfo.currentFile)..":"..tostring(GameInfo.release)..":"..tostring(GameInfo.scenario)
+            if SPMapKey~=key or (SPMapFrames and GameInfo.frames<SPMapFrames) then SPMapState=nil;SPMapElapsed=.25;SPMapKey=key end
+            SPMapFrames=GameInfo.frames
+            SPMapElapsed=(SPMapElapsed or .25)+dt
+            if SPMapElapsed>=.25 then SPMapElapsed=0;SPMapState=tracker.getSPMapState() end
+            GameInfo.spTracking=SPMapState
+        end
 		SelectUIAtlas(GameInfo.currentFile, GameInfo.release)
 		local p = GameInfo.playernum
 		local itemset = GameInfo.itemrandom
@@ -1273,6 +1281,7 @@ function love.update(dt)
 			end
 		end
 	end
+	require("PlayerEffects").update(GameInfo,Players,TrackerPresentationTime or 0)
 	MapView.update(GameInfo, Players, dt, Items)
 end
 

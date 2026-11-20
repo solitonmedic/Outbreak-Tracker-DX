@@ -13,6 +13,8 @@ const int F2_LocalSlot = 0x4912BD; // u8 0-based local player slot (frames + 5)
 const int F2_RoomPriorty = 0x007d7a90;
 
 const int F2_PositionX = 0x38;
+const int F2_VoiceID = 0xDC4; // u32 voice packet ID; supported code evidence
+const int F2_VoiceTicks = 0xDCC; // s16 voice duration countdown
 const int F2_PositionY = 0x40;
 const int F2_PositionHeight = 0x3C; // float vertical coordinate; F2 Addresses row 39
 const int F2_ForwardX = 0x70; // facing: map-X component of the forward axis

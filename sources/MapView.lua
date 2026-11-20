@@ -227,6 +227,16 @@ local function triangulate(points)
     return tris
 end
 V.triangulate=triangulate
+-- Immutable fitted room geometry is shared across frames; triangulate once.
+local fittedGeometry=setmetatable({}, {__mode="k"})
+local function geometry(poly,layer)
+    local cached=fittedGeometry[poly]
+    if cached then return cached.points,cached.triangles end
+    local pts={}
+    for k=1,#poly,2 do pts[k]=(poly[k]-layer.tx)/layer.sx;pts[k+1]=(poly[k+1]-layer.ty)/layer.sy end
+    local tris=triangulate(pts);fittedGeometry[poly]={points=pts,triangles=tris}
+    return pts,tris
+end
 local SP=require "SPTracking"
 local white={1,1,1,1}
 local yellow={232/255,230/255,160/255,1}
@@ -340,7 +350,7 @@ local function compactCards(l,game,players)
             cropCard(i,full,0,37,sourceWidth,108,l)
             local bust=offset(l.bust,dy)
             cropCard(i,bust,176,26,124,118,l,true)
-            text("P"..i,{x=bust.x+bust.w-15,y=bust.y+27,w=15,size=12},V.colors[i])
+
             text(cardFloor(p),offset(l.cardFloor,dy),yellow)
             local room=offset(l.cardRoom,dy);room.w=l.inventory.x-room.x-4
             text(GetRoomName(game.scenario,p.roomID),room)
@@ -407,7 +417,6 @@ local function drawMap(l,game,players,enemies,items)
     rect(vp,{0,0,0,1})
     if not f then text(V.error or "Open a Japanese scenario to use the map",{x=vp.x+12,y=vp.y+20,w=vp.w-24,size=13});return end
     clip(vp,l)
-    if g.mapBegin then g.mapBegin(vp.x,vp.y,vp.w,vp.h,V.panX,V.panY) end
     local fit=math.min((vp.w-8)/math.max(1,f.maxX-f.minX),(vp.h-48)/math.max(1,f.maxY-f.minY))
     if V.mode==1 and l.art then fit=fit*l.art.w/(vp.w-8) end
     local scale=fit*V.zoom
@@ -420,7 +429,10 @@ local function drawMap(l,game,players,enemies,items)
     end
     V.drawScale=scale;V.visibleCenter={cx,cy}
     local ox,oy=vp.x+vp.w/2+V.panX,vp.y+vp.h/2+V.panY
-    if V.mode==1 and l.art and V.zoom==1 and V.follow then ox=vp.x+2+(f.maxX-f.minX)*scale/2 end
+    if g.mapBegin then
+        local continuity=table.concat({V.cacheKey,V.floor,V.mode,vp.w,V.zoom,tostring(V.follow),V.panX,V.panY},":")
+        g.mapBegin(vp.x,vp.y,vp.w,vp.h,V.panX,V.panY,ox-cx*scale,oy-cy*scale,continuity)
+    end
     g.push();g.translate(ox,oy);g.scale(scale);g.translate(-cx,-cy)
     local layers=V.er and V.er[V.floor]
     local gasOutlines={}
@@ -444,11 +456,10 @@ local function drawMap(l,game,players,enemies,items)
             local drawn=false
             for _,layer in ipairs(layers or {}) do
                 for _,poly in ipairs(layer.rooms[r.id] or {}) do
-                    local pts={}
-                    for k=1,#poly,2 do pts[k]=(poly[k]-layer.tx)/layer.sx;pts[k+1]=(poly[k+1]-layer.ty)/layer.sy end
+                    local pts,tris=geometry(poly,layer)
                     if V.gasRooms[r.id] then gasOutlines[#gasOutlines+1]=pts end
                     g.setColor(unpack(color))
-                    for _,t in ipairs(triangulate(pts)) do g.polygon("fill",t) end
+                    for _,t in ipairs(tris) do g.polygon("fill",t) end
                     drawn=true
                 end
             end

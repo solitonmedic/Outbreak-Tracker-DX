@@ -71,10 +71,35 @@ pulse with a yellow glow. Floors without a reliable fit retain the game's artwor
 Players use red, blue, yellow and green by slot; YOU identifies the local gameplay
 record. A dot marks a usable position. A portrait in a ring marks only the room,
 including rooms spanning multiple height bands. Select the desired floor manually
-in those cases. Player chevrons turn with each character's facing; height is not
-read yet. YOU is the game's own local player. Desperate Times
+in those cases. Player chevrons turn with each character's facing; height selects the matching floor band. YOU is the game's own local player. Desperate Times
 highlights the current gas rooms in yellow. Existing puzzle hints and timers stay
 visible. Enemies in play show as small white diamonds with their HP percentage,
 and the items in your current room show as tracker item icons.
 U.S. File 1 uses the same maps as the Japanese release; extra File 2 scenarios
 are not enabled.
+
+
+### Development map presentation (2026-11-20)
+
+B/N map views show enabled remote players, keep the follow zoom across floors,
+and use the actor height for rooms spanning multiple floors. YOU's room is red,
+other occupied rooms light blue, previously visited rooms light green, and DT gas
+rooms glow yellow. Only YOU's entries count as visits. Room-item observations and
+SP markers are remembered in memory until the run resets; known scenario items
+are orange until taken, personal SP markers blue, other SP markers green. Hover
+or tap an item for its name. Boss markers are red. Timer, item/SP set and supported
+puzzle/scenario hints remain visible on maps.
+
+Danger cards glow red, Downed cards pulse red/black, dead portraits turn red and
+voice events briefly glow green. Virus figures are larger; baseline100% power is
+hidden. Timer badges and the room-master crown have separate positions. Click
+CONTROLS (or right-click/Tab) for tracker-styled controls; MAIN TRACKER returns from
+the map. The floor strip scrolls when more than five floor groups exist.
+
+Shared `sources/SPMapReader.h` supplies bounded SP room records through the
+existing reader connection (at most4 samples/second, supported profiles and
+loaded-code guards). The private Deck provider replaces that sample and retains
+its radar. Native renderer/reader source was C11/offline-checked on macOS; the
+Linux debug module is built on the Deck. No macOS application, Windows MSVC build
+or AppImage was produced by this presentation pass. These changes need user-run
+in-game comparison; synthetic previews establish layout, not live accuracy.

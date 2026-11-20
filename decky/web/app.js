@@ -17,7 +17,7 @@ const sounds = new Map(), soundCounts = new Map();
 let audio = null, soundBaseline = false;
 let mapActive=false, mapMode=0, frameWidth=300, frameHeight=740;
 let latestFrame=null, presentedFrame=null, painting=false, animationStarted=false, lastFrameAt=0;
-let mapDescriptor=null, panPreview=null;
+let mapDescriptor=null, panPreview=null, cameraMotion=null;
 const actorMotion=new Map();
 function actorPoint(track,now) {
   const t=Math.max(0,Math.min(1,(now-track.at)/track.duration));
@@ -27,14 +27,22 @@ function prepareMotion(frame) {
   const now=performance.now(), duration=Math.max(80,Math.min(250,now-lastFrameAt||200));lastFrameAt=now;
   const seen=new Set();mapDescriptor=null;
   for(const c of frame.commands) {
-    if(c[0]==="mapBegin")mapDescriptor={x:c[1],y:c[2],w:c[3],h:c[4],panX:c[5],panY:c[6]};
+    if(c[0]==="mapBegin") {
+      mapDescriptor={x:c[1],y:c[2],w:c[3],h:c[4],panX:c[5],panY:c[6],cameraX:c[7]||0,cameraY:c[8]||0,key:c[9]};
+      const x=mapDescriptor.cameraX,y=mapDescriptor.cameraY;
+      const from=cameraMotion?.continuity===c[9]?actorPoint(cameraMotion,now):{x,y};
+      cameraMotion={x,y,fromX:from.x,fromY:from.y,at:now,duration,continuity:c[9]};
+    }
     if(c[0]!=="actorBegin")continue;
-    const [,id,x,y,continuity]=c,old=actorMotion.get(id);seen.add(id);
-    const from=old&&old.continuity===continuity?actorPoint(old,now):{x,y};
+    const [,id,sx,sy,continuity]=c,old=actorMotion.get(id);seen.add(id);
+    const x=sx-(mapDescriptor?.cameraX||0),y=sy-(mapDescriptor?.cameraY||0);
+    const key=continuity+":"+mapDescriptor?.key;
+    const from=old&&old.continuity===key?actorPoint(old,now):{x,y};
     const near=Math.hypot(from.x-x,from.y-y)<Math.max(frame.width,frame.height)/2;
-    actorMotion.set(id,{x,y,fromX:near?from.x:x,fromY:near?from.y:y,at:now,duration,continuity});
+    actorMotion.set(id,{x,y,fromX:near?from.x:x,fromY:near?from.y:y,at:now,duration,continuity:key});
   }
   for(const id of actorMotion.keys())if(!seen.has(id))actorMotion.delete(id);
+  if(!mapDescriptor)cameraMotion=null;
   if(panPreview?.releasedAt&&mapDescriptor&&Math.hypot(panPreview.x-mapDescriptor.panX,panPreview.y-mapDescriptor.panY)<1)panPreview=null;
 }
 async function animate(now) {
@@ -249,12 +257,13 @@ async function render(frame,now=performance.now()) {
     else if(op==="mapBegin"){
       ctx.save();
       if(panPreview?.releasedAt&&now-panPreview.releasedAt>1500)panPreview=null;
+      if(cameraMotion){const p=actorPoint(cameraMotion,now);ctx.translate(p.x-(a[6]||0),p.y-(a[7]||0));}
       if(panPreview?.moved)ctx.translate(panPreview.x-a[4],panPreview.y-a[5]);
     }
     else if(op==="mapEnd")ctx.restore();
     else if(op==="actorBegin"){
       ctx.save();const track=actorMotion.get(a[0]);
-      if(track){const p=actorPoint(track,now);ctx.translate(p.x-a[1],p.y-a[2]);}
+      if(track){const p=actorPoint(track,now);ctx.translate(p.x-(a[1]-(mapDescriptor?.cameraX||0)),p.y-(a[2]-(mapDescriptor?.cameraY||0)));}
     }
     else if(op==="actorEnd")ctx.restore();
     else if(op==="scale")ctx.scale(...a);

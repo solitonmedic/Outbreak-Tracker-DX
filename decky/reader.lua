@@ -116,7 +116,7 @@ function g.scale(x,y) emit("scale",x,y or x) end
 function g.rotate(angle) emit("rotate",angle) end
 -- Optional shared-map annotations let browsers animate existing position
 -- samples and preview drag locally without increasing memory polling.
-function g.mapBegin(x,y,w,h,panX,panY) emit("mapBegin",x,y,w,h,panX,panY) end
+function g.mapBegin(x,y,w,h,panX,panY,cameraX,cameraY,key) emit("mapBegin",x,y,w,h,panX,panY,cameraX,cameraY,key) end
 function g.mapEnd() emit("mapEnd") end
 function g.actorBegin(id,x,y,continuity) emit("actorBegin",id,x,y,continuity) end
 function g.actorEnd() emit("actorEnd") end
