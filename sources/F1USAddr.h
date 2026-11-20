@@ -68,6 +68,7 @@ const F1AddressRegion F1_US_Regions[] =
     { 0x48BDE2, 4 * 8,      0x2EE70 },  // dead inventories
     { 0x48BF60, 1,          0x2EE70 },  // scenario state (cleared)
     { 0x48BF78, 4,          0x2EE70 },  // scenario clock, 30 ticks per second
+    { 0x48BF7D, 1,          0x2EE70 },  // local player slot, 0-based (supported)
     { 0x48C01A, 1,          0x2EE70 },  // difficulty
     { 0x48AC14, 2,          0x2EE70 },  // DD selection bytes; getters gate their scenario
     { 0x3065AA, 2,          0x1DE30 },  // scenario ID

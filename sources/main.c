@@ -394,6 +394,18 @@ unsigned short GetScenarioID()
 	return buffer;
 }
 
+// The game's own local-player slot (0-based), one byte after the clock. The
+// first active player record is not the local player in online rooms.
+unsigned char GetLocalSlot()
+{
+	unsigned char buffer;
+	if (info.CurrentFile == 1)
+	    ReadF1(F1_LocalSlot, &buffer, 1);
+	else
+	    ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_LocalSlot, &buffer, 1, NULL);
+	return buffer;
+}
+
 unsigned int GetFrames()
 {
 	unsigned int buffer;
@@ -741,6 +753,7 @@ void UpdatePickups()
         unsigned int presentBuffer;
         unsigned char mixBuffer;
         unsigned char roomidBuffer;
+        float positionXBuffer = 0, positionYBuffer = 0;
         int bytesRead = 0;
         if (info.CurrentFile == 1)
         {
@@ -751,6 +764,8 @@ void UpdatePickups()
             ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_PresentOffset, &presentBuffer, 4);
             ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_MixOffset, &mixBuffer, 1);
             ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_ItemRoomIDOffset, &roomidBuffer, 1);
+            ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_ItemPositionXOffset, &positionXBuffer, 4);
+            ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_ItemPositionYOffset, &positionYBuffer, 4);
         }
         else if (info.CurrentFile == 2)
         {
@@ -761,6 +776,8 @@ void UpdatePickups()
             ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_PresentOffset, &presentBuffer, 4, NULL);
             ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_MixOffset, &mixBuffer, 1, NULL);
             ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_ItemRoomIDOffset, &roomidBuffer, 1, NULL);
+            ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_ItemPositionXOffset, &positionXBuffer, 4, NULL);
+            ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_ItemPositionYOffset, &positionYBuffer, 4, NULL);
         }
         Items[i].Number = numberBuffer;
         Items[i].ID = i+1;
@@ -770,6 +787,8 @@ void UpdatePickups()
         Items[i].Present = presentBuffer;
         Items[i].Mix = mixBuffer;
         Items[i].RoomID = roomidBuffer;
+        Items[i].PositionX = positionXBuffer;
+        Items[i].PositionY = positionYBuffer;
     }
 }
 
@@ -1022,6 +1041,19 @@ double GetPositionX(int characterID)
   return (double)buffer;
 }
 
+// Facing: the player transform's forward axis in map coordinates is
+// (+0x70, +0x50). It matched the walking direction (median 6 degrees) in a
+// Japanese File 2 run and SP prompt reach in a U.S. File 1 run.
+double GetForward(int characterID, int f1Offset, int f2Offset)
+{
+  float buffer;
+  if (info.CurrentFile == 1)
+      ReadF1(F1_GetCharAddress(characterID) + f1Offset, &buffer, 4);
+  else
+      ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetCharAddress(characterID) + f2Offset, &buffer, 4, NULL);
+  return (double)buffer;
+}
+
 double GetPositionY(int characterID)
 {
   float buffer;
@@ -1204,6 +1236,8 @@ void GetRoomItemF1()
 				RItems->RItem[i].Pick = 0;
 				RItems->RItem[i].Present = 0;
 				RItems->RItem[i].Mix = 0;
+				RItems->RItem[i].PositionX = 0;
+				RItems->RItem[i].PositionY = 0;
 				for (int j=0; j < 1; j++)
 				{
 					if (*(ptr+j) != 0x00)
@@ -1213,6 +1247,8 @@ void GetRoomItemF1()
 						RItems->RItem[i].Pick = Items[*(ptr+j)-1].Pick;
 						RItems->RItem[i].Present = Items[*(ptr+j)-1].Present;
 						RItems->RItem[i].Mix = Items[*(ptr+j)-1].Mix;
+						RItems->RItem[i].PositionX = Items[*(ptr+j)-1].PositionX;
+						RItems->RItem[i].PositionY = Items[*(ptr+j)-1].PositionY;
 					}
 				}
 			}
@@ -1254,6 +1290,8 @@ void GetRoomItemF2()
 				RItems->RItem[i].Pick = 0;
 				RItems->RItem[i].Present = 0;
 				RItems->RItem[i].Mix = 0;
+				RItems->RItem[i].PositionX = 0;
+				RItems->RItem[i].PositionY = 0;
 				for (int j=0; j < 1; j++)
 				{
 					if (*(ptr+j) != 0x00)
@@ -1263,6 +1301,8 @@ void GetRoomItemF2()
 						RItems->RItem[i].Pick = Items[*(ptr+j)-1].Pick;
 						RItems->RItem[i].Present = Items[*(ptr+j)-1].Present;
 						RItems->RItem[i].Mix = Items[*(ptr+j)-1].Mix;
+						RItems->RItem[i].PositionX = Items[*(ptr+j)-1].PositionX;
+						RItems->RItem[i].PositionY = Items[*(ptr+j)-1].PositionY;
 					}
 				}
 			}
@@ -1539,6 +1579,7 @@ static int LUpdate (lua_State* L)
 	info.HostDifficulty = GetHostDifficulty();
 	info.ScenarioID = GetScenarioID();
 	info.FrameCounter = GetFrames();
+	info.LocalSlot = GetLocalSlot();
 	info.Cleared = GetCleared();
 	info.PlayerNum = GetPlayerNum();
 	info.WTTime = GetWTTime();
@@ -1594,6 +1635,8 @@ static int LUpdate (lua_State* L)
 		Players[i].Power = GetPower(i);
 		Players[i].PositionX = GetPositionX(i);
 		Players[i].PositionY = GetPositionY(i);
+		Players[i].ForwardX = GetForward(i, F1_ForwardX, F2_ForwardX);
+		Players[i].ForwardY = GetForward(i, F1_ForwardY, F2_ForwardY);
 		Players[i].RoomID = GetRoomID(i);
 		Players[i].SpecialItem = GetSpecialItem(i);
 		Players[i].EquippedItem = GetEquippedItem(i);
@@ -1850,6 +1893,14 @@ static int LGetPlayer (lua_State* L)
 
 		lua_pushstring(L, "positionY");
 			lua_pushnumber(L, Players[i].PositionY);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "forwardX");
+			lua_pushnumber(L, Players[i].ForwardX);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "forwardY");
+			lua_pushnumber(L, Players[i].ForwardY);
 		lua_rawset(L, -3);
 
 		lua_pushstring(L, "roomID");
@@ -2218,6 +2269,9 @@ static int LGetGameInfo (lua_State* L)
 		lua_rawset(L, -3);
 		lua_pushstring(L, "frames");
 			lua_pushnumber(L, (double)info.FrameCounter);
+		lua_rawset(L, -3);
+		lua_pushstring(L, "localSlot");
+			lua_pushnumber(L, (double)info.LocalSlot);
 		lua_rawset(L, -3);
 		lua_pushstring(L, "cleared");
 			lua_pushnumber(L, (double)info.Cleared);

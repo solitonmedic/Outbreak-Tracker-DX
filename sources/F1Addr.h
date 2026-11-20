@@ -9,10 +9,13 @@ const int F1_DeadInventoryStart = 0x48BDE2;
 const int F1_VirusMaxStart = 0x6E6C70;
 const int F1_ScenarioIDAddr = 0x3065AA;
 const int F1_FrameCounter = 0x48BF78;
+const int F1_LocalSlot = 0x48BF7D; // u8 0-based local player slot (frames + 5)
 const int F1_RoomPriorty = 0x00825810;
 
 const int F1_PositionX = 0x38;
 const int F1_PositionY = 0x40;
+const int F1_ForwardX = 0x70; // facing: map-X component of the forward axis
+const int F1_ForwardY = 0x50; // facing: map-Y component of the forward axis
 const int F1_RoomIDOffset = 0x1E2;
 const int F1_CharacterEnabled = 0;
 const int F1_CharacterInGame = 1;
@@ -37,6 +40,8 @@ const int F1_HerbTimeOffset = 0xBBA;//herb time
 
 const int F1_PickupStructSize = 60;
 const int F1_ItemRoomIDOffset = 1;
+const int F1_ItemPositionXOffset = 8;  // float X (map X)
+const int F1_ItemPositionYOffset = 16; // float Z (map Y)
 const int F1_PickupCountOffset = 36;
 const int F1_PickupOffset = 40;
 const int F1_PresentOffset = 32;

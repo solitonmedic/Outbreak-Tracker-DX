@@ -24,6 +24,12 @@ typedef int bool;
         lua_pushstring(L, "present"); \
             lua_pushnumber(L, (double)sd.Present); \
         lua_rawset(L, -3); \
+        lua_pushstring(L, "positionX"); \
+            lua_pushnumber(L, sd.PositionX); \
+        lua_rawset(L, -3); \
+        lua_pushstring(L, "positionY"); \
+            lua_pushnumber(L, sd.PositionY); \
+        lua_rawset(L, -3); \
     lua_rawset(L, -3);
 
 #define CreateEmptyItemTable \
@@ -56,6 +62,7 @@ typedef struct
 	unsigned short HostScenarioID;
 	unsigned short ScenarioID;
 	unsigned int FrameCounter;
+	unsigned char LocalSlot;
 	unsigned char Cleared;
 	unsigned short WTTime;
 	unsigned short EscapeTime;
@@ -107,6 +114,8 @@ typedef struct
 	unsigned int Present;
 	unsigned char Mix;
 	unsigned char RoomID;
+	double PositionX;
+	double PositionY;
 } Item;
 
 typedef struct
@@ -158,6 +167,8 @@ typedef struct
     double Speed;
     double PositionX;
     double PositionY;
+    double ForwardX;
+    double ForwardY;
     unsigned short RoomID;
     unsigned char Status;
     unsigned char NameID;
