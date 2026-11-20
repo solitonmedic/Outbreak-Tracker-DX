@@ -543,6 +543,18 @@ local language = {
 }
 
 local language_ru = {
+    -- Elimination room names from the disc tables (2026-11-20), same rooms as before.
+    ["B7F south passway"] = "Южный коридор, П7",
+    ["B6F security center"] = "Комната охраны, П6",
+    ["B7F experiment room"] = "Лаборатория, П7",
+    ["Stairs between 1F and 2F"] = "Бар Джека - лестницы",
+    ["B5F passway of area B"] = "Коридор в зону B, П5",
+    ["Owner's room"] = "Кабинет владельца",
+    ["J's BAR"] = "Бар Джека",
+    ["B6F east passway"] = "Восточный коридор, П6",
+    ["Underground tunnel"] = "Подземный туннель",
+    ["Main shaft"] = "Главная шахта",
+    ["1F of the apartment"] = "Жилое здание, 1Э",
     ["M: SP radar sound: %s"] = "M: Звук SP-радара: %s",
     ["On"] = "Вкл.",
     ["Off"] = "Выкл.",

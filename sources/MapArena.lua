@@ -4,20 +4,17 @@
 -- Inputs: scenario name, the reader's 80-entry scenario enemy list
 -- (getEnemyList: roomID, HP, maxHP, nameID, flag) and rooms players have entered.
 -- Outputs: graph tables and count tables; no drawing.
--- Room IDs are the reader's (sources/roomnames.lua). Cells and connections were
--- transcribed from the user's Elimination 1/2/3 room diagrams (2026-11-20) by
--- matching each diagram label to the room-name table:
---   E1 "1F Lobby" = 10 1F RPD East Hall, "Nurse Center" = 5 Doctor Station,
---      "Main Building 1F Hall" = 12, "F South Passway" = 6 B7F South Passway.
---   E2 "1F Passway" = 8 University's Access Way A, "1F Passage B" = 5,
---      "Stairs Between 1F and 3F" = 10 J's Bar Stairwell, "Rooftop" = 6.
---   E3 the right-hand "Stairwell" (beside Show Animals' Boarding House) is taken
---      as 10 Stairwell to Observation Mezzanine and the left one as 6 B2F
---      Stairwell; "Unloading Passage" is the only unmatched box and is paired
---      with 21 (table name "Pier"). Both pairings are unconfirmed.
---   E3 long bottom connections to the B2F Passage were too unclear to copy and
+-- Room IDs and names are the game's own room tables on the Japanese File 2 disc
+-- (tools-n-shit/research/read-arena-rooms.py; sources/roomnames.lua). Cells and
+-- connections were transcribed from the user's Elimination 1/2/3 room diagrams
+-- (2026-11-20), whose labels match the disc names.
+--   E3 has two rooms named "Stairwell" (6 and 10); the one beside Show Animals'
+--      boarding house is taken as 10. That pairing is unconfirmed.
+--   E3 long bottom connections to the B2F passage were too unclear to copy and
 --      are left out.
--- Showdown has no transcribed graph yet (its room names are not in the table).
+-- Showdown: 1 = rooms 1-5, 2 = rooms 6-10, 3 = rooms 1-11 (disc). Showdown 2 is
+-- played in ID order (2026-10-24 run: 6,7,8,9,10); Showdown 1 is assumed to be
+-- the same; Showdown 3's order is unknown, so it has no links.
 -- Enemy list (Japanese File 2 run 2026-11-20, Elimination 1): entries appear
 -- when a room is first loaded; killed enemies keep HP 65535.
 -- Safety: no memory, file or game access. Reusable.
@@ -37,11 +34,11 @@ A.graphs={
             {4,5},{4,3},{3,2},{2,1},{1,12},{12,13},{15,16},{16,17},{17,18},{16,13},{13,14}}},
     ["elimination 2"]={columns=5,rows=4,
         cells={[1]={0,0},[2]={1,0},[3]={2,0},[4]={3,0},[6]={4,0},
-            [15]={1,1},[8]={3,1},
+            [15]={1,1},[5]={3,1},
             [14]={1,2},[11]={2,2},[9]={3,2},[7]={4,2},
-            [13]={0,3},[12]={1,3},[10]={2,3},[5]={4,3}},
-        links={{1,2},{2,3},{3,4},{4,6},{4,8},{6,5},{1,15},{1,14},{15,8},{11,8},{14,13},
-            {13,9},{11,12},{11,10},{12,5},{10,9},{9,8},{9,7},{9,5},{7,5}}},
+            [13]={0,3},[12]={1,3},[10]={2,3},[8]={4,3}},
+        links={{1,2},{2,3},{3,4},{4,6},{4,5},{6,8},{1,15},{1,14},{15,5},{11,5},{14,13},
+            {13,9},{11,12},{11,10},{12,8},{10,9},{9,5},{9,7},{9,8},{7,8}}},
     ["elimination 3"]={columns=6,rows=6,
         cells={[15]={0,0},[16]={1,0},[17]={2,0},[18]={3,0},[19]={4,0},
             [11]={2,1},[9]={3,1},[20]={4,1},[21]={5,1},
@@ -52,6 +49,16 @@ A.graphs={
         links={{15,11},{15,16},{15,13},{16,12},{13,17},{17,11},{17,18},{18,19},{19,21},{19,20},
             {21,7},{8,7},{9,6},{6,11},{9,8},{8,3},{12,11},{12,13},{13,14},{1,2},{2,3},
             {3,4},{4,5},{5,10},{10,7}}},
+    ["showdown 1"]={columns=3,rows=2,
+        cells={[1]={0,0},[2]={1,0},[3]={2,0},[4]={0,1},[5]={1,1}},
+        links={{1,2},{2,3},{3,4},{4,5}}},
+    ["showdown 2"]={columns=3,rows=2,
+        cells={[6]={0,0},[7]={1,0},[8]={2,0},[9]={0,1},[10]={1,1}},
+        links={{6,7},{7,8},{8,9},{9,10}}},
+    ["showdown 3"]={columns=3,rows=4,
+        cells={[1]={0,0},[2]={1,0},[3]={2,0},[4]={0,1},[5]={1,1},[6]={2,1},
+            [7]={0,2},[8]={1,2},[9]={2,2},[10]={0,3},[11]={1,3}},
+        links={}},
 }
 
 function A.isArena(scenario)
