@@ -6,6 +6,8 @@
 -- Forest artwork bounds and the recorded maze-exit guide come from MapER.lua;
 -- forest card floor labels are omitted while hospital floor labels remain.
 -- Safety: read-only packaged assets and existing state; no disc or user-cache access.
+-- In B the panel under the map shows the session line (character // scenario //
+-- difficulty) instead of the clock, SP radar and item sets the cards already show.
 -- Run: B = cards beside map, N = map above cards; assets load automatically.
 -- Check: luajit tools-n-shit/tracker-tests/maps/check-runtime-maps.lua .
 local Data=require "MapData"
@@ -444,9 +446,74 @@ local function gasTimer(game,b)
     text(Time2string3(game.gastime or 0),{x=0,y=29,w=42,size=11,align="center"},{1,1,0,1})
     g.pop()
 end
+-- Japanese titles as printed on the game's scenario tiles (assets/ui.png).
+local scenarioTitles={
+    ["outbreak"]="発生 outbreak",["below freezing point"]="零下 below freezing point",
+    ["the hive"]="巣窟 the hive",["hellfire"]="獄炎 hellfire",
+    ["decisions,decisions"]="決意 decisions, decisions",
+    ["wild things"]="咆哮 wild things",["underbelly"]="異界 underbelly",
+    ["flashback"]="記憶 flashback",["desperate times"]="死守 desperate times",
+    ["end of the road"]="突破 end of the road",
+    ["elimination 1"]="殲滅1 elimination 1",["elimination 2"]="殲滅2 elimination 2",
+    ["elimination 3"]="殲滅3 elimination 3",
+    ["showdown 1"]="対峙1 showdown 1",["showdown 2"]="対峙2 showdown 2",["showdown 3"]="対峙3 showdown 3",
+}
+-- Session line for the cards-beside-map view: local character, scenario,
+-- difficulty, then room options. game.nightmare and game.infinity are shown
+-- only when a reader supplies them; none does yet.
+function V.sessionText(game,you)
+    local parts={}
+    if you and you.enabled and (you.name or you.type) then parts[#parts+1]=tostring(you.name or you.type):upper() end
+    if game.scenario and game.scenario~="" then parts[#parts+1]=scenarioTitles[game.scenario] or game.scenario end
+    if game.difficulty and game.difficulty~="" then parts[#parts+1]=tostring(game.difficulty):upper() end
+    if game.nightmare==true then parts[#parts+1]="NIGHTMARE" end
+    if game.infinity==true then parts[#parts+1]="INFINITY" end
+    return table.concat(parts," // ")
+end
+local sessionGray={.72,.72,.74,1}
+-- Gray text with a full black outline, so it stays readable on gray art too.
+-- Returns the height used (0 when there is nothing to show).
+function V.drawSessionLine(game,you,b)
+    local value=V.sessionText(game,you)
+    if value=="" then return 0 end
+    local g=love.graphics
+    g.setFont(MapFonts and MapFonts[b.size or 13] or MiniFont)
+    for _,o in ipairs{{-1,0},{1,0},{0,-1},{0,1},{1,1}} do
+        g.setColor(0,0,0,1);g.printf(value,b.x+o[1],b.y+o[2],b.w,"left")
+    end
+    g.setColor(unpack(sessionGray));g.printf(value,b.x,b.y,b.w,"left")
+    local _,lines=g.getFont():getWrap(value,b.w)
+    return #lines*g.getFont():getHeight()
+end
 local function scenario(l,game)
     local g=love.graphics;local b=l.information
     if l.tile then sprite(game.scenario,l.tile) end
+    if V.mode==1 then
+        -- The cards on the left already show the clock, SP radar, item sets and
+        -- escape/medal readouts; this panel keeps the session line, the
+        -- Desperate Times fight/garage/gas readout and puzzle hints.
+        local used=V.drawSessionLine(game,V.players and V.players[V.you or 0],{x=b.x,y=b.y+1,w=b.w,size=13})
+        if used>0 then used=used+5 end
+        local lines={}
+        if game.scenario=="desperate times" then
+            local ft=game.fighttime2==65535 and game.fighttime or game.fighttime2
+            if game.fighttime2==0 then lines[#lines+1]=tostring(game.killedzombies or 0).." kills"
+            else
+                lines[#lines+1]="Fight "..Time2string3(ft or 0).."   Garage "..Time2string3(game.garagetime or 0).."   Gas "..Time2string3(game.gastime or 0)
+            end
+            local rooms={};for id in pairs(V.gasRooms) do rooms[#rooms+1]=GetRoomName(game.scenario,id) end
+            table.sort(rooms);if #rooms>0 then lines[#lines+1]="GAS: "..table.concat(rooms,", ") end
+        end
+        local info=table.concat(lines,"\n")
+        local hint=V.hint and V.hint~="" and Hints.text(game,V.hint) or nil
+        local content=info
+        if hint then
+            content={white,info~="" and info.."\n" or ""}
+            for _,part in ipairs(hint) do content[#content+1]=part end
+        end
+        text(content,{x=b.x,y=b.y+used,w=b.w,h=b.h-used,size=13})
+        return
+    end
     local clockWidth=math.min(222,b.w*.68)
     local sp=SP.forMap(game.spTracking,V.players and V.players[V.you or 0])
     clock(game,{x=b.x,y=b.y,w=clockWidth,h=22},sp)

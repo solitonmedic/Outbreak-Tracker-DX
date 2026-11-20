@@ -18,7 +18,15 @@ function LoadAssets()
 	UIAtlas = JapaneseUIAtlas
 	MapUIAtlas = USUIAtlas
 	MapFonts = {}
-	for size=9,16 do MapFonts[size] = love.graphics.newFont("assets/arialnb.ttf", size) end
+	for size=9,16 do
+		MapFonts[size] = love.graphics.newFont("assets/arialnb.ttf", size)
+		-- Arial has no kanji; scenario titles fall back to a Noto Sans CJK JP subset
+		-- (OFL, see assets/NotoSansCJKjp-Scenario-OFL.txt). The Decky bridge has no
+		-- fallbacks; its browser renders kanji with a system font instead.
+		if MapFonts[size].setFallbacks then
+			MapFonts[size]:setFallbacks(love.graphics.newFont("assets/NotoSansCJKjp-Scenario.otf", size))
+		end
+	end
 	ItemIcons = LoadTextureAtlas("assets/icons.png", IconLinks)
 	ItemIcons2 = LoadTextureAtlas("assets/StartingItem.png", IconLinks2)
 	DefaultFont = love.graphics.newFont("assets/arialbd.ttf",18)
