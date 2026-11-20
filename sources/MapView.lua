@@ -369,18 +369,24 @@ local function compactCards(l,game,players)
         hit(b,function() follow(i) end)
     end
 end
-local function clock(game,b)
+local function clock(game,b,sp)
     if (game.frames or 0)<=0 then return end
     local g=love.graphics
-    -- Reproduce the tracker's own time row: the SP counter is laid out at x 141
-    -- of a 300-wide row and the clock is right-aligned to 300. Draw that span
-    -- (141-300) uniformly scaled into the box so the two never overlap.
-    local s=math.min(b.w/159,b.h/26)
-    g.push();g.translate(b.x+b.w-159*s,b.y);g.scale(s);g.translate(-141,0)
+    local radar=type(sp)=="table" and sp.available==true
+    local radarWidth=radar and 98 or 0
+    if radar then
+        -- Include the glow's full bounds (-9.2..27.2), and label
+        -- whose facing the compass uses when the map is following someone else.
+        g.push();g.translate(b.x+3,b.y+10)
+        SP.draw(sp,-141,0,DefaultFont);g.pop()
+        text("YOU",{x=b.x+67,y=b.y+12,w=27,size=9},yellow)
+    end
+    local value=Time2string(game.frames/.03)
+    local width=b.w-radarWidth
+    local scale=math.min(width/math.max(1,TimeFont:getWidth(value)),22/TimeFont:getHeight())
+    g.push();g.translate(b.x+radarWidth,b.y+8);g.scale(scale,scale)
     g.setColor(1,1,1,1);g.setFont(TimeFont)
-    g.printf(Time2string(game.frames/.03),0,0,300,"right")
-    -- The map keeps its game clock; the radar belongs to the main tracker.
-    g.pop()
+    g.printf(value,0,0,width/scale,"right");g.pop()
 end
 local function gasTimer(game,b)
     if (game.fighttime2 or 0)==0 then return end
@@ -394,10 +400,11 @@ end
 local function scenario(l,game)
     local g=love.graphics;local b=l.information
     if l.tile then sprite(game.scenario,l.tile) end
-    local clockWidth=math.min(194,b.w*.60)
-    clock(game,{x=b.x,y=b.y,w=clockWidth,h=22})
+    local clockWidth=math.min(222,b.w*.68)
+    local sp=SP.forMap(game.spTracking,V.players and V.players[V.you or 0])
+    clock(game,{x=b.x,y=b.y,w=clockWidth,h=22},sp)
     local itemset=tostring((game.itemrandom or 0)+1).."/"..tostring(math.floor((game.itemrandom2 or 0)/10)+1)
-    text("ITEM "..itemset.."   SP "..tostring(V.setLetter or "—"),{x=b.x+clockWidth+4,y=b.y+3,w=b.w-clockWidth-4,size=11,fit=true,align="right"},yellow)
+    text("ITEM "..itemset.."   SP "..tostring(V.setLetter or "—"),{x=b.x+clockWidth+4,y=b.y+12,w=b.w-clockWidth-4,size=11,fit=true,align="right"},yellow)
     local lines={}
     if game.scenario=="desperate times" then
         local ft=game.fighttime2==65535 and game.fighttime or game.fighttime2
@@ -414,7 +421,8 @@ local function scenario(l,game)
         lines[#lines+1]="Escape "..Time2string3(game.escapetime)
     end
     if V.hint and V.hint~="" then lines[#lines+1]="HINT: "..V.hint end
-    text(table.concat(lines,"\n"),{x=b.x,y=b.y+25,w=b.w,h=b.h-25,size=V.mode==1 and 13 or 11})
+    local hintY=39
+    text(table.concat(lines,"\n"),{x=b.x,y=b.y+hintY,w=b.w,h=b.h-hintY,size=V.mode==1 and 13 or 11})
 end
 local function drawMap(l,game,players,enemies,items)
     local g=love.graphics;local vp=l.viewport;local f=V.map and V.map.floors[V.floor]

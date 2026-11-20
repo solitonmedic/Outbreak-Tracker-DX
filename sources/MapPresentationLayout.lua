@@ -24,13 +24,14 @@ for key,l in pairs(layouts) do
 end
 return layouts
 end
-local variants={[0]=build(0),[24]=build(24),[44]=build(44),[60]=build(60)}
+local variants={[16]=build(16),[40]=build(40),[60]=build(60)}
 local M={}
 function M.select(key,game,hint)
-    local shift=0
+    -- Reserve the radar row even during a dropped sample: avoid map resizing.
+    local shift=16
     if game.scenario=="desperate times" or game.scenario=="wild things" then shift=60
-    elseif game.scenario=="underbelly" and (game.escapetime or 0)>0 and game.escapetime~=65535 then shift=44
-    elseif (hint and hint~="") or ((game.escapetime or 0)>0 and game.escapetime~=65535) then shift=24 end
+    elseif game.scenario=="underbelly" and (game.escapetime or 0)>0 and game.escapetime~=65535 then shift=60
+    elseif (hint and hint~="") or ((game.escapetime or 0)>0 and game.escapetime~=65535) then shift=40 end
     return variants[shift][key]
 end
 return M

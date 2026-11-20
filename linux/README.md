@@ -112,3 +112,10 @@ its radar. Native renderer/reader source was C11/offline-checked on macOS; the
 Linux debug module is built on the Deck. No macOS application, Windows MSVC build
 or AppImage was produced by this presentation pass. These changes need user-run
 in-game comparison; synthetic previews establish layout, not live accuracy.
+
+Map9 follow-up: both map layouts also show the SP compass/counter beside the
+clock, labelled YOU because its bearing follows the local player's facing even
+when following another player. Existing provider glow is retained. Native
+room-only SP data derives direction from already-exported item positions and
+player facing; unavailable direction remains hidden. The row keeps a fixed
+height during dropped samples. English room labels use “Drawing Room”.

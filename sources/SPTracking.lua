@@ -2,7 +2,8 @@
 -- Location/runtime: sources/SPTracking.lua, LuaJIT with LÖVE 11.5 or Decky bridge.
 -- Inputs: validated current-run SP state, timer position, password-hint font,
 -- and sources/layout.lua; bearing is clockwise from player forward.
--- Output: drawing commands only; returns whether an SP component was drawn.
+-- Output: drawing commands; forMap derives optional facing from existing snapshots.
+-- draw returns whether an SP component was drawn.
 -- SPTracking.alert says when to play the SP found sound (once per room).
 -- Safety: no PINE, recording, workbook, files or game writes.
 -- Run: invoked by sources/main.lua during tracker drawing on supported clients.
@@ -32,6 +33,30 @@ end
 
 function SPTracking.reset()
     alertRoom, alerted = nil, false
+end
+
+-- Map radar is always relative to YOU, including when following a teammate.
+-- Keep the guarded private provider's bearing/glow intact. Desktop room-only
+-- samples can derive a direction from their already-exported item/player data;
+-- no proximity/prompt claim is added when that provider does not supply one.
+function SPTracking.forMap(state,player)
+    if type(state)~="table" or state.available~=true or state.radarState~=nil then return state end
+    if not (player and player.enabled and player.inGame and player.roomID==state.room) then return state end
+    local function finite(v) return type(v)=="number" and v==v and math.abs(v)<1000000 end
+    local px,py,fx,fy=player.positionX,player.positionY,player.forwardX,player.forwardY
+    if not (finite(px) and finite(py) and finite(fx) and finite(fy)) or math.abs(fx*fx+fy*fy-1)>.06 then return state end
+    local nearest,best
+    for _,it in ipairs(state.roomItems or {}) do
+        if it.enabled and not it.collected and finite(it.x) and finite(it.y) then
+            local d=(it.x-px)^2+(it.y-py)^2
+            if not best or d<best then best=d;nearest=it end
+        end
+    end
+    if not nearest or best<.001 then return state end
+    local out={};for k,v in pairs(state) do out[k]=v end
+    local angle=math.atan2(nearest.x-px,-(nearest.y-py))-math.atan2(fx,-fy)
+    out.radarState="direction";out.bearing=math.atan2(math.sin(angle),math.cos(angle))
+    return out
 end
 
 -- State contract: current-room/run data only. Missing or invalid data stays hidden.
