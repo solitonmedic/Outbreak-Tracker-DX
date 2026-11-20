@@ -184,7 +184,7 @@ function love.draw()
 		-- SP state arrives just before drawing, so the SP found sound is decided here.
 		if s ~= "" and f > 0 then
 			-- Consume muted alerts too, so enabling sound cannot replay an old sighting.
-			if SPTracking.alert(GameInfo.spTracking) and SPSoundEnabled then SPFoundSound:play() end
+			if SPTracking.alert(SPTracking.state(GameInfo)) and SPSoundEnabled then SPFoundSound:play() end
 		else
 			SPTracking.reset()
 		end
@@ -906,7 +906,7 @@ function love.draw()
 			-- The Penpot pilot covers the vertical layout. No sample SP state is
 			-- substituted when the native reader does not provide this interface.
 			if Style == 0 and s ~= "" then
-				SPTracking.draw(GameInfo.spTracking, time_x, time_y, DefaultFont)
+				SPTracking.draw(SPTracking.state(GameInfo), time_x, time_y, DefaultFont)
 			end
 			if (s == "wild things") then
 				if(GameInfo.wttime > 0) and not (GameInfo.wttime == 0xffff) then

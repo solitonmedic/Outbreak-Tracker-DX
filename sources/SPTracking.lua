@@ -4,7 +4,8 @@
 -- and sources/layout.lua; bearing is clockwise from player forward.
 -- Output: drawing commands; forMap derives optional facing from existing snapshots.
 -- draw returns whether an SP component was drawn.
--- SPTracking.alert says when to play the SP found sound (once per room).
+-- SPTracking.alert says when to play the SP found sound (once per room);
+-- SPTracking.state hides SP in Elimination and Showdown.
 -- Safety: no PINE, recording, workbook, files or game writes.
 -- Run: invoked by sources/main.lua during tracker drawing on supported clients.
 -- Check: packaged Decky saved-frame replay checks counter and arrow drawing;
@@ -29,6 +30,14 @@ function SPTracking.alert(state)
     if alerted or (state.radarState ~= "direction" and state.radarState ~= "near") then return false end
     alerted = true
     return true
+end
+
+-- Elimination and Showdown have no SP items, so they show no SP counter, radar,
+-- sound or map pins. Every SP consumer reads the state through this.
+function SPTracking.state(game)
+    local s = type(game) == "table" and tostring(game.scenario or "") or ""
+    if s:find("^elimination") or s:find("^showdown") then return nil end
+    return type(game) == "table" and game.spTracking or nil
 end
 
 function SPTracking.reset()

@@ -47,7 +47,7 @@ function M.update(game,players,you,items,floor)
             end
         elseif it.id and M.items[it.id] then M.items[it.id]=nil end
     end
-    local sp=game.spTracking
+    local sp=require("SPTracking").state(game)
     if type(sp)=="table" and sp.available==true and type(sp.roomItems)=="table" and sp.room==p.roomID then
         local present={}
         for _,it in ipairs(sp.roomItems) do
