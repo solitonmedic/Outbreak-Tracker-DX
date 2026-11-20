@@ -3,6 +3,8 @@
 -- Inputs: existing GameInfo/Players, update delta, bundled assets and UI actions.
 -- Outputs: map drawing, compact cards and UI-only GameInfo.mapview state.
 -- Hint colors reuse PuzzleHints and existing main-tracker knowledge flags.
+-- Forest artwork bounds and the recorded maze-exit guide come from MapER.lua;
+-- forest card floor labels are omitted while hospital floor labels remain.
 -- Safety: read-only packaged assets and existing state; no disc or user-cache access.
 -- Run: B = cards beside map, N = map above cards; assets load automatically.
 -- Check: luajit tools-n-shit/tracker-tests/maps/check-runtime-maps.lua .
@@ -75,6 +77,9 @@ function V.marker(map,floor,player)
     if not contains(matches,floor) then return end
     if #matches==1 and finite(player.positionX) and finite(player.positionY) then
         local x,y=Data.position(f,player.positionX,player.positionY)
+        -- Forest artwork includes the maze omitted from the game's texture.
+        -- Its recorded-coordinate fit supplies complete bounds for live markers.
+        if f.fullArtwork and x>=f.minX and x<=f.maxX and y>=f.minY and y<=f.maxY then return x,y,false end
         -- The DT Front Gate's playable space extends beyond its small map
         -- outline. Its known room/floor is sufficient to show the actual point.
         if player.roomID==27 and map.path and map.path:match("/015$") then return x,y,false end
@@ -167,6 +172,17 @@ function V.update(game,players,dt,items)
                 if not loaded then V.map=nil; V.error="Map artwork is missing from this build" end
                 local code=V.map and V.map.path:match("(%d%d%d)$")
                 V.er=V.map and ER[game.currentFile] and ER[game.currentFile][code] or nil
+                for index,layers in pairs(V.er or {}) do
+                    local floor=V.map.floors[index]
+                    for _,layer in ipairs(layers) do
+                        if layer.fullBounds then
+                            floor.fullArtwork=true
+                            floor.minX=-layer.tx/layer.sx;floor.minY=-layer.ty/layer.sy
+                            floor.maxX=(layer.w/layer.scale-layer.tx)/layer.sx
+                            floor.maxY=(layer.h/layer.scale-layer.ty)/layer.sy
+                        end
+                    end
+                end
             end
         end
     end
@@ -357,6 +373,14 @@ local function cardFloor(p)
     local f=V.map.floors[contains(choices,V.floor) and V.floor or choices[1]]
     return f and shortFloor(f.name) or ""
 end
+function V.cardFloorVisible(game,p)
+    if game.scenario=="wild things" then return false end
+    if game.scenario=="flashback" and p then
+        local room=p.roomID or 0
+        if (room>=1 and room<=5) or room==29 or room==30 then return false end
+    end
+    return true
+end
 local function compactCards(l,game,players)
     local g=love.graphics
     for i,b in ipairs(l.cards) do
@@ -377,9 +401,10 @@ local function compactCards(l,game,players)
             local bust=offset(l.bust,dy)
             cropCard(i,bust,176,26,124,118,l,true)
 
-            if game.scenario~="wild things" then text(cardFloor(p),offset(l.cardFloor,dy),yellow) end
+            local showFloor=V.cardFloorVisible(game,p)
+            if showFloor then text(cardFloor(p),offset(l.cardFloor,dy),yellow) end
             local room=offset(l.cardRoom,dy)
-            if game.scenario=="wild things" then room.x=l.cardFloor.x end
+            if not showFloor then room.x=l.cardFloor.x end
             room.w=l.inventory.x-room.x-4
             text(GetRoomName(game.scenario,p.roomID),room)
             if V.gasRooms[p.roomID] then
@@ -543,6 +568,39 @@ local function drawMap(l,game,players,enemies,items)
     g.pop()
     -- Scanlines and slot-coloured full-viewport crosshair are in the board.
     for y=vp.y,vp.y+vp.h,3 do rect({x=vp.x,y=y,w=vp.w,h=1},{0,0,0,.22}) end
+    -- The cyan guide follows recorded maze movement. It stays beneath players,
+    -- items and enemy HP, with constant screen width at every zoom level.
+    V.routeDrawn=0
+    for _,layer in ipairs(layers or {}) do
+        local route=layer.route
+        if route then
+            local travelled=0
+            local function point(i)
+                return ox+((route[i]-layer.tx)/layer.sx-cx)*scale,
+                       oy+((route[i+1]-layer.ty)/layer.sy-cy)*scale
+            end
+            for i=1,#route-2,2 do
+                local ax,ay=point(i);local bx,by=point(i+2)
+                local dx,dy=bx-ax,by-ay;local length=math.sqrt(dx*dx+dy*dy)
+                if length>0 then
+                    local nx,ny=-dy/length,dx/length
+                    local function stroke(width,color)
+                        g.setColor(unpack(color));g.polygon("fill",{ax+nx*width,ay+ny*width,bx+nx*width,by+ny*width,bx-nx*width,by-ny*width,ax-nx*width,ay-ny*width})
+                    end
+                    stroke(2.6,{0,0,0,.8});stroke(1.15,{0,.95,1,.95})
+                    travelled=travelled+length
+                    if travelled>=50 or i==#route-2 then
+                        g.setColor(0,.95,1,1)
+                        g.polygon("fill",{bx+dx/length*5,by+dy/length*5,bx-dx/length*5+nx*4,by-dy/length*5+ny*4,bx-dx/length*5-nx*4,by-dy/length*5-ny*4})
+                        travelled=0
+                    end
+                end
+            end
+            local ex,ey=point(#route-1)
+            text("EXIT",{x=math.max(vp.x+4,math.min(ex-20,vp.x+vp.w-44)),y=math.max(vp.y+4,math.min(ey-20,vp.y+vp.h-16)),w=40,size=11,align="center"},{0,.95,1,1})
+            V.routeDrawn=V.routeDrawn+1
+        end
+    end
     -- Observed room items persist for this run. Scenario items come from the
     -- already-refreshed global pickup table and remain visible until taken.
     V.itemsDrawn=0
