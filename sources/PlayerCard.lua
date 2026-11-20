@@ -1,3 +1,9 @@
+-- Purpose: shared player cards, inventory, health/death effects and clear effect badges.
+-- Runtime/location: sources/PlayerCard.lua; LOVE 11.5/LuaJIT or Decky drawing bridge.
+-- Inputs: existing player/room-master state, packaged atlas and UI elapsed time.
+-- Outputs: full cards or reusable portrait crops; no file, PINE or game writes.
+-- Run: main tracker/map cards. Check: tracker-tests/maps/check-presentation.lua.
+local Effects=require "PlayerEffects"
 PlayerCard = {}
 PlayerCard.__index = PlayerCard
 
@@ -66,16 +72,20 @@ end
 -- portraitOnly reuses the bust, effect timers, virus and room-master crown for
 -- compact map cards. Inventory is drawn in its own complete region there.
 function PlayerCard:draw(x, y, portraitOnly)
+	love.graphics.setColor(1,1,1,1)
 	love.graphics.push()
 	love.graphics.translate(x, y)
 
 	local player = Players[self.id]
+	Effects.background(player,0,0,300,145,TrackerPresentationTime or 0)
 	local sb = love.graphics.newSpriteBatch(UIAtlas.tex)
 	local bustname = "bust" .. Players[self.id].type
 	local bx, by, bw, bh = UIAtlas.quads[bustname]:getViewport()
 	local scale = 140 / bh;
 
-	if Players[self.id].inGame == false then
+	if Effects.health(player)=="dead" then
+		sb:setColor(1,.08,.08,1)
+	elseif Players[self.id].inGame == false then
 		sb:setColor(1, 1, 1, 0.5)
 	else
 		sb:setColor(1, 1, 1, 1)
@@ -767,22 +777,27 @@ function PlayerCard:draw(x, y, portraitOnly)
 	end
 	-- Here goes some weird magic 150, 120
 	local tx, ty = 192, 125
-	local val1 = math.floor(Players[self.id].virus)
-	local val2 = math.floor(math.floor(Players[self.id].virus*100+0.5) - val1 * 100)
-	love.graphics.printf(tostring(val1), tx, ty, 60, "right", 0, 1.25, 1.25)
-	love.graphics.printf("." .. string.format("%02d", val2) .. "%", tx+73, ty+3.5, 60, "left", 0, 1.0, 1.0)
+	love.graphics.push()
+	love.graphics.translate(186,122);love.graphics.scale(1.45,1.45)
+	love.graphics.printf(string.format("%.2f%%",player.virus),0,0,76,"right")
+	love.graphics.pop()
 	-- weird magic ends here
 
 	--local siz = math.floor(math.floor((Players[self.id].size)*100))
 	--love.graphics.printf(string.format("%d", siz) .. "%", tx+46, ty+3.5-60, 60, "right", 0, 1.0, 1.0)
 
 	local pow = math.floor(math.floor(Players[self.id].power*100+0.5))
-	love.graphics.printf({{25/255, 255/255, 255/255, 1},string.format("%d", pow) .. "%"}, tx+46, ty+3.5-20, 60, "right", 0, 1.0, 1.0)
+	if pow~=100 or (player.basePower or 1)>1 then
+		love.graphics.printf({{25/255, 255/255, 255/255, 1},string.format("%d", pow) .. "%"}, tx+46, ty+3.5-20, 60, "right", 0, 1.0, 1.0)
+	end
 
 	local roomMaster = RoomMasters[player.roomID]
-	if player.inGame and player.roomID > 0 and roomMaster and roomMaster.enabled and roomMaster.roommaster == self.id then
-		UIAtlas:draw("room master crown", tx+75, ty+3.5-40);
-	end
+	local master=player.inGame and player.roomID>0 and roomMaster and roomMaster.enabled and roomMaster.roommaster==self.id
+	if master then UIAtlas:draw("room master crown",267,Effects.timers(player) and 28 or 88.5) end
+	love.graphics.setFont(MiniFont or VerySmallFont)
+	love.graphics.setColor(unpack(Effects.slotColors[self.id]))
+	love.graphics.printf("P"..self.id,276,Effects.badgeY(player,master),22,"right")
+	love.graphics.setColor(1,1,1,1)
 
 	--local spd = math.floor(math.floor(Players[self.id].speed*100+0.5))
 	--love.graphics.printf(string.format("%d", spd) .. "%", tx+46, ty+3.5-40, 60, "right", 0, 1.0, 1.0)

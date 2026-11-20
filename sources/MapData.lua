@@ -48,7 +48,7 @@ function M.parse(s)
         local count=s:byte(o+67)
         local po=u32(s,o+68)
         assert(po>=ft+nf*92 and po+count*6<=tex, "Invalid map placements")
-        local f={name=name(s,o+32),height=i16(s,o+76),ppu=i16(s,o+72),refX=i16(s,o+74),refZ=i16(s,o+78),
+        local f={name=name(s,o+32),level=s:byte(o+66),flag=s:byte(o+65),height=i16(s,o+76),ppu=i16(s,o+72),refX=i16(s,o+74),refZ=i16(s,o+78),
                  places={},minX=math.huge,minY=math.huge,maxX=-math.huge,maxY=-math.huge}
         if f.name=="" then f.name="Area "..(n+1) end
         assert(f.ppu>0 and f.ppu<=1000, "Invalid map scale")

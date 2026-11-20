@@ -30,6 +30,12 @@ typedef int bool;
         lua_pushstring(L, "positionY"); \
             lua_pushnumber(L, sd.PositionY); \
         lua_rawset(L, -3); \
+        lua_pushstring(L, "roomID"); \
+            lua_pushnumber(L, sd.RoomID); \
+        lua_rawset(L, -3); \
+        lua_pushstring(L, "mix"); \
+            lua_pushnumber(L, sd.Mix); \
+        lua_rawset(L, -3); \
     lua_rawset(L, -3);
 
 #define CreateEmptyItemTable \
@@ -169,6 +175,7 @@ typedef struct
     double PositionY;
     double ForwardX;
     double ForwardY;
+    double PositionHeight;
     unsigned short RoomID;
     unsigned char Status;
     unsigned char NameID;

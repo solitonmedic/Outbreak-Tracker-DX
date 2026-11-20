@@ -19,3 +19,12 @@ button:focus-visible{outline:3px solid #88c6ff}button:active{background:#496680}
 .row.segmented{grid-template-columns:repeat(auto-fit,minmax(52px,1fr))}
 #sheet p{margin:8px 0 0;font-size:.8rem;color:#bac3cc}
 #sheet #diagnostics{font-size:.7rem;color:#7f8a96}
+/* Tracker-style controls: narrow HUD lettering, inset blue frames, square plates. */
+#sheet{font-family:TrackerNarrow,Arial,sans-serif}
+#sheet section{background:linear-gradient(110deg,#030711,#0b1428 65%,#02050c);border:3px ridge #344a7d;border-radius:0;box-shadow:inset 0 0 0 2px #0c1a35,0 0 24px #07152b;padding:14px 16px calc(env(safe-area-inset-bottom) + 16px)}
+#sheet header{border:2px ridge #344a7d;background:linear-gradient(#0b142a,#02040b);padding:6px 8px;margin:0 0 14px}
+#sheet h2{font-family:TrackerBold,Arial,sans-serif;color:#e8e6a0;font-size:18px;letter-spacing:.04em;text-transform:uppercase}
+#sheet h3{font-size:14px;color:#77b2f9;letter-spacing:.08em}
+#sheet button{font-family:TrackerNarrow,Arial,sans-serif;text-transform:uppercase;font-size:17px;border:2px ridge #354d7c;border-radius:0;background:linear-gradient(#10213d,#050b18);box-shadow:inset 0 0 0 1px #071127;min-height:42px}
+#sheet button:active,#sheet button[aria-pressed="true"]{background:linear-gradient(#183c66,#09192e);color:#e8e6a0;border-color:#74b2f9}
+#sheet p{font-size:14px;color:#91a5c8}

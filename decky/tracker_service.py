@@ -33,7 +33,7 @@ import os
 
 TAILSCALE = ipaddress.ip_network("100.64.0.0/10")
 IDLE_SECONDS = 15
-KEYS = {"f1", "f2", "f3", "f4", "d", "h", "v", "l", "t", "i", "q", "e", "m", "b", "n", "f",
+KEYS = {"home", "f1", "f2", "f3", "f4", "d", "h", "v", "l", "t", "i", "q", "e", "m", "b", "n", "f",
         "1", "2", "3", "4", "a", "kp0", "kp1", "kp2", "kp3", "kp4"}
 
 
@@ -250,7 +250,7 @@ class TrackerService:
                     data = json.loads(self.rfile.read(length))
                     if route == "/api/map":
                         action, x, y = data["action"], data["x"], data["y"]
-                        if action not in {"down", "move", "up", "in", "out", "fit"} or any(
+                        if action not in {"hover", "down", "move", "up", "in", "out", "fit"} or any(
                                 type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 10000 for v in (x, y)):
                             raise ValueError()
                         key = f"map/{action}/{x:.2f}/{y:.2f}"

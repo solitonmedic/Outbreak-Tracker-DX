@@ -16,9 +16,39 @@ const images = new Map(), imageFonts = new Map(), tinted = new Map();
 const sounds = new Map(), soundCounts = new Map();
 let audio = null, soundBaseline = false;
 let mapActive=false, mapMode=0, frameWidth=300, frameHeight=740;
+let latestFrame=null, presentedFrame=null, painting=false, animationStarted=false, lastFrameAt=0;
+let mapDescriptor=null, panPreview=null;
+const actorMotion=new Map();
+function actorPoint(track,now) {
+  const t=Math.max(0,Math.min(1,(now-track.at)/track.duration));
+  return {x:track.fromX+(track.x-track.fromX)*t,y:track.fromY+(track.y-track.fromY)*t};
+}
+function prepareMotion(frame) {
+  const now=performance.now(), duration=Math.max(80,Math.min(250,now-lastFrameAt||200));lastFrameAt=now;
+  const seen=new Set();mapDescriptor=null;
+  for(const c of frame.commands) {
+    if(c[0]==="mapBegin")mapDescriptor={x:c[1],y:c[2],w:c[3],h:c[4],panX:c[5],panY:c[6]};
+    if(c[0]!=="actorBegin")continue;
+    const [,id,x,y,continuity]=c,old=actorMotion.get(id);seen.add(id);
+    const from=old&&old.continuity===continuity?actorPoint(old,now):{x,y};
+    const near=Math.hypot(from.x-x,from.y-y)<Math.max(frame.width,frame.height)/2;
+    actorMotion.set(id,{x,y,fromX:near?from.x:x,fromY:near?from.y:y,at:now,duration,continuity});
+  }
+  for(const id of actorMotion.keys())if(!seen.has(id))actorMotion.delete(id);
+  if(panPreview?.releasedAt&&mapDescriptor&&Math.hypot(panPreview.x-mapDescriptor.panX,panPreview.y-mapDescriptor.panY)<1)panPreview=null;
+}
+async function animate(now) {
+  if(latestFrame&&!painting&&(mapActive||latestFrame!==presentedFrame)) {
+    painting=true;
+    const frame=latestFrame;
+    try{await render(frame,now);presentedFrame=frame;}catch(error){message.textContent=error.message;}
+    finally{painting=false;}
+  }
+  requestAnimationFrame(animate);
+}
 const soundStats = {played:0, missed:0};
 const groups = [
-  ["Views", false, [["f1","Help"],["f2","Item views"],["f3","Next room"],["l","Language"]]],
+  ["Views", false, [["home","Main tracker"],["f1","Help"],["f2","Item views"],["f3","Next room"],["l","Language"]]],
   ["Show", false, [["i","Room items"],["t","Timers"],["q","Puzzle hints"],["e","Enemy HP"],["f4","Enemy list"]]],
   ["Sound", false, [["m","SP radar sound: On"]]],
   ["Layout", false, [["v","Vertical"],["h","Horizontal"],["d","Default size"],["a","Auto size"]]],
@@ -41,7 +71,7 @@ for(const [title,segmented,keys] of groups) {
   for(const [key,label] of keys) {
     const button=document.createElement("button"); button.type="button"; button.textContent=label; button.title=key.toUpperCase();
     if(key==="m") { spSoundButton=button; button.setAttribute("aria-pressed","true"); }
-    button.addEventListener("click",()=>sendKey(key)); row.append(button);
+    button.addEventListener("click",()=>{void sendKey(key);if(key==="home")setSheet(false);}); row.append(button);
   }
   group.append(heading,row); controlsRoot.append(group);
 }
@@ -193,9 +223,9 @@ function updateInsets() {
   const top=immersive?36:0, bottom=immersive?12:0;
   document.documentElement.style.setProperty("--reserve-top",top+"px");
   document.documentElement.style.setProperty("--reserve-bottom",bottom+"px");
-  diagnostics.textContent="Page "+innerWidth+"x"+innerHeight+", screen "+screen.width+"x"+screen.height+", margins "+top+"/"+bottom+" px";
+  if(diagnostics)diagnostics.textContent="Page "+innerWidth+"x"+innerHeight+", screen "+screen.width+"x"+screen.height+", margins "+top+"/"+bottom+" px";
 }
-async function render(frame) {
+async function render(frame,now=performance.now()) {
   updateInsets();
   await Promise.all(frame.commands.filter(c=>c[0]==="image").map(c=>image(c[1])));
   const w=frame.width||300,h=frame.height||740;
@@ -216,6 +246,17 @@ async function render(frame) {
     if(op==="push"){ctx.save();depth++;}
     else if(op==="pop"){if(depth){ctx.restore();depth--;}}
     else if(op==="translate")ctx.translate(...a);
+    else if(op==="mapBegin"){
+      ctx.save();
+      if(panPreview?.releasedAt&&now-panPreview.releasedAt>1500)panPreview=null;
+      if(panPreview?.moved)ctx.translate(panPreview.x-a[4],panPreview.y-a[5]);
+    }
+    else if(op==="mapEnd")ctx.restore();
+    else if(op==="actorBegin"){
+      ctx.save();const track=actorMotion.get(a[0]);
+      if(track){const p=actorPoint(track,now);ctx.translate(p.x-a[1],p.y-a[2]);}
+    }
+    else if(op==="actorEnd")ctx.restore();
     else if(op==="scale")ctx.scale(...a);
     else if(op==="rotate")ctx.rotate(a[0]);
     else if(op==="lineWidth")ctx.lineWidth=a[0];
@@ -243,7 +284,9 @@ async function poll() {
     frameWidth=frame.width||300;frameHeight=frame.height||740;
     canvas.style.touchAction=mapActive?"none":"auto";
     updateSoundControl(frame.game?.spsoundenabled);
-    message.textContent=frame.state==="connected"?"":frame.message||(frame.state==="waiting"?"Waiting for game":frame.state);canvas.classList.toggle("stale",frame.state!=="connected");await render(frame);
+    message.textContent=frame.state==="connected"?"":frame.message||(frame.state==="waiting"?"Waiting for game":frame.state);canvas.classList.toggle("stale",frame.state!=="connected");
+    prepareMotion(frame);latestFrame=frame;
+    if(!animationStarted){animationStarted=true;requestAnimationFrame(animate);}
     playSounds(frame.sounds).catch(error=>{sounds.clear();soundStats.error=error.message||String(error);});
   }catch(error){message.textContent=error.message;canvas.classList.add("stale");}
   setTimeout(poll,200);
@@ -252,6 +295,7 @@ Promise.all([document.fonts.load("18px TrackerBold"),document.fonts.load("11px T
 
 // Local pointer positions are converted to the shared Lua view's logical pixels.
 const pointers=new Map();let pinchDistance=0, lastMove=0,lastTap=0, gestureMoved=false;
+let lastHover=0;
 let mapActions=Promise.resolve();
 function mapPoint(event) {
   const r=canvas.getBoundingClientRect();
@@ -269,12 +313,25 @@ canvas.addEventListener("pointerdown",event=>{
   if(!mapActive)return;
   event.preventDefault();canvas.setPointerCapture(event.pointerId);
   const point=mapPoint(event);pointers.set(event.pointerId,point);
-  if(pointers.size===1){gestureMoved=false;void mapAction("down",point);}
-  else {gestureMoved=true;void mapAction("up",point);pinchDistance=0;}
+  if(pointers.size===1){
+    gestureMoved=false;
+    const m=mapDescriptor;
+    panPreview=m&&point.x>=m.x&&point.x<m.x+m.w&&point.y>=m.y&&point.y<m.y+m.h?{start:point,anchorX:m.panX,anchorY:m.panY,x:m.panX,y:m.panY,moved:false}:null;
+    void mapAction("down",point);
+  }else {panPreview=null;gestureMoved=true;void mapAction("up",point);pinchDistance=0;}
 });
 canvas.addEventListener("pointermove",event=>{
-  if(!mapActive||!pointers.has(event.pointerId))return;
+  if(!mapActive)return;
+  if(!pointers.has(event.pointerId)){
+    if(performance.now()-lastHover>100){lastHover=performance.now();void mapAction("hover",mapPoint(event));}
+    return;
+  }
   const point=mapPoint(event);pointers.set(event.pointerId,point);
+  if(panPreview&&pointers.size===1){
+    const dx=point.x-panPreview.start.x,dy=point.y-panPreview.start.y;
+    panPreview.moved=panPreview.moved||Math.hypot(dx,dy)>3;
+    panPreview.x=panPreview.anchorX+dx;panPreview.y=panPreview.anchorY+dy;
+  }
   gestureMoved=true;
   if(pointers.size===2){
     const [a,b]=[...pointers.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);
@@ -288,6 +345,7 @@ function releasePointer(event){
   const point=mapPoint(event);
   if(pointers.size===1&&gestureMoved)void mapAction("move",point);
   pointers.delete(event.pointerId);pinchDistance=0;void mapAction("up",point);
+  if(panPreview)panPreview.releasedAt=performance.now();
   const now=performance.now();
   if(!gestureMoved&&now-lastTap<300)void mapAction("in",point);
   lastTap=gestureMoved?0:now;

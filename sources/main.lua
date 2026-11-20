@@ -31,6 +31,7 @@ require "SPlayerCard"
 require "language"
 local SPTracking = require "SPTracking"
 local MapView = require "MapView"
+local TrackerMenu = require "TrackerMenu"
 
 local InitResult = false
 local RetryTimer = 0
@@ -352,7 +353,7 @@ function love.draw()
 			}
 			MapView.setLetter = SPSetLetter()
 			MapView.hint = PuzzleSwitch == 1 and PuzzleHintsAvailable(s) and hints[s] or ""
-			if MapView.mode == 2 then MapView.draw(GameInfo, Players, Enemies, Items); return end
+			if MapView.mode == 2 then MapView.draw(GameInfo, Players, Enemies, Items);TrackerMenu.draw(scalex,scaley,true);return end
 		end
 		if Style==0 then
 			time_x = 0
@@ -1177,9 +1178,11 @@ function love.draw()
 		love.graphics.printf(_l("Hotkeys list"), 4, 64, 300, "left")
 	end
 	MapView.draw(GameInfo, Players, Enemies, Items)
+	TrackerMenu.draw(scalex,scaley,MapView.mode>0)
 end
 
 function love.update(dt)
+	TrackerPresentationTime=(TrackerPresentationTime or 0)+dt
 	if not InitResult or GameInfo.currentFile == 255 then
 		RetryTimer = RetryTimer + dt
 		if RetryTimer >= 5 then
@@ -1234,6 +1237,7 @@ function love.update(dt)
 				for i=1, 1 do
 					Items[i] = tracker.getItem(i)
 				end
+				if MapView.mode>0 and tracker.getMapItems then GameInfo.mapItems=tracker.getMapItems() end
 			end
 			if not(s == "") and PlayerList ==1 then
 				for i=1, 4 do
@@ -1273,6 +1277,8 @@ function love.update(dt)
 end
 
 function love.keypressed(key)
+	if not love.isDecky and (key=="tab" or (key=="escape" and TrackerMenu.open)) then TrackerMenu.open=not TrackerMenu.open;return end
+	if key=="home" then key="v" end
 	if key == "b" or key == "n" then
 		local mode = key == "b" and 1 or 2
 		if MapView.mode == mode then love.keypressed("v"); return end
@@ -1412,13 +1418,20 @@ local function mapPoint(x,y)
 	return x*scalex/w,y*scaley/h
 end
 function love.mousepressed(x,y,button)
+	local mx,my=mapPoint(x,y)
+	if TrackerMenu.pointer("down",mx,my,button) then return end
 	if button==1 then MapView.input("down",mapPoint(x,y)) end
 end
-function love.mousemoved(x,y) MapView.input("move",mapPoint(x,y)) end
+function love.mousemoved(x,y)
+	if TrackerMenu.open then return end
+	MapView.input("hover",mapPoint(x,y));MapView.input("move",mapPoint(x,y))
+end
 function love.mousereleased(x,y,button)
+	if TrackerMenu.open then return end
 	if button==1 then MapView.input("up",mapPoint(x,y)) end
 end
 function love.wheelmoved(_,dy)
+	if TrackerMenu.wheel(dy) then return end
 	local x,y=love.mouse.getPosition()
 	if dy~=0 then MapView.input(dy>0 and "in" or "out",mapPoint(x,y)) end
 end

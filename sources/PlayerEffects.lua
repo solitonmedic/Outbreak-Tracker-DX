@@ -4,6 +4,14 @@
 -- Safety: no memory, file, recording or game writes. Reusable UI helpers only.
 -- Run: player cards and maps call these helpers; check maps/check-presentation.lua.
 local E={}
+E.slotColors={{1,0,0},{115/255,178/255,249/255},{242/255,247/255,61/255},{101/255,218/255,80/255}}
+function E.timers(p)
+    return (p.antivirustime or 0)>0 or (p.antivirusgtime or 0)>0 or (p.herbtime or 0)>0 or (p.bleedtime or 0)>0
+end
+function E.badgeY(p,master)
+    if E.timers(p) then return master and 6 or 25 end
+    return master and 61 or 77
+end
 function E.health(p)
     if not p then return "normal" end
     local status=type(p.status)=="string" and p.status or ""

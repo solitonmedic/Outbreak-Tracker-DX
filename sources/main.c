@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <tlhelp32.h>
 #include <string.h>
+#include <stdlib.h>
 #include <DbgHelp.h>
 
 #include <lua.h>
@@ -1635,6 +1636,7 @@ static int LUpdate (lua_State* L)
 		Players[i].Power = GetPower(i);
 		Players[i].PositionX = GetPositionX(i);
 		Players[i].PositionY = GetPositionY(i);
+        Players[i].PositionHeight = info.CurrentFile == 2 ? GetForward(i, 0, F2_PositionHeight) : 0;
 		Players[i].ForwardX = GetForward(i, F1_ForwardX, F2_ForwardX);
 		Players[i].ForwardY = GetForward(i, F1_ForwardY, F2_ForwardY);
 		Players[i].RoomID = GetRoomID(i);
@@ -1871,6 +1873,12 @@ static int LGetPlayer (lua_State* L)
 			lua_pushnumber(L, Players[i].Virus);
 		lua_rawset(L, -3);
 
+        {
+            const char* baseline = Players[i].NameID < 8 ? GetCharacterPower(Players[i].NameID) : GetNPCPower(Players[i].NameID);
+            lua_pushstring(L, "basePower");
+            lua_pushnumber(L, baseline ? atof(baseline) / 100.0 : 1.0);
+            lua_rawset(L, -3);
+        }
 		lua_pushstring(L, "power");
 			lua_pushnumber(L, Players[i].Power);
 		lua_rawset(L, -3);
@@ -1894,6 +1902,15 @@ static int LGetPlayer (lua_State* L)
 		lua_pushstring(L, "positionY");
 			lua_pushnumber(L, Players[i].PositionY);
 		lua_rawset(L, -3);
+
+        if (info.CurrentFile == 2) {
+            lua_pushstring(L, "heightAvailable");
+            lua_pushboolean(L, true);
+            lua_rawset(L, -3);
+            lua_pushstring(L, "height");
+            lua_pushnumber(L, Players[i].PositionHeight);
+            lua_rawset(L, -3);
+        }
 
 		lua_pushstring(L, "forwardX");
 			lua_pushnumber(L, Players[i].ForwardX);
@@ -2207,6 +2224,19 @@ static int LGetItem2(lua_State* L)
 		lua_rawset(L, -3);
 		}
 	return 1;
+}
+
+/* Reusable map export from the already-refreshed Items array; no extra PINE
+   reads. Shared Lua remembers observations and selects scenario objects.
+   Run tracker.getMapItems(); check reader/check-reader.sh and map checks. */
+static int LGetMapItems(lua_State* L)
+{
+    lua_newtable(L);
+    for (int i = 0; i < 255; ++i) {
+        lua_pushnumber(L, i + 1);
+        CreateItemTable(Items[i]);
+    }
+    return 1;
 }
 
 static int LGetDoor(lua_State* L)
@@ -2611,6 +2641,7 @@ static const struct luaL_Reg library_functions [] = {
 	{"getEnemyList", LgetEnemyList},
 	{"getItem", LGetItem},
 	{"getItem2", LGetItem2},
+	{"getMapItems", LGetMapItems},
 	{"getDoor", LGetDoor},
 	{"getLockCounter", LGetLockCounter},
 	{"getRoomMaster", LGetRoomMaster},

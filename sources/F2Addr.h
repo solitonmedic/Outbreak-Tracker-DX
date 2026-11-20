@@ -14,6 +14,7 @@ const int F2_RoomPriorty = 0x007d7a90;
 
 const int F2_PositionX = 0x38;
 const int F2_PositionY = 0x40;
+const int F2_PositionHeight = 0x3C; // float vertical coordinate; F2 Addresses row 39
 const int F2_ForwardX = 0x70; // facing: map-X component of the forward axis
 const int F2_ForwardY = 0x50; // facing: map-Y component of the forward axis
 const int F2_RoomIDOffset = 0x1E2;
