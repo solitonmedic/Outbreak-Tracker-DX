@@ -8,7 +8,7 @@
 // M toggles SP radar sound in the shared UI; frame.game.spsoundenabled updates
 // the On/Off button (default On). Check: offline check-sp-sound-frames.py.
 // Map input: pointer drag, pinch, wheel, double-tap fit; bounded shared map actions.
-// Disc paths are sent to the Deck importer; disc contents never cross the browser.
+// Map artwork loads from the bundled assets; there is no disc selection or import.
 "use strict";
 const canvas = document.querySelector("#tracker"), ctx = canvas.getContext("2d");
 const message = document.querySelector("#message");
@@ -298,15 +298,3 @@ canvas.addEventListener("wheel",event=>{
   if(!mapActive)return;
   event.preventDefault();void mapAction(event.deltaY<0?"in":"out",mapPoint(event));
 },{passive:false});
-document.querySelector("#map-import").addEventListener("submit",async event=>{
-  event.preventDefault();
-  const button=document.querySelector("#import-button"),status=document.querySelector("#import-status");
-  button.disabled=true;status.textContent="Importing maps…";
-  try {
-    const response=await fetch("/api/map-import",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({path:document.querySelector("#disc-path").value}),signal:AbortSignal.timeout(100000)});
-    const data=await response.json();if(!response.ok)throw new Error(data.error||"Import failed");
-    status.textContent=data.message;if(mapMode!==2)await sendKey("n");setSheet(false);
-  }catch(error){status.textContent=error.message;}
-  finally{button.disabled=false;}
-});

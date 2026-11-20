@@ -7,8 +7,8 @@
 -- Safety: native reader performs reads only; no recording, game writes or disk frames.
 -- Run: launched by tracker_service.py from the installed plugin directory.
 -- Check: browser displays original cards; offline synthetic checks use a fake tracker.
--- Map additions: OUTBREAK_MAP_CACHE supplies the private art cache; map/action/x/y
--- stdin controls are validated by the service. Scissor commands clip the shared map.
+-- Map additions: bundled assets provide the art; map/action/x/y stdin controls
+-- are validated by the service. Scissor commands clip the shared map.
 package.path = "shared/?.lua;" .. package.path
 package.cpath = "bin/?.so;" .. package.cpath
 local metrics = dofile("fontmetrics.lua")

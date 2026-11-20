@@ -19,7 +19,3 @@ button:focus-visible{outline:3px solid #88c6ff}button:active{background:#496680}
 .row.segmented{grid-template-columns:repeat(auto-fit,minmax(52px,1fr))}
 #sheet p{margin:8px 0 0;font-size:.8rem;color:#bac3cc}
 #sheet #diagnostics{font-size:.7rem;color:#7f8a96}
-/* Map import controls remain comfortably tappable on phone displays. */
-#map-import { margin-top: 20px; }
-#disc-path { box-sizing: border-box; width: 100%; min-height: 44px; margin: 8px 0; padding: 8px; color: #fff; background: #0c1724; border: 1px solid #506b88; border-radius: 4px; font: inherit; }
-#import-button { min-height: 44px; }

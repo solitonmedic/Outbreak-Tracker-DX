@@ -69,11 +69,9 @@ card view. Drag to pan, scroll to zoom, use Fit to see the floor, and use the fl
 row to select another floor. Clicking a player follows that player. Manual pan
 or floor selection stops follow.
 
-Import maps by dropping your own Japanese File 1 or File 2 extracted disc folder,
-`NETBIO00.DAT`, or ISO onto the window. The tracker reads only the five main
-scenarios' map data and caches it in the LÖVE save directory under
-`outbreak-tracker/maps`. Game map art is not included in the application.
-The importer needs no external extraction program or Python installation.
+The sampled Japanese File 1 and File 2 map assets are included in the application.
+Maps load automatically for the five main scenarios in each game; there is no disc
+selection, import, download or user-cache setup step.
 
 Players use red, blue, yellow and green by slot; YOU identifies the local gameplay
 record. A dot marks a usable position. A portrait in a ring marks only the room,

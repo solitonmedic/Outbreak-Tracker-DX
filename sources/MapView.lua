@@ -1,28 +1,18 @@
 -- Purpose: reusable shared desktop/phone map views, follow controls and room tint.
 -- Runtime/location: sources/MapView.lua; LÖVE 11.5 or the Decky Lua drawing bridge.
--- Inputs: existing GameInfo/Players, MapData disc cache, pointer/keyboard actions.
+-- Inputs: existing GameInfo/Players, bundled map assets, pointer/keyboard actions.
 -- Outputs: map drawing, compact cards and UI-only GameInfo.mapview state.
--- Safety: no new memory reads; disc import writes only the user's local cache.
--- Run: B = cards beside map, N = map above cards; drag a Japanese disc/ISO to import.
+-- Safety: read-only packaged assets and existing state; no disc or user-cache access.
+-- Run: B = cards beside map, N = map above cards; assets load automatically.
 -- Check: luajit tools-n-shit/tracker-tests/maps/check-runtime-maps.lua .
 local Data=require "MapData"
 local V={mode=0,follow=true,target=nil,floor=1,zoom=1,panX=0,panY=0,hits={},cacheKey=""}
 V.colors={{1,0,0},{115/255,178/255,249/255},{242/255,247/255,61/255},{101/255,218/255,80/255}}
 local function read(path)
     if love.filesystem then return love.filesystem.read(path) end
-    local f=io.open((os.getenv("OUTBREAK_MAP_CACHE") or ".").."/"..path,"rb")
+    local f=io.open(path,"rb")
     if not f then return end
-    local s=f:read("*a"); f:close(); return s
-end
-function V.import(path)
-    local ok,result=pcall(Data.import,path,function(name,bytes)
-        assert(love.filesystem,"Use the phone import form")
-        assert(love.filesystem.createDirectory(name:match("^(.*)/")))
-        assert(love.filesystem.write(name..".tmp",bytes))
-        assert(os.rename(love.filesystem.getSaveDirectory().."/"..name..".tmp",love.filesystem.getSaveDirectory().."/"..name))
-    end)
-    V.cacheKey=""; V.notice=ok and ("Imported Japanese File "..result.." maps") or tostring(result)
-    return ok,V.notice
+    local bytes=f:read("*a"); f:close(); return bytes
 end
 function V.reset()
     V.zoom,V.panX,V.panY=1,0,0
@@ -83,13 +73,12 @@ function V.marker(map,floor,player)
 end
 function V.update(game,players)
     local key=tostring(game.currentFile)..":"..tostring(game.scenario)..":"..tostring(game.release)
-    local index=read("maps/jp"..tostring(game.currentFile).."/index") or ""
-    if V.cacheKey~=key..index then
-        V.cacheKey=key..index; V.map=nil; V.error=nil; V.floor=1; V.target=nil; V.follow=true; V.reset()
+    if V.cacheKey~=key then
+        V.cacheKey=key; V.map=nil; V.error=nil; V.floor=1; V.target=nil; V.follow=true; V.reset()
         if game.release=="us" then V.error="U.S. maps are not enabled yet"
         else
             local ok,map,message=pcall(Data.load,game.currentFile,game.scenario,read)
-            if ok then V.map,V.error=map,message else V.error="Map cache is damaged; import the disc again" end
+            if ok then V.map,V.error=map,message else V.error="Map data is damaged in this build" end
             if V.map then
                 local loaded,err=pcall(function()
                     V.fill=love.graphics.newImage(V.map.path.."-fill.png")
@@ -99,7 +88,7 @@ function V.update(game,players)
                         if r.w>0 and r.h>0 then V.quads[i]=love.graphics.newQuad(r.x,r.y,r.w,r.h,1024,V.map.height) end
                     end
                 end)
-                if not loaded then V.map=nil; V.error="Map images are missing; import the disc again" end
+                if not loaded then V.map=nil; V.error="Map artwork is missing from this build" end
             end
         end
     end
@@ -212,10 +201,9 @@ function V.draw(game,players)
         g.pop(); g.setScissor()
     else
         text(V.error or "Open a Japanese scenario to use the map",vp.x+12,vp.y+20,vp.w-24)
-        text("Drag your disc folder, NETBIO00.DAT or ISO onto this window. On a phone, use Import maps in Controls.",vp.x+12,vp.y+70,vp.w-24)
     end
     local y=vp.y+vp.h+6
-    text(V.notice or "Drag to pan / scroll to zoom. Ring + portrait = room only.",x+8,y,w-16)
+    text("Drag to pan / scroll to zoom. Ring + portrait = room only.",x+8,y,w-16)
     y=y+32
     for i=1,4 do
         local p=players[i]

@@ -142,18 +142,16 @@ replaced with a setup-status panel running with normal plugin privileges.
 
 The [script index](scripts/README.md) explains build and synchronization entrypoints.
 
-## Map views and disc import
+## Map views
 
 In phone Controls, choose **Map + compact cards** or **Cards beside map** (keyboard
 **N** or **B**). Select a player to follow them, or use **F**. Drag to pan, pinch or
 scroll to zoom, double-tap to fit, and switch floors from the floor row. The menu
 button stays visible while using the map. All connected pages share these controls.
 
-Under **Import maps**, enter the path on your Deck to your Japanese File 1 or File 2
-ISO, extracted disc folder, or `NETBIO00.DAT`. This reads the disc locally and caches
-its five main scenarios under `~/.local/share/outbreak-tracker/maps`. No ISO or game
-art is uploaded from the phone or included in the plugin. Import each game once;
-the cache survives reader and plugin restarts. No external extraction tools are needed.
+The sampled Japanese File 1 and File 2 map assets are bundled with the plugin.
+They load automatically for the five main scenarios in each game. No disc path,
+import, upload, download or user-cache setup is required.
 
 Slot colours are P1 red, P2 blue, P3 yellow and P4 green. A dot marks a usable world
 position; a portrait in a ring indicates room-only placement, including ambiguous

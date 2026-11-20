@@ -3,8 +3,8 @@
 -- Location/runtime: sources/main.lua; LÖVE 11.5/LuaJIT or the Decky drawing bridge.
 -- Inputs: reader state, packaged assets and keyboard/phone controls.
 -- Outputs: tracker drawing/audio; GameInfo.spsoundenabled reports the sound toggle.
--- B/N add map layouts; mouse/drop callbacks feed MapView and its private disc cache.
--- Safety: reader access is read-only; disc import writes only the map cache, no
+-- B/N add map layouts; mouse callbacks control the bundled map view.
+-- Safety: packaged map assets and reader access are read-only; no disc, cache,
 -- recording, workbook or game writes. Existing UI toggles remain session-only.
 -- Run from repo-merged/: ./macos/run.sh, or the installed Decky reader. Check:
 -- luajit tools-n-shit/tracker-tests/sp/check-sp-sound.lua . (synthetic state only).
@@ -112,7 +112,6 @@ local function SPSoundText()
 end
 
 function love.load(args)
-	if love.filesystem then love.filesystem.setIdentity("outbreak-tracker") end
 	LoadAssets()
 	InitResult = tracker.init()
 	for i=1, 20 do
@@ -1406,5 +1405,3 @@ function love.wheelmoved(_,dy)
 	local x,y=love.mouse.getPosition()
 	if dy~=0 then MapView.input(dy>0 and "in" or "out",mapPoint(x,y)) end
 end
-function love.directorydropped(path) MapView.import(path) end
-function love.filedropped(file) MapView.import(file:getFilename()) end
