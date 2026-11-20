@@ -351,7 +351,7 @@ function love.draw()
 			}
 			MapView.setLetter = SPSetLetter()
 			MapView.hint = PuzzleSwitch == 1 and PuzzleHintsAvailable(s) and hints[s] or ""
-			if MapView.mode == 2 then MapView.draw(GameInfo, Players); return end
+			if MapView.mode == 2 then MapView.draw(GameInfo, Players, Enemies); return end
 		end
 		if Style==0 then
 			time_x = 0
@@ -1175,7 +1175,7 @@ function love.draw()
 		love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
 		love.graphics.printf(_l("Hotkeys list"), 4, 64, 300, "left")
 	end
-	MapView.draw(GameInfo, Players)
+	MapView.draw(GameInfo, Players, Enemies)
 end
 
 function love.update(dt)
@@ -1238,7 +1238,9 @@ function love.update(dt)
 					Players[i] = tracker.getPlayer(i)
 				end
 			end
-			if not(s == "") and (f > 0) and EnemyHPSwitch ==1 then
+			-- Map views draw enemy markers, so they need the enemy slots even when
+			-- the enemy HP list is switched off.
+			if not(s == "") and (f > 0) and (EnemyHPSwitch ==1 or MapView.mode > 0) then
 				for i=1, 12 do
 					Enemies[i] = tracker.getEnemy(i)
 				end

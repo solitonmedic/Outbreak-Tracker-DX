@@ -71,11 +71,26 @@ function V.marker(map,floor,player)
         if r.id==player.roomID then return p.x+r.w/2,p.y+r.h/2,true end
     end
 end
+-- Enemy slots share the player layout (X/Z +0x38/+0x40, room +0x1E2). Only
+-- enabled, in-game, living slots hold a live position; the others keep stale
+-- values from earlier rooms, so they are never drawn. Positions are shown as
+-- read, even just outside the drawn room (doorways, the Desperate Times gate).
+function V.enemyMarker(map,floor,e)
+    if not (e and e.enabled and e.inGame and finite(e.positionX) and finite(e.positionY)) then return end
+    local hp,maxHP=e.HP or 0,e.maxHP or 0
+    if maxHP<=0 or maxHP>=60000 or hp<=0 or hp>maxHP then return end
+    local f=map.floors[floor]
+    for _,p in ipairs(f.places) do
+        if map.rooms[p.record].id==e.roomID then return Data.position(f,e.positionX,e.positionY) end
+    end
+end
 function V.update(game,players)
     local key=tostring(game.currentFile)..":"..tostring(game.scenario)..":"..tostring(game.release)
     if V.cacheKey~=key then
         V.cacheKey=key; V.map=nil; V.error=nil; V.floor=1; V.target=nil; V.follow=true; V.reset()
-        if game.release=="us" then V.error="U.S. maps are not enabled yet"
+        -- U.S. File 1 map files (mapNNNe.dat) equal the Japanese ones in rooms,
+        -- floors and placements (2026-11-20), so the bundled jp1 maps serve both.
+        if game.release=="us" and game.currentFile~=1 then V.error="U.S. maps are not enabled yet"
         else
             local ok,map,message=pcall(Data.load,game.currentFile,game.scenario,read)
             if ok then V.map,V.error=map,message else V.error="Map data is damaged in this build" end
@@ -293,7 +308,7 @@ local function scenario(l,game)
         end
     end
 end
-local function drawMap(l,game,players)
+local function drawMap(l,game,players,enemies)
     local g=love.graphics;local vp=l.viewport;local f=V.map and V.map.floors[V.floor]
     V.viewport=vp
     rect(vp,{0,0,0,1})
@@ -329,6 +344,17 @@ local function drawMap(l,game,players)
     g.pop()
     -- Scanlines and slot-coloured full-viewport crosshair are in the board.
     for y=vp.y,vp.y+vp.h,3 do rect({x=vp.x,y=y,w=vp.w,h=1},{0,0,0,.22}) end
+    -- Enemies: small white diamonds with a dark edge, under the player markers.
+    V.enemiesDrawn=0
+    for _,e in ipairs(enemies or {}) do
+        local ex,ey=V.enemyMarker(V.map,V.floor,e)
+        if ex then
+            local x,y=ox+(ex-cx)*scale,oy+(ey-cy)*scale
+            g.setColor(0,0,0,.85);g.polygon("fill",{x,y-7,x+7,y,x,y+7,x-7,y})
+            g.setColor(1,1,1,1);g.polygon("fill",{x,y-5,x+5,y,x,y+5,x-5,y})
+            V.enemiesDrawn=V.enemiesDrawn+1
+        end
+    end
     for i=1,4 do
         local px,py,fallback=V.marker(V.map,V.floor,players[i])
         if px then
@@ -356,7 +382,7 @@ local function drawMap(l,game,players)
         rect(chip);gasTimer(game,l.gasChipContent or chip)
     end
 end
-function V.draw(game,players)
+function V.draw(game,players,enemies)
     if V.mode==0 then return end
     local g=love.graphics
     local key=V.mode==1 and "wide" or (love.isDecky and "phone" or "vertical")
@@ -406,7 +432,7 @@ function V.draw(game,players)
             end)
         end
     end
-    drawMap(l,game,players)
+    drawMap(l,game,players,enemies)
     local function control(box,labelBox,label,action,color)
         rect(box,color or {.35,.35,.38,.85});text(label,labelBox,color and {0,0,0,1} or white);hit(box,action)
     end
