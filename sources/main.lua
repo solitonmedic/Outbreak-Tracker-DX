@@ -1,5 +1,12 @@
 local tracker = require "luaoutbreaktracker"
 
+-- Lets the player cards read Alyssa's lock-pick counter for the hint spot
+-- they matched. Returns nil when the reader has no lock data.
+function ReadLockCounter(playerId, spotX, spotY, isContainer)
+	if tracker.getLockCounter == nil then return nil end
+	return tracker.getLockCounter(playerId, spotX, spotY, isContainer)
+end
+
 require "assets"
 require "helpers"
 require "ItemIcon"
