@@ -294,6 +294,8 @@ local function icon(player,x,y,size)
     sprite("icon"..tostring(player.type),{x=x,y=y,w=size,h=size},nil,tint)
 end
 local function shortFloor(name)
+    if name=="Area near the zoo" then return "GF" end
+    if name=="Raccoon City Zoo" then return "Zoo" end
     if name:find("ROOFTOP") or name=="Rooftop" then return "RF" end
     if name=="Police station basement" then return "B1" end
     return name:match("([B]?%d+F)$") or name:gsub("Area ","A")
@@ -403,8 +405,12 @@ local function scenario(l,game)
     local clockWidth=math.min(222,b.w*.68)
     local sp=SP.forMap(game.spTracking,V.players and V.players[V.you or 0])
     clock(game,{x=b.x,y=b.y,w=clockWidth,h=22},sp)
-    local itemset=tostring((game.itemrandom or 0)+1).."/"..tostring(math.floor((game.itemrandom2 or 0)/10)+1)
-    text("ITEM "..itemset.."   SP "..tostring(V.setLetter or "—"),{x=b.x+clockWidth+4,y=b.y+12,w=b.w-clockWidth-4,size=11,fit=true,align="right"},yellow)
+    local setsX=b.x+clockWidth+4
+    local setsWidth=b.w-clockWidth-4
+    text("ITEM",{x=setsX,y=b.y+12,w=27,size=10},yellow)
+    local itemNumbers=tostring((game.itemrandom or 0)+1).."\n"..tostring(math.floor((game.itemrandom2 or 0)/10)+1)
+    text(itemNumbers,{x=setsX+29,y=b.y+1,w=23,size=14,align="center"},yellow)
+    text("SP "..tostring(V.setLetter or "—"),{x=setsX+57,y=b.y+12,w=setsWidth-57,size=11,fit=true,align="right"},yellow)
     local lines={}
     if game.scenario=="desperate times" then
         local ft=game.fighttime2==65535 and game.fighttime or game.fighttime2
@@ -624,17 +630,19 @@ function V.draw(game,players,enemies,items)
     plate(l.floorFill,l.floorFrame);plate(l.roomFill,l.roomFrame,"slot bar")
     local f=V.map and V.map.floors[V.floor]
     local title=f and f.name or "MAP"
-    if game.scenario=="desperate times" and f then title="R.P.D. "..shortFloor(f.name) end
+    if game.scenario=="desperate times" and f then title="R.P.D. "..shortFloor(f.name)
+    elseif game.scenario=="wild things" and f then title=shortFloor(f.name) end
     text(title,l.floorText,yellow)
     local p=players[V.target or 0]
     text(p and GetRoomName(game.scenario,p.roomID) or "",l.roomText)
     local groups=V.floorGroups();local selected=1
     for i,group in ipairs(groups) do if contains(group.indices,V.floor) then selected=i end end
-    local count=math.min(5,#groups)
-    V.tabCount=count
     local left=V.mode==1 and 300 or 0
     local stripWidth=V.mode==1 and 460 or l.width
-    V.tabStrip={x=left,y=l.tabs[1].y-4,w=stripWidth,h=key=="phone" and 36 or 26}
+    -- Two rows and a minimum cell width keep four portraits plus gas readable.
+    local count=math.min(5,#groups,math.max(1,math.floor(stripWidth/110)))
+    V.tabCount=count
+    V.tabStrip={x=left,y=l.tabs[1].y-4,w=stripWidth,h=42}
     local start=math.max(1,math.min(V.tabOffset or 1,math.max(1,#groups-count+1)))
     if not V.tabsManual then
         if selected<start then start=selected elseif selected>=start+count then start=selected-count+1 end
@@ -643,7 +651,7 @@ function V.draw(game,players,enemies,items)
     local tabWidth=stripWidth/math.max(1,count)
     for i=1,count do
         local group=groups[start+i-1]
-        local b={x=left+(i-1)*tabWidth+5,y=l.tabs[1].y,w=tabWidth-10,h=V.tabStrip.h}
+        local b={x=left+(i-1)*tabWidth+4,y=V.tabStrip.y,w=tabWidth-8,h=V.tabStrip.h}
         local occupants={};local hasGas=false;local danger=false
         for id=1,4 do
             local choices=V.map and V.candidates(V.map,players[id]) or {}
@@ -655,19 +663,24 @@ function V.draw(game,players,enemies,items)
                 end
             end
         end
-        if contains(group.indices,V.floor) then sprite("title bar",{x=b.x-3,y=b.y-4,w=tabWidth-3,h=V.tabStrip.h}) end
-        if danger then rect({x=b.x-3,y=b.y-4,w=tabWidth-3,h=V.tabStrip.h},{1,0,0,.15+.45*Effects.pulse(V.elapsed)}) end
-        text(group.label,{x=b.x,y=b.y,w=27,size=key=="phone" and 15 or 12,fit=true},contains(group.indices,V.floor) and yellow or muted)
+        local selectedFloor=contains(group.indices,V.floor)
+        rect(b,selectedFloor and {.08,.13,.25,.95} or {.025,.045,.085,.85})
+        if danger then rect(b,{1,0,0,.15+.45*Effects.pulse(V.elapsed)}) end
+        g.setLineWidth(1);rect(b,selectedFloor and {.4,.6,1,1} or {.18,.28,.48,1},"line")
+        text(group.label,{x=b.x+4,y=b.y+1,w=b.w-8,size=key=="phone" and 15 or 12,fit=true,align="center"},selectedFloor and yellow or muted)
         for _,index in ipairs(group.indices) do
             for _,place in ipairs(V.map.floors[index].places) do
                 if V.gasRooms[V.map.rooms[place.record].id] then hasGas=true end
             end
         end
-        local size=math.min(key=="phone" and 24 or 18,math.max(6,(tabWidth-34)/math.max(1,#occupants+(hasGas and 1 or 0))))
-        local xx=b.x+28
-        for _,id in ipairs(occupants) do icon(players[id],xx,b.y-2,size);xx=xx+size end
-        if hasGas then sprite("2/11511",{x=xx,y=b.y-2,w=size,h=size},ItemIcons) end
-        hit({x=left+(i-1)*tabWidth,y=b.y-4,w=tabWidth,h=V.tabStrip.h},function()
+        local number=#occupants+(hasGas and 1 or 0)
+        local gap=3
+        local size=math.min(key=="phone" and 24 or 18,(b.w-8-math.max(0,number-1)*gap)/math.max(1,number))
+        local rowWidth=number*size+math.max(0,number-1)*gap
+        local xx=b.x+(b.w-rowWidth)/2
+        for _,id in ipairs(occupants) do icon(players[id],xx,b.y+16,size);xx=xx+size+gap end
+        if hasGas then sprite("2/11511",{x=xx,y=b.y+16,w=size,h=size},ItemIcons) end
+        hit({x=left+(i-1)*tabWidth,y=b.y,w=tabWidth,h=V.tabStrip.h},function()
             V.floor=group.indices[1];V.follow=false;V.tabsManual=false;V.reset()
         end)
     end

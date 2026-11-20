@@ -142,3 +142,9 @@ when following another player. Existing provider glow is retained. Native
 room-only SP data derives direction from already-exported item positions and
 player facing; unavailable direction remains hidden. The row keeps a fixed
 height during dropped samples. English room labels use “Drawing Room”.
+
+Map10 presentation: the two legacy ITEM values are stacked vertically. Floor
+buttons separate labels from portraits, with wider cells and scrolling when
+needed. Wild Things uses GF for the outside area and Zoo for the interior,
+including the map heading and compact-card floor label. The map9 SP radar remains
+beside the clock and stays relative to YOU. These UI changes add no memory reads.

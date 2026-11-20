@@ -11,6 +11,9 @@ end
 local function build(shift)
 local layouts=clone(require "MapLayout")
 for key,l in pairs(layouts) do
+    -- Labels and portraits occupy separate rows above the map.
+    l.viewport.y=l.viewport.y+20
+    l.viewport.h=l.viewport.h-20
     if l.cards then
         l.viewport.h=l.viewport.h-shift
         for _,name in ipairs{"legendFill","legendFrame","clock","itemset","plus","plusText","minus","minusText","fit","fitText","follow","followText"} do
