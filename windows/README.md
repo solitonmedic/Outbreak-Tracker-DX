@@ -64,6 +64,9 @@ The sampled Japanese File 1 and File 2 map assets are included in the applicatio
 Maps load automatically for the five main scenarios in each game; there is no disc
 selection, import, download or user-cache setup step.
 
+Fitted floors use Evil Resource artwork with blue walls, yellow doors and room
+tints. Floors without a reliable fit retain the game's artwork.
+
 Players use red, blue, yellow and green by slot; YOU identifies the local gameplay
 record. A dot marks a usable position. A portrait in a ring marks only the room,
 including rooms spanning multiple height bands. Select the desired floor manually

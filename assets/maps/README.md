@@ -37,13 +37,14 @@ These region records are transcribed from the source page's HTML image maps.
 
 ## Integration status
 
-These assets prepare [#10](https://github.com/solitonmedic/Outbreak-Tracker-DX/issues/10)
-and [#16](https://github.com/solitonmedic/Outbreak-Tracker-DX/issues/16). They are
-not connected to the tracker renderer yet. Keep the original GIFs as provenance
-if the renderer needs a lossless format conversion later.
+The shared map views use recoloured PNGs under `er/` on fitted floors, with blue
+walls, yellow doors and transparent room interiors. `sources/MapER.lua` holds
+the generated room-ID crosswalk, room outlines and per-layer conversions from
+the game's map coordinates. Fits use matching room names and room bounds;
+they have been checked offline and still need in-game comparison. Floors without
+a reliable fit retain the bundled game map artwork. The original GIFs and this
+manifest remain the source provenance, including per-map URLs and permission.
 
-Room coordinates use the original image's pixels. Source location IDs are
-Evil Resource identifiers, not game room IDs. An explicit room-ID crosswalk and
-validated game-coordinate-to-image transforms are still needed. No calibration,
-item-presence information, navigation graph, extra-mode coverage or new game
-release support is implied by this download.
+Source location IDs identify Evil Resource locations. Runtime markers continue
+to use the game's room IDs and coordinate data. These assets do not establish
+item presence, navigation paths, extra-mode coverage or additional release support.
