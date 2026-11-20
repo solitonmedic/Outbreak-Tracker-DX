@@ -65,7 +65,8 @@ Maps load automatically for the five main scenarios in each game; there is no di
 selection, import, download or user-cache setup step.
 
 Fitted floors use Evil Resource artwork with blue walls, yellow doors and room
-tints. Floors without a reliable fit retain the game's artwork.
+tints. Your room is red; other occupied rooms use a lighter blue. Gas rooms
+pulse with a yellow glow. Floors without a reliable fit retain the game's artwork.
 
 Players use red, blue, yellow and green by slot; YOU identifies the local gameplay
 record. A dot marks a usable position. A portrait in a ring marks only the room,

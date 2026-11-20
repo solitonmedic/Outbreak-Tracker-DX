@@ -3,7 +3,8 @@
 -- Location/runtime: sources/main.lua; LÖVE 11.5/LuaJIT or the Decky drawing bridge.
 -- Inputs: reader state, packaged assets and keyboard/phone controls.
 -- Outputs: tracker drawing/audio; GameInfo.spsoundenabled reports the sound toggle.
--- B/N add map layouts; mouse callbacks control the bundled map view.
+-- B/N add map layouts; mouse callbacks control the bundled map view, and update
+-- deltas drive the Desperate Times gas-room glow without changing game state.
 -- Safety: packaged map assets and reader access are read-only; no disc, cache,
 -- recording, workbook or game writes. Existing UI toggles remain session-only.
 -- Run from repo-merged/: ./macos/run.sh, or the installed Decky reader. Check:
@@ -1268,7 +1269,7 @@ function love.update(dt)
 			end
 		end
 	end
-	MapView.update(GameInfo, Players)
+	MapView.update(GameInfo, Players, dt)
 end
 
 function love.keypressed(key)

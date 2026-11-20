@@ -1,6 +1,6 @@
 -- Purpose: reusable shared desktop/phone map views, follow controls and room tint.
 -- Runtime/location: sources/MapView.lua; LÖVE 11.5 or the Decky Lua drawing bridge.
--- Inputs: existing GameInfo/Players, bundled map assets, pointer/keyboard actions.
+-- Inputs: existing GameInfo/Players, update delta, bundled assets and UI actions.
 -- Outputs: map drawing, compact cards and UI-only GameInfo.mapview state.
 -- Safety: read-only packaged assets and existing state; no disc or user-cache access.
 -- Run: B = cards beside map, N = map above cards; assets load automatically.
@@ -105,7 +105,8 @@ function V.enemyMarker(map,floor,e)
         if map.rooms[p.record].id==e.roomID then return Data.position(f,e.positionX,e.positionY) end
     end
 end
-function V.update(game,players)
+function V.update(game,players,dt)
+    V.elapsed=(V.elapsed or 0)+(dt or 0)
     local key=tostring(game.currentFile)..":"..tostring(game.scenario)..":"..tostring(game.release)
     if V.cacheKey~=key then
         V.cacheKey=key; V.map=nil; V.er=nil; V.error=nil; V.floor=1; V.target=nil; V.follow=true; V.reset()
@@ -423,15 +424,20 @@ local function drawMap(l,game,players,enemies,items)
     if V.mode==1 and l.art and V.zoom==1 and V.follow then ox=vp.x+2+(f.maxX-f.minX)*scale/2 end
     g.push();g.translate(ox,oy);g.scale(scale);g.translate(-cx,-cy)
     local layers=V.er and V.er[V.floor]
+    local gasOutlines={}
+    local pulse=.5+.5*math.sin((V.elapsed or 0)*math.pi)
     V.erDrawn=0
-    -- Room tint: occupied rooms in the player's colour, gassed rooms yellow.
+    -- Room tint: YOU's room red, other occupied rooms light blue, gas yellow.
     -- With Evil Resource layers the tint follows their room outline.
     for _,p in ipairs(f.places) do
         local r=V.map.rooms[p.record];local color
-        if V.gasRooms[r.id] then color={1,.85,0,.38} end
-        for i=1,4 do
-            if active(players[i]) and players[i].roomID==r.id then
-                local c=V.colors[i];color=color or {c[1],c[2],c[3],.25}
+        if V.gasRooms[r.id] then color={1,.85,0,.28+.18*pulse}
+        elseif active(players[V.you or 0]) and players[V.you].roomID==r.id then color={1,0,0,.25}
+        else
+            for i=1,4 do
+                if active(players[i]) and players[i].roomID==r.id then
+                    color={115/255,178/255,249/255,.25};break
+                end
             end
         end
         if color then
@@ -440,6 +446,7 @@ local function drawMap(l,game,players,enemies,items)
                 for _,poly in ipairs(layer.rooms[r.id] or {}) do
                     local pts={}
                     for k=1,#poly,2 do pts[k]=(poly[k]-layer.tx)/layer.sx;pts[k+1]=(poly[k+1]-layer.ty)/layer.sy end
+                    if V.gasRooms[r.id] then gasOutlines[#gasOutlines+1]=pts end
                     g.setColor(unpack(color))
                     for _,t in ipairs(triangulate(pts)) do g.polygon("fill",t) end
                     drawn=true
@@ -471,6 +478,14 @@ local function drawMap(l,game,players,enemies,items)
             if V.quads[p.record] then g.setColor(43/255,116/255,211/255,1);g.draw(V.walls,V.quads[p.record],p.x,p.y) end
         end
     end
+    -- Layer soft yellow outlines behind a bright edge; widths stay constant
+    -- on screen as the map zooms. The room fill and halo pulse together.
+    for _,pts in ipairs(gasOutlines) do
+        g.setLineWidth(8/scale);g.setColor(1,.85,0,.08+.08*pulse);g.polygon("line",pts)
+        g.setLineWidth(4/scale);g.setColor(1,.85,0,.16+.12*pulse);g.polygon("line",pts)
+        g.setLineWidth(1.25/scale);g.setColor(1,1,.35,.7+.3*pulse);g.polygon("line",pts)
+    end
+    g.setLineWidth(1)
     g.pop()
     -- Scanlines and slot-coloured full-viewport crosshair are in the board.
     for y=vp.y,vp.y+vp.h,3 do rect({x=vp.x,y=y,w=vp.w,h=1},{0,0,0,.22}) end

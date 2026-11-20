@@ -155,7 +155,8 @@ maps also serve the U.S. release. No disc path,
 import, upload, download or user-cache setup is required.
 
 Fitted floors use Evil Resource artwork with blue walls, yellow doors and room
-tints. Floors without a reliable fit retain the game's artwork.
+tints. Your room is red; other occupied rooms use a lighter blue. Gas rooms
+pulse with a yellow glow. Floors without a reliable fit retain the game's artwork.
 
 The wide layout is 760×740, desktop vertical is 300×740 and the phone layout is
 390×844, following the tracker-style design. Floor rows scroll by swipe or wheel
