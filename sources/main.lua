@@ -1269,7 +1269,7 @@ function love.update(dt)
 			end
 		end
 	end
-	MapView.update(GameInfo, Players, dt)
+	MapView.update(GameInfo, Players, dt, Items)
 end
 
 function love.keypressed(key)

@@ -6,6 +6,8 @@
 -- Run: B = cards beside map, N = map above cards; assets load automatically.
 -- Check: luajit tools-n-shit/tracker-tests/maps/check-runtime-maps.lua .
 local Data=require "MapData"
+local Session=require "MapSession"
+local Effects=require "PlayerEffects"
 local okER,ER=pcall(require,"MapER")
 if not okER then ER={} end
 local V={mode=0,follow=true,target=nil,floor=1,zoom=1,panX=0,panY=0,hits={},cacheKey=""}
@@ -40,7 +42,9 @@ function V.gas(game)
     end
     return rooms
 end
-local function active(p) return p and p.enabled and p.inGame and (p.roomID or 0)>0 end
+-- Remote players remain enabled and keep current coordinates while inGame=0
+-- outside the loaded room. Enemy slots retain their separate inGame guard.
+local function active(p) return p and p.enabled and (p.roomID or 0)>0 end
 function V.candidates(map,player)
     local matches={}
     if not active(player) then return matches end
@@ -105,7 +109,7 @@ function V.enemyMarker(map,floor,e)
         if map.rooms[p.record].id==e.roomID then return Data.position(f,e.positionX,e.positionY) end
     end
 end
-function V.update(game,players,dt)
+function V.update(game,players,dt,items)
     V.elapsed=(V.elapsed or 0)+(dt or 0)
     local key=tostring(game.currentFile)..":"..tostring(game.scenario)..":"..tostring(game.release)
     if V.cacheKey~=key then
@@ -147,8 +151,9 @@ function V.update(game,players,dt)
     if V.map and V.follow and V.target then
         local choices=V.candidates(V.map,players[V.target])
         local selected=contains(choices,V.floor) and V.floor or choices[1]
-        if selected and V.floor~=selected then V.floor=selected; V.reset() end
+        if selected and V.floor~=selected then V.floor=selected;V.panX=0;V.panY=0;V.frozenCenter=nil end
     end
+    Session.update(game,players,V.you,items,V.floor)
     V.gasRooms=V.gas(game)
     game.mapview={mode=V.mode,following=V.follow,floor=V.floor,target=V.target or 0,available=V.map~=nil}
 end
@@ -242,7 +247,7 @@ end
 -- Following a player jumps straight to their floor, so a tap on a card or
 -- portrait shows where they are at once instead of on the next update.
 local function follow(i)
-    V.target=i; V.follow=true; V.reset()
+    V.target=i; V.follow=true; V.panX=0;V.panY=0;V.frozenCenter=nil
     local p=V.players and V.players[i]
     if V.map and p then
         local choices=V.candidates(V.map,p)
@@ -300,6 +305,7 @@ local function compactCards(l,game,players)
     for i,b in ipairs(l.cards) do
         local p=players[i];local dy=b.y-l.cards[1].y
         rect(b,{0,0,0,1})
+        Effects.background(p,b.x,b.y,b.w,b.h,V.elapsed)
         if p and p.enabled then
             cropCard(i,offset(l.status,dy),0,2,112,36,l)
             local inv=offset(l.inventory,dy)
@@ -337,7 +343,7 @@ local function clock(game,b)
     g.push();g.translate(b.x+b.w-159*s,b.y);g.scale(s);g.translate(-141,0)
     g.setColor(1,1,1,1);g.setFont(TimeFont)
     g.printf(Time2string(game.frames/.03),0,0,300,"right")
-    SP.draw(game.spTracking,0,0,DefaultFont)
+    -- The map keeps its game clock; the radar belongs to the main tracker.
     g.pop()
 end
 local function gasTimer(game,b)
@@ -440,6 +446,7 @@ local function drawMap(l,game,players,enemies,items)
                 end
             end
         end
+        if not color and Session.visited[r.id] then color={.4,1,.55,.22} end
         if color then
             local drawn=false
             for _,layer in ipairs(layers or {}) do
