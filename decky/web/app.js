@@ -7,18 +7,22 @@
 // Sounds: frame.sounds counts plays per file; a rise plays it once (after the first tap).
 // M toggles SP radar sound in the shared UI; frame.game.spsoundenabled updates
 // the On/Off button (default On). Check: offline check-sp-sound-frames.py.
+// Map input: pointer drag, pinch, wheel, double-tap fit; bounded shared map actions.
+// Disc paths are sent to the Deck importer; disc contents never cross the browser.
 "use strict";
 const canvas = document.querySelector("#tracker"), ctx = canvas.getContext("2d");
 const message = document.querySelector("#message");
 const images = new Map(), imageFonts = new Map(), tinted = new Map();
 const sounds = new Map(), soundCounts = new Map();
 let audio = null, soundBaseline = false;
+let mapActive=false, frameWidth=300, frameHeight=740;
 const soundStats = {played:0, missed:0};
 const groups = [
   ["Views", false, [["f1","Help"],["f2","Item views"],["f3","Next room"],["l","Language"]]],
   ["Show", false, [["i","Room items"],["t","Timers"],["q","Puzzle hints"],["e","Enemy HP"],["f4","Enemy list"]]],
   ["Sound", false, [["m","SP radar sound: On"]]],
   ["Layout", false, [["v","Vertical"],["h","Horizontal"],["d","Default size"],["a","Auto size"]]],
+  ["Map", false, [["n","Map + compact cards"],["b","Cards beside map"],["f","Follow player"]]],
   ["Players shown", true, [["1","1"],["2","2"],["3","3"],["4","4"]]],
   ["Enemy list shows", true, [["kp0","All"],["kp1","P1"],["kp2","P2"],["kp3","P3"],["kp4","P4"]]],
 ];
@@ -49,11 +53,12 @@ function updateSoundControl(enabled) {
 const sheet = document.querySelector("#sheet"), menu = document.querySelector("#menu");
 function setSheet(open) { sheet.hidden=!open; menu.setAttribute("aria-expanded",String(open)); }
 menu.addEventListener("click",()=>setSheet(true));
-document.querySelector("main").addEventListener("click",()=>setSheet(true));
-setTimeout(()=>menu.classList.add("idle"),4000);
+document.querySelector("main").addEventListener("click",()=>{if(!mapActive)setSheet(true);});
+setTimeout(()=>{if(!mapActive)menu.classList.add("idle");},4000);
 document.querySelector("#close").addEventListener("click",()=>setSheet(false));
 document.querySelector("#backdrop").addEventListener("click",()=>setSheet(false));
 addEventListener("keydown",event=>{
+  if(event.target?.closest?.("input,textarea,select,[contenteditable='true']"))return;
   const key=event.code.startsWith("Numpad") ? "kp"+event.code.slice(6) : event.key.toLowerCase();
   if(key==="escape"&&!sheet.hidden){setSheet(false);return;}
   if(controls.some(([allowed])=>allowed===key)&&!event.ctrlKey&&!event.metaKey&&!event.altKey) {
@@ -214,6 +219,8 @@ async function render(frame) {
     else if(op==="scale")ctx.scale(...a);
     else if(op==="rotate")ctx.rotate(a[0]);
     else if(op==="lineWidth")ctx.lineWidth=a[0];
+    else if(op==="clipPush"){ctx.save();depth++;ctx.beginPath();ctx.rect(...a);ctx.clip();}
+    else if(op==="clipPop"){if(depth){ctx.restore();depth--;}}
     else if(op==="image")drawTinted(await image(a[0]),a[1],a[2],a[3],a[0]);
     else if(op==="text")await drawText(...a);
     else if(op==="rectangle"){color(a[5]);ctx.beginPath();ctx.roundRect(a[1],a[2],a[3],a[4],Math.max(0,Math.min(a[6],Math.abs(a[3])/2,Math.abs(a[4])/2)));a[0]==="fill"?ctx.fill():ctx.stroke();}
@@ -231,6 +238,10 @@ async function poll() {
     const response=await fetch("/api/frame",{signal:AbortSignal.timeout(5000)});
     if(!response.ok)throw new Error(response.status===403?"This device is not on the Deck's local network.":"Tracker service unavailable");
     const frame=await response.json();
+    mapActive=(frame.game?.mapview?.mode||0)>0;
+    if(mapActive)menu.classList.remove("idle");
+    frameWidth=frame.width||300;frameHeight=frame.height||740;
+    canvas.style.touchAction=mapActive?"none":"auto";
     updateSoundControl(frame.game?.spsoundenabled);
     message.textContent=frame.state==="connected"?"":frame.message||(frame.state==="waiting"?"Waiting for game":frame.state);canvas.classList.toggle("stale",frame.state!=="connected");await render(frame);
     playSounds(frame.sounds).catch(error=>{sounds.clear();soundStats.error=error.message||String(error);});
@@ -238,3 +249,64 @@ async function poll() {
   setTimeout(poll,200);
 }
 Promise.all([document.fonts.load("18px TrackerBold"),document.fonts.load("11px TrackerNarrow")]).then(poll).catch(error=>{message.textContent=error.message;});
+
+// Local pointer positions are converted to the shared Lua view's logical pixels.
+const pointers=new Map();let pinchDistance=0, lastMove=0,lastTap=0, gestureMoved=false;
+let mapActions=Promise.resolve();
+function mapPoint(event) {
+  const r=canvas.getBoundingClientRect();
+  return {x:(event.clientX-r.left)*frameWidth/r.width,y:(event.clientY-r.top)*frameHeight/r.height};
+}
+function mapAction(action,point) {
+  mapActions=mapActions.then(async()=>{
+    const response=await fetch("/api/map",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action,...point}),signal:AbortSignal.timeout(5000)});
+    if(!response.ok)throw new Error("Map control unavailable");
+  }).catch(error=>{message.textContent=error.message;});
+  return mapActions;
+}
+canvas.addEventListener("pointerdown",event=>{
+  if(!mapActive)return;
+  event.preventDefault();canvas.setPointerCapture(event.pointerId);
+  const point=mapPoint(event);pointers.set(event.pointerId,point);
+  if(pointers.size===1){gestureMoved=false;void mapAction("down",point);}
+  else {gestureMoved=true;void mapAction("up",point);pinchDistance=0;}
+});
+canvas.addEventListener("pointermove",event=>{
+  if(!mapActive||!pointers.has(event.pointerId))return;
+  const point=mapPoint(event);pointers.set(event.pointerId,point);
+  gestureMoved=true;
+  if(pointers.size===2){
+    const [a,b]=[...pointers.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinchDistance&&Math.abs(Math.log(distance/pinchDistance))>.14){
+      void mapAction(distance>pinchDistance?"in":"out",{x:(a.x+b.x)/2,y:(a.y+b.y)/2});pinchDistance=distance;
+    }else if(!pinchDistance)pinchDistance=distance;
+  }else if(performance.now()-lastMove>80){lastMove=performance.now();void mapAction("move",point);}
+});
+function releasePointer(event){
+  if(!pointers.has(event.pointerId))return;
+  const point=mapPoint(event);
+  if(pointers.size===1&&gestureMoved)void mapAction("move",point);
+  pointers.delete(event.pointerId);pinchDistance=0;void mapAction("up",point);
+  const now=performance.now();
+  if(!gestureMoved&&now-lastTap<300)void mapAction("fit",point);
+  lastTap=gestureMoved?0:now;
+}
+canvas.addEventListener("pointerup",releasePointer);
+canvas.addEventListener("pointercancel",event=>{pointers.delete(event.pointerId);pinchDistance=0;void mapAction("up",mapPoint(event));});
+canvas.addEventListener("wheel",event=>{
+  if(!mapActive)return;
+  event.preventDefault();void mapAction(event.deltaY<0?"in":"out",mapPoint(event));
+},{passive:false});
+document.querySelector("#map-import").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const button=document.querySelector("#import-button"),status=document.querySelector("#import-status");
+  button.disabled=true;status.textContent="Importing maps…";
+  try {
+    const response=await fetch("/api/map-import",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({path:document.querySelector("#disc-path").value}),signal:AbortSignal.timeout(100000)});
+    const data=await response.json();if(!response.ok)throw new Error(data.error||"Import failed");
+    status.textContent=data.message;await sendKey("n");setSheet(false);
+  }catch(error){status.textContent=error.message;}
+  finally{button.disabled=false;}
+});

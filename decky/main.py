@@ -1,7 +1,8 @@
 """Purpose: reusable Decky backend owning the live reader and LAN phone service.
 Location/runtime: decky/main.py, Python provided by Decky Loader (no pip packages).
 Inputs: packaged build-info.json, package.json, DECKY_USER_HOME, PCSX2 INI settings.
-Outputs: get_status() including the phone link; lifecycle logs, LAN port 28080.
+Outputs: get_status() including the phone link; lifecycle logs, LAN port 28080;
+the map service caches selected disc art under the Deck user's local data directory.
 Safety: live PINE reads only; no recording, game/settings writes or saved recordings.
 Run: install the ZIP made by `python3 decky/scripts/build.py` (see decky/README.md).
 Check: open Outbreak Tracker in Decky; Refresh shows version, commit and PINE setting.
@@ -64,7 +65,8 @@ class Plugin:
         return await self.get_status()
 
     async def _main(self):
-        self.service = TrackerService(Path(__file__).resolve().parent)
+        self.service = TrackerService(Path(__file__).resolve().parent,
+                                      cache_dir=Path(decky.DECKY_USER_HOME) / ".local/share/outbreak-tracker")
         self.startup_error = None
         try:
             await asyncio.to_thread(self.service.start)

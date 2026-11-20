@@ -60,3 +60,24 @@ chmod +x linux/love-11.5-x86_64.AppImage linux/appimagetool-x86_64.AppImage linu
 The resulting `OutbreakStatusTracker-x86_64.AppImage` includes the tracker and LÖVE runtime. It uses Linux PINE's `pcsx2.sock` runtime socket directly and does not need Flatpak permissions.
 
 The GitHub Actions workflow is manual-only and can be started from the repository's Actions page. The all-platform workflow can also call it after a manual dispatch.
+
+## Map views
+
+Press **B** for the map beside the player cards, **N** for the map above compact
+cards, and **F** to follow the selected player again. **V** returns to the normal
+card view. Drag to pan, scroll to zoom, use Fit to see the floor, and use the floor
+row to select another floor. Clicking a player follows that player. Manual pan
+or floor selection stops follow.
+
+Import maps by dropping your own Japanese File 1 or File 2 extracted disc folder,
+`NETBIO00.DAT`, or ISO onto the window. The tracker reads only the five main
+scenarios' map data and caches it in the LÖVE save directory under
+`outbreak-tracker/maps`. Game map art is not included in the application.
+The importer needs no external extraction program or Python installation.
+
+Players use red, blue, yellow and green by slot; YOU identifies the local gameplay
+record. A dot marks a usable position. A portrait in a ring marks only the room,
+including rooms spanning multiple height bands. Select the desired floor manually
+in those cases. Heading and height reads are not provided yet. Desperate Times
+highlights the current gas rooms in yellow. Existing puzzle hints and timers stay
+visible. U.S. maps and extra File 2 scenarios are not enabled.

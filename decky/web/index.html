@@ -10,7 +10,14 @@
     <section aria-label="Tracker controls">
       <header><h2>Controls</h2><button id="close" type="button">Done</button></header>
       <div id="controls"></div>
-      <p>Tap the tracker to open these controls. They change the shared view on every connected device. Keyboard shortcuts also work.</p>
+      <form id="map-import">
+        <h3>Import maps</h3>
+        <label for="disc-path">Japanese disc folder or ISO path on your Deck</label>
+        <input id="disc-path" type="text" placeholder="/home/deck/Emulation/roms/ps2/game.iso" required autocomplete="off" spellcheck="false">
+        <button id="import-button" type="submit">Import maps</button>
+        <p id="import-status" role="status"></p>
+      </form>
+      <p>Use the menu button for controls while viewing a map. Drag to pan, pinch or scroll to zoom, and double-tap to fit. Controls change the shared view on every connected device.</p>
       <p id="diagnostics"></p>
     </section>
   </div>

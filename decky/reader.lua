@@ -7,6 +7,8 @@
 -- Safety: native reader performs reads only; no recording, game writes or disk frames.
 -- Run: launched by tracker_service.py from the installed plugin directory.
 -- Check: browser displays original cards; offline synthetic checks use a fake tracker.
+-- Map additions: OUTBREAK_MAP_CACHE supplies the private art cache; map/action/x/y
+-- stdin controls are validated by the service. Scissor commands clip the shared map.
 package.path = "shared/?.lua;" .. package.path
 package.cpath = "bin/?.so;" .. package.cpath
 local metrics = dofile("fontmetrics.lua")
@@ -75,7 +77,7 @@ love = {graphics={},window={},audio={},event={}}
 local g=love.graphics
 function g.newFont(path,size) return makefont(path,size) end
 function g.newImageFont(path,characters) return makefont(path,nil,characters) end
-function g.newImage(path) return {path=path} end
+function g.newImage(path) return {path=path,setFilter=function() end} end
 function g.newQuad(x,y,w,h)
     local q={x,y,w,h}
     function q:getViewport() return self[1],self[2],self[3],self[4] end
@@ -122,6 +124,9 @@ function g.polygon(mode,...)
     if type(points[1])=="table" then points=points[1] end
     emit("polygon",mode,points,color)
 end
+function g.setScissor(x,y,w,h)
+    if x then emit("clipPush",x,y,w,h) else emit("clipPop") end
+end
 function love.window.getMode() return width,height,{} end
 function love.window.setMode(w,h) width,height=w,h end
 function love.window.getPosition() return 0,0,1 end
@@ -161,7 +166,11 @@ for input in io.lines() do
     commands={}
     color={1,1,1,1}
     local ok,err=pcall(function()
-        for key in input:gmatch("[^,]+") do love.keypressed(key) end
+        for key in input:gmatch("[^,]+") do
+            local action,x,y=key:match("^map/(%a+)/([%d%.%-]+)/([%d%.%-]+)$")
+            if action then require("MapView").input(action,tonumber(x),tonumber(y))
+            else love.keypressed(key) end
+        end
         love.update(0.2)
         love.draw()
     end)

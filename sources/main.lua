@@ -3,7 +3,9 @@
 -- Location/runtime: sources/main.lua; LÖVE 11.5/LuaJIT or the Decky drawing bridge.
 -- Inputs: reader state, packaged assets and keyboard/phone controls.
 -- Outputs: tracker drawing/audio; GameInfo.spsoundenabled reports the sound toggle.
--- Safety: reader access is read-only; no recording, workbook or settings writes.
+-- B/N add map layouts; mouse/drop callbacks feed MapView and its private disc cache.
+-- Safety: reader access is read-only; disc import writes only the map cache, no
+-- recording, workbook or game writes. Existing UI toggles remain session-only.
 -- Run from repo-merged/: ./macos/run.sh, or the installed Decky reader. Check:
 -- luajit tools-n-shit/tracker-tests/sp/check-sp-sound.lua . (synthetic state only).
 local tracker = require "luaoutbreaktracker"
@@ -27,6 +29,7 @@ require "LobbyCard"
 require "SPlayerCard"
 require "language"
 local SPTracking = require "SPTracking"
+local MapView = require "MapView"
 
 local InitResult = false
 local RetryTimer = 0
@@ -109,6 +112,7 @@ local function SPSoundText()
 end
 
 function love.load(args)
+	if love.filesystem then love.filesystem.setIdentity("outbreak-tracker") end
 	LoadAssets()
 	InitResult = tracker.init()
 	for i=1, 20 do
@@ -150,8 +154,10 @@ function love.draw()
 	GameInfo.spsoundenabled = SPSoundEnabled
 	wx, wy, display = love.window.getMode()-- get window size
 	love.graphics.scale(wx/scalex, wy/scaley)
+	if MapView.mode == 2 then love.graphics.push(); love.graphics.translate(0, 108) end
 
 	local p = GameInfo.playernum
+	if MapView.mode > 0 then p = 4 end
 	local itemset = GameInfo.itemrandom
 	local r = GameInfo.itemrandom2
 	local puzzleset = GameInfo.puzzlerandom
@@ -514,7 +520,7 @@ function love.draw()
 						ItemCards[i]:draw(itemcard_x, itemcard_y)
 					end
 				end
-				if PlayerList == 1 then
+				if PlayerList == 1 and MapView.mode ~= 2 then
 					for i=1, 4 do
 						if Players[i].enabled then
 							PlayerCards[i]:draw((i-1)*playercard_x, (i-1)*playercard_y)
@@ -1156,6 +1162,8 @@ function love.draw()
 		love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
 		love.graphics.printf(_l("Hotkeys list"), 4, 64, 300, "left")
 	end
+	if MapView.mode == 2 then love.graphics.pop() end
+	MapView.draw(GameInfo, Players)
 end
 
 function love.update(dt)
@@ -1245,9 +1253,25 @@ function love.update(dt)
 			end
 		end
 	end
+	MapView.update(GameInfo, Players)
 end
 
 function love.keypressed(key)
+	if key == "b" or key == "n" then
+		local mode = key == "b" and 1 or 2
+		if MapView.mode == mode then love.keypressed("v"); return end
+		love.keypressed("v")
+		MapView.setMode(mode)
+		scalex, scaley = mode == 1 and 760 or 390, mode == 1 and 740 or 844
+		love.window.setMode(scalex, scaley, {resizable=true,vsync=3})
+		return
+	end
+	if key == "f" and MapView.mode > 0 then MapView.follow=true; MapView.reset(); return end
+	if MapView.mode > 0 and (key=="v" or key=="h" or key=="d" or key=="a" or key=="f1" or key=="f2" or key=="f4" or key:match("^[1-4]$")) then
+		MapView.setMode(0)
+		scalex, scaley = 300, 740
+		love.window.setMode(300,740,{resizable=true,vsync=3})
+	end
 	x, y, display = love.window.getPosition()
 	wx, wy, display = love.window.getMode()
 	local p = GameInfo.playernum
@@ -1363,3 +1387,22 @@ function love.keypressed(key)
 		end
 	end
 end
+
+-- Pointer input is expressed in the same logical coordinates on all displays.
+local function mapPoint(x,y)
+	local w,h=love.window.getMode()
+	return x*scalex/w,y*scaley/h
+end
+function love.mousepressed(x,y,button)
+	if button==1 then MapView.input("down",mapPoint(x,y)) end
+end
+function love.mousemoved(x,y) MapView.input("move",mapPoint(x,y)) end
+function love.mousereleased(x,y,button)
+	if button==1 then MapView.input("up",mapPoint(x,y)) end
+end
+function love.wheelmoved(_,dy)
+	local x,y=love.mouse.getPosition()
+	if dy~=0 then MapView.input(dy>0 and "in" or "out",mapPoint(x,y)) end
+end
+function love.directorydropped(path) MapView.import(path) end
+function love.filedropped(file) MapView.import(file:getFilename()) end
