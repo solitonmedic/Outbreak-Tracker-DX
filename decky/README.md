@@ -150,7 +150,8 @@ scroll to zoom, double-tap to zoom, and switch floors from the floor row. The me
 button stays visible while using the map. All connected pages share these controls.
 
 The sampled Japanese File 1 and File 2 map assets are bundled with the plugin.
-They load automatically for the five main scenarios in each game. No disc path,
+They load automatically for the five main scenarios in each game, and the File 1
+maps also serve the U.S. release. No disc path,
 import, upload, download or user-cache setup is required.
 
 The wide layout is 760×740, desktop vertical is 300×740 and the phone layout is
@@ -161,5 +162,6 @@ Slot colours are P1 red, P2 blue, P3 yellow and P4 green. A fixed chevron marks 
 position; a portrait in a ring indicates room-only placement, including ambiguous
 height bands. Select the desired floor manually in those rooms. Height and heading
 reads remain unavailable. Desperate Times gas rooms glow yellow, and puzzle hints,
-medals/passwords and scenario timers remain visible. U.S. maps and extra File 2
-scenarios are not enabled.
+medals/passwords and scenario timers remain visible. Enemies in play are small
+white diamonds under the player markers. U.S. File 1 uses the same maps as the
+Japanese release; extra File 2 scenarios are not enabled.
