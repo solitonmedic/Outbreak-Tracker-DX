@@ -31,16 +31,19 @@ end
 function V.setMode(mode)
     V.mode=mode; V.drag=nil; V.hits={}
 end
+-- Each phase keeps the legacy hard/very-hard and easy/normal room lists.
+local gasPatterns = {
+    [0] = {{{4,14,20},{14,20}}, {{7,10,12},{7,12}}, {{9,13,27},{9,13}}, {{5,7,21},{5,21}}, {{4,10,11},{10,11}}, {{5,15,16},{15,16}}, {{4,11,13},{4,11}}, {{14,15,21},{14,15}}, {{11,20,27},{11,20}}, {{5,9,16},{5,9}}},
+    [1] = {{{7,10,16},{10,16}}, {{4,14,27},{14,27}}, {{7,16,20},{7,20}}, {{9,13,21},{9,13}}, {{10,12,15},{12,15}}, {{5,16,21},{5,21}}, {{5,11,27},{11,27}}, {{4,7,20},{4,20}}, {{10,12,13},{12,13}}, {{7,15,21},{7,21}}}
+}
 function V.gas(game)
     if game.scenario~="desperate times" or game.fighttime2==0 then return {} end
-    local even={{4,14,20},{10,7,12},{27,9,13},{7,5,21},{4,10,11},{5,15,16},{4,11,13},{21,14,15},{11,20,27},{16,5,9}}
-    local odd={{7,10,16},{4,14,27},{7,9,11},{10,12,20},{10,12,15},{5,16,21},{4,15,20},{11,21,27},{10,12,13},{15,7,21}}
-    local tables=(game.gasrandom or 0)%2==0 and even or odd
-    local rooms={}; local flag=game.gasflag or 0
-    for i,entry in ipairs(tables) do
-        if flag==2^(i-1) then
-            local first=(game.difficulty=="hard" or game.difficulty=="very hard") and 1 or 2
-            for n=first,3 do rooms[entry[n]]=true end
+    local phases=gasPatterns[(game.gasrandom or 0)%2]
+    local difficulty=(game.difficulty=="hard" or game.difficulty=="very hard") and 1 or 2
+    local rooms={}
+    for i,entry in ipairs(phases) do
+        if game.gasflag==2^(i-1) then
+            for _,room in ipairs(entry[difficulty]) do rooms[room]=true end
         end
     end
     return rooms
