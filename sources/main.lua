@@ -1261,6 +1261,8 @@ function love.keypressed(key)
 		local mode = key == "b" and 1 or 2
 		if MapView.mode == mode then love.keypressed("v"); return end
 		love.keypressed("v")
+		PlayerList, EnemyList, ItemList = 1, 0, 0
+		ItemSwitch, EnemyHPSwitch, TimeSwitch, doorList = 1, 1, 1, 1
 		MapView.setMode(mode)
 		scalex, scaley = mode == 1 and 760 or 390, mode == 1 and 740 or 844
 		love.window.setMode(scalex, scaley, {resizable=true,vsync=3})

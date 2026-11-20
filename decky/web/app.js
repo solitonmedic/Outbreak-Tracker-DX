@@ -15,7 +15,7 @@ const message = document.querySelector("#message");
 const images = new Map(), imageFonts = new Map(), tinted = new Map();
 const sounds = new Map(), soundCounts = new Map();
 let audio = null, soundBaseline = false;
-let mapActive=false, frameWidth=300, frameHeight=740;
+let mapActive=false, mapMode=0, frameWidth=300, frameHeight=740;
 const soundStats = {played:0, missed:0};
 const groups = [
   ["Views", false, [["f1","Help"],["f2","Item views"],["f3","Next room"],["l","Language"]]],
@@ -238,7 +238,7 @@ async function poll() {
     const response=await fetch("/api/frame",{signal:AbortSignal.timeout(5000)});
     if(!response.ok)throw new Error(response.status===403?"This device is not on the Deck's local network.":"Tracker service unavailable");
     const frame=await response.json();
-    mapActive=(frame.game?.mapview?.mode||0)>0;
+    mapMode=frame.game?.mapview?.mode||0;mapActive=mapMode>0;
     if(mapActive)menu.classList.remove("idle");
     frameWidth=frame.width||300;frameHeight=frame.height||740;
     canvas.style.touchAction=mapActive?"none":"auto";
@@ -306,7 +306,7 @@ document.querySelector("#map-import").addEventListener("submit",async event=>{
     const response=await fetch("/api/map-import",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({path:document.querySelector("#disc-path").value}),signal:AbortSignal.timeout(100000)});
     const data=await response.json();if(!response.ok)throw new Error(data.error||"Import failed");
-    status.textContent=data.message;await sendKey("n");setSheet(false);
+    status.textContent=data.message;if(mapMode!==2)await sendKey("n");setSheet(false);
   }catch(error){status.textContent=error.message;}
   finally{button.disabled=false;}
 });
