@@ -246,6 +246,25 @@ function A.rounds(graph,list)
     for n,id in ipairs(ids) do out[id]={"ROUND "..n,boss[id]} end
     return out
 end
+-- Showdown rounds already cleared, as a set of room IDs. A round is cleared once
+-- every enemy-list entry of its boss's kind (the nameID of the room's first
+-- entry) is dead (HP 65535): the minions left behind no longer matter. Showdown 3
+-- VH run of 2026-11-21 (decky-20261121T063920, every in-game checkpoint): each
+-- of the 11 rounds turns cleared exactly once, at the last checkpoint before the
+-- players moved on (round 11 once all three Tyrants died), and never earlier.
+function A.roundsCleared(list)
+    local boss,dead,cleared={},{},{}
+    for _,e in ipairs(list or {}) do
+        local room=type(e)=="table" and tonumber(e.roomID)
+        if room and room>0 and (tonumber(e.maxHP) or 0)>0 then
+            local kind=tonumber(e.nameID)
+            if boss[room]==nil then boss[room]=kind;dead[room]=true end
+            if kind==boss[room] and tonumber(e.HP)~=65535 then dead[room]=false end
+        end
+    end
+    for room,done in pairs(dead) do if done then cleared[room]=true end end
+    return cleared
+end
 function A.isArena(scenario)
     local s=tostring(scenario or "")
     return s:find("^elimination")~=nil or s:find("^showdown")~=nil
@@ -280,7 +299,8 @@ A.uncounted={[34]=true,[56]=true,[60]=true}
 -- minions that never fought (Showdown 3 run: 4 G-Embryos in stage 1, 3
 -- Megabytes in stage 8, Nyx and Nyx-Tyrant in stage 10 after Nyx-Core died).
 -- Showdown is played one way in room ID order, so the caller passes the stage
--- the players are in as clearedBelow and every earlier stage reads 0.
+-- the players are in as clearedBelow and every earlier stage reads 0, as does
+-- any round A.roundsCleared reports (its boss kind is dead).
 function A.counts(list,seen,isHazard,graph,clearedBelow)
     local known,alive,loaded={},{},{}
     for id in pairs(seen or {}) do known[id]=true;alive[id]=alive[id] or 0 end
@@ -301,7 +321,8 @@ function A.counts(list,seen,isHazard,graph,clearedBelow)
         for id in pairs(graph.cells) do known[id]=true;alive[id]=alive[id] or 0 end
     end
     if clearedBelow then
-        for id in pairs(alive) do if id<clearedBelow then alive[id]=0 end end
+        local cleared=A.roundsCleared(list)
+        for id in pairs(alive) do if id<clearedBelow or cleared[id] then alive[id]=0 end end
     end
     return alive,known,loaded
 end

@@ -1059,7 +1059,7 @@ V.arenaSource=arenaSource
 -- a box as well. Room, boxes and arrows form one map: zoom, FOLLOW and dragging
 -- move and scale it as a whole, as on a floor map, so boxes keep their place
 -- beside the room and never cover it.
-local function drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,entered)
+local function drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,entered,roundCleared)
     local g=love.graphics
     -- Showdown rounds are not walked between: the room is shown alone.
     local list=graph and not Arena.isShowdown(game.scenario) and Arena.neighbours(graph,room) or {}
@@ -1186,6 +1186,7 @@ local function drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known
             item=function(it) if it.roomID==room then return at(it.positionX,it.positionY) end end,
             enemy=function(e)
                 local hp,maxHP=e.HP or 0,e.maxHP or 0
+                if roundCleared(room) then return end
                 if e.enabled and e.inGame and e.roomID==room and maxHP>0 and maxHP<60000 and hp>0 and hp<=maxHP then
                     return at(e.positionX,e.positionY,6)
                 end
@@ -1242,6 +1243,10 @@ local function drawArena(l,game,players,key,enemies)
         for i=1,4 do if active(players[i]) then stage=math.max(stage or 0,players[i].roomID) end end
     end
     local alive,known,loaded=Arena.counts(V.enemyList,V.arenaSeen,V.isHazard,graph,stage)
+    -- A cleared Showdown round (earlier stage, or its boss kind dead) keeps no
+    -- enemy markers: the minions left behind no longer matter.
+    local clearedRounds=stage and Arena.roundsCleared(V.enemyList)
+    local function roundCleared(id) return stage~=nil and (id<stage or clearedRounds[id]==true) end
     -- Entered: YOU has been in the room while the tracker ran, or the game has
     -- loaded the room's enemies (their list flag; covers a tracker started
     -- mid-scenario).
@@ -1393,7 +1398,7 @@ local function drawArena(l,game,players,key,enemies)
             text("Waiting for a room",{x=vp.x,y=vp.y+vp.h/2-8,w=vp.w,size=13,align="center"},muted)
             return
         end
-        drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,entered)
+        drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,entered,roundCleared)
     end
 end
 function V.draw(game,players,enemies,items)
