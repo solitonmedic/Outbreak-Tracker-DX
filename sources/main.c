@@ -756,13 +756,14 @@ void UpdatePickups()
 {
     for (int i=0; i < 255; i++)
     {
-        unsigned char numberBuffer;
-        unsigned short typeBuffer;
-        unsigned short countBuffer;
-        unsigned short pickBuffer;
-        unsigned int presentBuffer;
-        unsigned char mixBuffer;
-        unsigned char roomidBuffer;
+        /* Zero when neither File 1 nor File 2 is loaded (nothing is read). */
+        unsigned char numberBuffer = 0;
+        unsigned short typeBuffer = 0;
+        unsigned short countBuffer = 0;
+        unsigned short pickBuffer = 0;
+        unsigned int presentBuffer = 0;
+        unsigned char mixBuffer = 0;
+        unsigned char roomidBuffer = 0;
         float positionXBuffer = 0, positionYBuffer = 0;
         int bytesRead = 0;
         if (info.CurrentFile == 1)
@@ -804,10 +805,13 @@ void UpdatePickups()
 
 unsigned short GetDoorHP(int doorID)
 {
-  unsigned short buffer;
+  /* File 1 has 10 doors: the others have no address (-1) and read as 0. */
+  unsigned short buffer = 0;
   int bytesRead = 0;
   if (info.CurrentFile == 1)
-      ReadF1(F1_GetDoorHP(doorID), &buffer, 2);
+  {
+      if (F1_GetDoorHP(doorID) >= 0) ReadF1(F1_GetDoorHP(doorID), &buffer, 2);
+  }
   else
       ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetDoorHP(doorID), &buffer, 2, NULL);
   return buffer;
@@ -815,10 +819,13 @@ unsigned short GetDoorHP(int doorID)
 
 unsigned short GetDoorFlag(int doorID)
 {
-  unsigned short buffer;
+  /* File 1 has 10 doors: the others have no address (-1) and read as 0. */
+  unsigned short buffer = 0;
   int bytesRead = 0;
   if (info.CurrentFile == 1)
-      ReadF1(F1_GetDoorFlag(doorID), &buffer, 2);
+  {
+      if (F1_GetDoorFlag(doorID) >= 0) ReadF1(F1_GetDoorFlag(doorID), &buffer, 2);
+  }
   else
       ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetDoorFlag(doorID), &buffer, 2, NULL);
   return buffer;
@@ -1422,14 +1429,15 @@ void UpdateEnemyList()
 {
     for (int i=0; i < 80; i++)
     {
-        unsigned char number;
-        unsigned char flag;
-        unsigned char type;
-        unsigned char name;
-        unsigned char room;
-        unsigned short hp;
-        unsigned short maxhp;
-        unsigned char status;
+        /* Zero when neither File 1 nor File 2 is loaded (nothing is read). */
+        unsigned char number = 0;
+        unsigned char flag = 0;
+        unsigned char type = 0;
+        unsigned char name = 0;
+        unsigned char room = 0;
+        unsigned short hp = 0;
+        unsigned short maxhp = 0;
+        unsigned char status = 0;
         int bytesRead = 0;
         if (info.CurrentFile == 1)
         {
