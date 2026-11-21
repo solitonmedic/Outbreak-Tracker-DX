@@ -1229,7 +1229,13 @@ local function drawArena(l,game,players,key,enemies)
     local vp=l.viewport
     V.viewport=vp
     rect(vp,{0,0,0,1})
-    local alive,known,loaded=Arena.counts(V.enemyList,V.arenaSeen,V.isHazard,graph)
+    -- Showdown goes one way through its stages: stages before the players'
+    -- current one are cleared (MapArena.counts).
+    local stage
+    if tostring(game.scenario):find("^showdown") then
+        for i=1,4 do if active(players[i]) then stage=math.max(stage or 0,players[i].roomID) end end
+    end
+    local alive,known,loaded=Arena.counts(V.enemyList,V.arenaSeen,V.isHazard,graph,stage)
     -- Entered: YOU has been in the room while the tracker ran, or the game has
     -- loaded the room's enemies (their list flag; covers a tracker started
     -- mid-scenario).
