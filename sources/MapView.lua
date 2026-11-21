@@ -171,7 +171,7 @@ function V.update(game,players,dt,items)
     if V.cacheKey~=key then
         V.cacheKey=key; V.map=nil; V.er=nil; V.error=nil; V.floor=1; V.target=nil; V.follow=true; V.reset()
         -- Elimination and Showdown have no game map: Room View / Grid View.
-        V.arena=Arena.isArena(game.scenario);V.arenaSeen={};V.arenaRoom=nil;V.arenaView=V.arenaView or "grid"
+        V.arena=Arena.isArena(game.scenario);V.arenaSeen={};V.arenaRoom=nil;V.arenaView=V.arenaView or "room"
         -- U.S. File 1 map files (mapNNNe.dat) equal the Japanese ones in rooms,
         -- floors and placements (2026-11-20), so the bundled jp1 maps serve both.
         if game.release=="us" and game.currentFile~=1 then V.error="U.S. maps are not enabled yet"
