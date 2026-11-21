@@ -75,6 +75,10 @@ function A.neighbours(graph,id)
     return out
 end
 
+-- Entries that can never be killed are not enemies left: 34 Tentacles
+-- (invincible, 1500 HP) and 60 Fire (1 HP), both seen in the Elimination 2 run of
+-- 2026-11-20 and noted by the user. Mines and gas tanks are left out by isHazard.
+A.uncounted={[34]=true,[60]=true}
 -- Enemies left per room. A room is known once the list has an entry for it or
 -- the local player has been in it (seen[id]); unknown rooms are left out.
 -- isHazard(entry) excludes mines and explosives from the count.
@@ -86,7 +90,8 @@ function A.counts(list,seen,isHazard)
         if type(e)=="table" and (tonumber(e.flag) or 0)~=0 and room and room>0 then
             known[room]=true;alive[room]=alive[room] or 0
             local hp,maxHP=tonumber(e.HP) or 0,tonumber(e.maxHP) or 0
-            if hp>0 and hp~=65535 and maxHP>0 and hp<=maxHP and not (isHazard and isHazard(e)) then
+            if hp>0 and hp~=65535 and maxHP>0 and hp<=maxHP and not A.uncounted[tonumber(e.nameID)]
+                and not (isHazard and isHazard(e)) then
                 alive[room]=alive[room]+1
             end
         end

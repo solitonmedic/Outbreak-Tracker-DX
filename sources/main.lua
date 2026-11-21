@@ -33,6 +33,7 @@ require "SPlayerCard"
 require "language"
 local SPTracking = require "SPTracking"
 local MapView = require "MapView"
+local Effects = require "PlayerEffects"
 local TrackerMenu = require "TrackerMenu"
 
 local InitResult = false
@@ -490,7 +491,11 @@ function love.draw()
 		if not(GameInfo.scenario == "") then
 			if(f>0) then
 				if TimeSwitch==1 then
-					love.graphics.printf(Time2string(GameInfo.frames / 0.03), time_x, time_y, 300, "right")
+					-- Elimination: countdown instead of the clock, red in the last 3:00.
+					local clockText, clockWarning = Effects.clockText(GameInfo)
+					Effects.drawClock(function(dx, dy)
+						love.graphics.printf(clockText, time_x + dx, time_y + dy, 300, "right")
+					end, clockWarning, TrackerPresentationTime or 0)
 				--elseif TimeSwitch==2 then
 				--	love.graphics.printf(RealTime(timer), time_x, time_y, 300, "right")
 				end

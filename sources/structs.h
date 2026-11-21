@@ -71,6 +71,7 @@ typedef struct
 	unsigned char LocalSlot;
 	unsigned char Cleared;
 	unsigned short WTTime;
+	unsigned int EliminationTime;
 	unsigned short EscapeTime;
 	unsigned int FightTime;
 	unsigned short FightTime2;

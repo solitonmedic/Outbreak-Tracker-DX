@@ -408,6 +408,9 @@ int F2_GetLobbyAddress(int slotNum)
     }
 }
 
+// u32 Elimination countdown, 30 ticks per second: 30:00 limit minus the clock
+// (= 54000 - 0x4912B8 in Elimination 1 and 2 runs, 2026-11-20); 0 outside Elimination.
+const int F2_EliminationTime = 0x491230;
 const int F2_WTTime = 0x491248;//ÅØÏø
 const int F2_PassWT = 0x48FE7B;//ÅØÏø
 const int F2_PassDT1 = 0x490070;//ËÀÊØ

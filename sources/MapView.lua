@@ -528,12 +528,13 @@ local function clock(game,b,sp)
         g.push();g.translate(b.x+3,b.y+10)
         SP.draw(sp,-141,0,DefaultFont);g.pop()
     end
-    local value=Time2string(game.frames/.03)
+    local value,warning=Effects.clockText(game)
     local width=b.w-radarWidth
     local scale=math.min(width/math.max(1,TimeFont:getWidth(value)),22/TimeFont:getHeight())
     g.push();g.translate(b.x+radarWidth,b.y+8);g.scale(scale,scale)
-    g.setColor(1,1,1,1);g.setFont(TimeFont)
-    g.printf(value,0,0,width/scale,"right");g.pop()
+    g.setFont(TimeFont)
+    Effects.drawClock(function(dx,dy) g.printf(value,dx,dy,width/scale,"right") end,warning,V.elapsed)
+    g.pop()
 end
 local function gasTimer(game,b)
     if (game.fighttime2 or 0)==0 then return end

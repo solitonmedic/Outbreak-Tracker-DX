@@ -52,6 +52,33 @@ function E.background(p,x,y,w,h,time)
     E.endPulse()
     g.setLineWidth(1);g.setColor(1,1,1,1)
 end
+-- Timer: Elimination shows its countdown (game.eliminationtime, 30 ticks per
+-- second, JP File 2 0x491230) instead of the game clock. Under 3:00 (5400
+-- ticks; the game keeps a second counter exactly 3:00 behind, 0x491234) the
+-- countdown is red with a pulsing red glow. Returns text and the warning flag.
+E.lastMinutes=5400
+function E.clockText(game)
+    local left=tonumber(game and game.eliminationtime) or 0
+    if left>0 and tostring(game.scenario or ""):find("^elimination") then
+        return Time2string(left/.03),left<=E.lastMinutes
+    end
+    return Time2string(((game and game.frames) or 0)/.03),false
+end
+-- draw(dx,dy) prints the timer text offset by dx,dy with the current colour.
+function E.drawClock(draw,warning,time)
+    local g=love.graphics
+    if warning then
+        for _,o in ipairs{{-2,0},{2,0},{0,-2},{0,2},{-1,-1},{1,1},{-1,1},{1,-1}} do
+            E.pulseColor("danger",time,1,0,0,.55,.15);draw(o[1],o[2])
+        end
+        E.endPulse()
+        g.setColor(1,.3,.25,1)
+    else
+        g.setColor(1,1,1,1)
+    end
+    draw(0,0)
+    g.setColor(1,1,1,1)
+end
 -- Voice IDs feed the game's map pulse. Rising duration also catches repeats.
 -- Baseline the first snapshot; never announce a stale line on opening the UI.
 local voices={};local runKey,frames

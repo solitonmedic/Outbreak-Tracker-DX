@@ -438,6 +438,14 @@ unsigned short GetWTTime()
 	return buffer;
 }
 
+unsigned int GetEliminationTime()
+{
+	unsigned int buffer = 0;
+	if (info.CurrentFile == 2)
+	    ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_EliminationTime, &buffer, 4, NULL);
+	return buffer;
+}
+
 unsigned short GetEscapeTime()
 {
 	unsigned short buffer;
@@ -1585,6 +1593,7 @@ static int LUpdate (lua_State* L)
 	info.Cleared = GetCleared();
 	info.PlayerNum = GetPlayerNum();
 	info.WTTime = GetWTTime();
+	info.EliminationTime = GetEliminationTime();
 	info.EscapeTime = GetEscapeTime();
 	info.FightTime = GetFightTime();
 	info.FightTime2 = GetFightTime2();
@@ -2318,6 +2327,9 @@ static int LGetGameInfo (lua_State* L)
 		lua_rawset(L, -3);
 		lua_pushstring(L, "wttime");
 			lua_pushnumber(L, (double)info.WTTime);
+		lua_rawset(L, -3);
+		lua_pushstring(L, "eliminationtime");
+			lua_pushnumber(L, (double)info.EliminationTime);
 		lua_rawset(L, -3);
 		lua_pushstring(L, "escapetime");
 			lua_pushnumber(L, (double)info.EscapeTime);
