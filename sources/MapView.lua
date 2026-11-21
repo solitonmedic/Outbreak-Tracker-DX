@@ -970,7 +970,184 @@ local function edgePoint(b,tx,ty)
     local t=math.min(dx~=0 and (b.w/2)/math.abs(dx) or math.huge,dy~=0 and (b.h/2)/math.abs(dy) or math.huge)
     return cx+dx*t,cy+dy*t
 end
-local function drawArena(l,game,players,key)
+-- Room View art: the main-scenario map room each arena room reuses
+-- (MapArena.sources), loaded once per map file and kept for the session.
+V.arenaMaps={}
+local function arenaSource(game,room)
+    local src=Arena.sources[game.scenario] and Arena.sources[game.scenario][room]
+    if not src then return end
+    local key=src[1]..":"..src[2]
+    if V.arenaMaps[key]==nil then
+        V.arenaMaps[key]=false
+        local name
+        for _,e in ipairs(Data.scenarios[src[1]] or {}) do if e[1]==src[2] then name=e[2] end end
+        local ok,map=pcall(Data.load,src[1],name,read)
+        if ok and map then
+            local loaded=pcall(function()
+                map.fillImage=love.graphics.newImage(map.path.."-fill.png")
+                map.wallImage=love.graphics.newImage(map.path.."-walls.png")
+                map.quads={}
+                for i,r in ipairs(map.rooms) do
+                    if r.w>0 and r.h>0 then map.quads[i]=love.graphics.newQuad(r.x,r.y,r.w,r.h,1024,map.height) end
+                end
+            end)
+            if loaded then V.arenaMaps[key]=map end
+        end
+    end
+    local map=V.arenaMaps[key]
+    local f=map and map.floors[src[4]]
+    if not f then return end
+    for _,p in ipairs(f.places) do
+        if map.rooms[p.record].id==src[3] and map.quads[p.record] then return map,f,p,src end
+    end
+end
+V.arenaSource=arenaSource
+-- Room View: the room drawn from its source map with live players, enemies and
+-- room items; each neighbouring room sits outside it as a box, with an arrow from
+-- the door the run recorded (MapArena.doors) or, without one, from the room edge
+-- in the direction the room lies on the diagram. Without source art the room is
+-- a box as well.
+local function drawRoomView(game,players,enemies,graph,room,vp,box,alive,known,occupants)
+    local g=love.graphics
+    local list=graph and Arena.neighbours(graph,room) or {}
+    local nw,nh=math.min(vp.w*.27,124),46
+    local map,f,p,src=arenaSource(game,room)
+    local doors=Arena.doors[game.scenario] and Arena.doors[game.scenario][room] or {}
+    local here=graph and graph.cells[room]
+    -- Which side of the room each neighbour box goes on: nearest side to its
+    -- door (room-relative), or toward the room's direction on the diagram.
+    local r=map and map.rooms[p.record]
+    local sides={top={},bottom={},left={},right={}}
+    local entries={}
+    for n,id in ipairs(list) do
+        local u,v,door
+        if doors[id] and map then
+            local px,py=Data.position(f,doors[id][1],doors[id][2])
+            u,v=(px-p.x)/r.w,(py-p.y)/r.h;door=doors[id]
+        else
+            local c=graph.cells[id]
+            local a=here and c and math.atan2(c[2]-here[2],c[1]-here[1]) or (n/#list*2*math.pi)
+            u,v=.5+math.cos(a)*10,.5+math.sin(a)*10
+        end
+        local side,best="top",v
+        if 1-v<best then side,best="bottom",1-v end
+        if u<best then side,best="left",u end
+        if 1-u<best then side,best="right",1-u end
+        local e={id=id,u=math.max(0,math.min(1,u)),v=math.max(0,math.min(1,v)),door=door,side=side}
+        entries[#entries+1]=e;local l2=sides[side];l2[#l2+1]=e
+    end
+    -- Room area: margins only on sides that hold boxes; the bottom strip stays
+    -- free for the enemy count and the FOLLOW button.
+    local left=#sides.left>0 and nw+16 or 8
+    local right=#sides.right>0 and nw+16 or 8
+    local top=#sides.top>0 and nh+16 or 8
+    local bottom=(#sides.bottom>0 and nh+16 or 8)+34
+    local area={x=vp.x+left,y=vp.y+top,w=vp.w-left-right,h=vp.h-top-bottom}
+    local cx,cy=area.x+area.w/2,area.y+area.h/2
+    local main,toScreen,scale
+    V.roomArtDrawn=false
+    if map then
+        scale=math.min(area.w/r.w,area.h/r.h)
+        local ox,oy=cx-(p.x+r.w/2)*scale,cy-(p.y+r.h/2)*scale
+        main={x=ox+p.x*scale,y=oy+p.y*scale,w=r.w*scale,h=r.h*scale}
+        toScreen=function(x,z,margin)
+            if not (finite(x) and finite(z)) then return end
+            local px,py=Data.position(f,x,z)
+            px,py=V.clampToRoom(map,src[4],src[3],px,py,(margin or 9)/scale)
+            return ox+px*scale,oy+py*scale
+        end
+        local alert=nil
+        for _,i in ipairs(occupants[room] or {}) do alert=Effects.worst(alert,Effects.health(players[i])) end
+        g.push();g.translate(ox,oy);g.scale(scale)
+        if alert then Effects.pulseColor(alert,V.elapsed,1,0,0,.55,.2) else g.setColor(115/255,178/255,249/255,.22) end
+        g.draw(map.fillImage,map.quads[p.record],p.x,p.y)
+        if alert then Effects.endPulse() end
+        g.setColor(43/255,116/255,211/255,1);g.draw(map.wallImage,map.quads[p.record],p.x,p.y)
+        g.pop()
+        V.roomArtDrawn=true
+    else
+        local cw,ch=math.min(area.w,220),math.min(area.h,130)
+        main={x=cx-cw/2,y=cy-ch/2,w=cw,h=ch}
+    end
+    for _,e in ipairs(entries) do
+        if e.door and toScreen then e.dx,e.dy=toScreen(e.door[1],e.door[2],4) end
+        local x,y=main.x+e.u*main.w,main.y+e.v*main.h
+        e.along=(e.side=="top" or e.side=="bottom") and (e.dx or x) or (e.dy or y)
+    end
+    local function spread(items,size,lo,hi)
+        table.sort(items,function(a,b) return a.along<b.along end)
+        local gap=6
+        for i,it in ipairs(items) do
+            it.c=math.max(lo+size/2,math.min(hi-size/2,it.along))
+            if i>1 then it.c=math.max(it.c,items[i-1].c+size+gap) end
+        end
+        local over=#items>0 and items[#items].c+size/2-hi or 0
+        if over>0 then for _,it in ipairs(items) do it.c=it.c-over end end
+    end
+    spread(sides.top,nw,vp.x+2,vp.x+vp.w-2);spread(sides.bottom,nw,vp.x+2,vp.x+vp.w-2)
+    spread(sides.left,nh,vp.y+2,vp.y+vp.h-36);spread(sides.right,nh,vp.y+2,vp.y+vp.h-36)
+    local function place(it,b)
+        local x1,y1=it.dx,it.dy
+        if not x1 then x1,y1=edgePoint(main,b.x+b.w/2,b.y+b.h/2) end
+        local x2,y2=edgePoint(b,x1,y1)
+        arrow(x1,y1,x2,y2,{.95,.6,.15,.9})
+        if it.dx then g.setColor(.95,.6,.15,1);g.circle("fill",x1,y1,4) end
+        box(it.id,b)
+    end
+    for _,it in ipairs(sides.top) do place(it,{x=it.c-nw/2,y=math.max(vp.y+2,main.y-14-nh),w=nw,h=nh}) end
+    for _,it in ipairs(sides.bottom) do place(it,{x=it.c-nw/2,y=math.min(vp.y+vp.h-36-nh,main.y+main.h+14),w=nw,h=nh}) end
+    for _,it in ipairs(sides.left) do place(it,{x=math.max(vp.x+2,main.x-14-nw),y=it.c-nh/2,w=nw,h=nh}) end
+    for _,it in ipairs(sides.right) do place(it,{x=math.min(vp.x+vp.w-2-nw,main.x+main.w+14),y=it.c-nh/2,w=nw,h=nh}) end
+    if not map then box(room,main);return end
+    -- Enemies left here, under the room.
+    local count=alive[room];local none=not known[room] or (count or 0)==0
+    g.setColor(unpack(none and muted or enemyBlue))
+    local ex,ey=vp.x+10,vp.y+vp.h-20
+    g.polygon("fill",{ex,ey-5,ex+5,ey,ex,ey+5,ex-5,ey})
+    text(known[room] and string.format("x %02d",math.min(99,count or 0)) or "x --",{x=ex+9,y=ey-7,w=80,size=12},none and muted or white)
+    -- Room items YOU has seen here.
+    for _,it in pairs(Session.items) do
+        if it.roomID==room then
+            local x,y=toScreen(it.positionX,it.positionY)
+            if x then
+                rect({x=x-9,y=y-9,w=18,h=18},(it.type or 0)>=10000 and {1,.38,0,.95} or {0,0,0,.7})
+                g.setColor(1,1,1,1)
+                ItemIcons:draw(tostring(game.currentFile).."/"..tostring(it.type),x-7,y-7,0,14/48,14/48)
+            end
+        end
+    end
+    -- Enemies in this room (live slots only describe the loaded room).
+    for _,e in ipairs(enemies or {}) do
+        local hp,maxHP=e.HP or 0,e.maxHP or 0
+        if e.enabled and e.inGame and e.roomID==room and maxHP>0 and maxHP<60000 and hp>0 and hp<=maxHP then
+            local x,y=toScreen(e.positionX,e.positionY,6)
+            if x and V.isHazard(e) then
+                Effects.pulseColor("danger",V.elapsed,1,.08,.02,.45,.45);g.circle("fill",x,y,11);Effects.endPulse()
+                g.setColor(0,0,0,.85);g.circle("fill",x,y,6.5);g.setColor(1,.55,.05,1);g.circle("fill",x,y,5)
+            elseif x then
+                g.setColor(0,0,0,.85);g.polygon("fill",{x,y-7,x+7,y,x,y+7,x-7,y})
+                local boss=V.isBoss(e)
+                g.setColor(1,boss and .05 or 1,boss and .05 or 1,1);g.polygon("fill",{x,y-5,x+5,y,x,y+5,x-5,y})
+            end
+        end
+    end
+    -- Players here: slot colour with a facing chevron.
+    for i=1,4 do
+        local pl=players[i]
+        if active(pl) and pl.roomID==room then
+            local x,y=toScreen(pl.positionX,pl.positionY)
+            if x then
+                local c=Effects.markerColor(pl,V.colors[i],V.elapsed)
+                g.setColor(c[1],c[2],c[3],.2);g.circle("fill",x,y,13)
+                g.push();g.translate(x,y);g.rotate(V.heading(pl))
+                g.setColor(0,0,0,.9);g.polygon("fill",{0,-10,8,7,0,3,-8,7})
+                g.setColor(c[1],c[2],c[3],1);g.polygon("fill",{0,-8,6,5,0,2,-6,5})
+                g.pop()
+            end
+        end
+    end
+end
+local function drawArena(l,game,players,key,enemies)
     local g=love.graphics
     local graph=Arena.graphs[game.scenario]
     local left=V.mode==1 and 300 or 0
@@ -1044,31 +1221,7 @@ local function drawArena(l,game,players,key)
             text("Waiting for a room",{x=vp.x,y=vp.y+vp.h/2-8,w=vp.w,size=13,align="center"},muted)
             return
         end
-        -- Room View: the room in the middle; each room its doors lead to sits
-        -- outside it in the direction it lies on the room diagram, with an arrow.
-        local cw,ch=math.min(vp.w*.46,220),math.min(vp.h*.26,130)
-        local main={x=vp.x+(vp.w-cw)/2,y=vp.y+(vp.h-ch)/2,w=cw,h=ch}
-        local list=graph and Arena.neighbours(graph,room) or {}
-        local nw,nh=math.min(vp.w*.3,140),58
-        local here=graph and graph.cells[room]
-        local angles={}
-        for n,id in ipairs(list) do
-            local c=graph.cells[id]
-            local a=here and c and math.atan2(c[2]-here[2],c[1]-here[1]) or (n/#list*2*math.pi)
-            -- Keep neighbours that share a direction apart.
-            for _,other in ipairs(angles) do if math.abs(other-a)<.5 then a=a+.55 end end
-            angles[n]=a
-        end
-        local rx,ry=(vp.w-nw)/2-6,(vp.h-nh)/2-24
-        for n,id in ipairs(list) do
-            local a=angles[n]
-            local x=vp.x+vp.w/2+rx*math.cos(a);local y=vp.y+vp.h/2+ry*math.sin(a)
-            local b={x=x-nw/2,y=y-nh/2,w=nw,h=nh}
-            local x1,y1=edgePoint(main,x,y);local x2,y2=edgePoint(b,main.x+cw/2,main.y+ch/2)
-            arrow(x1,y1,x2,y2,{.95,.6,.15,.9})
-            box(id,b)
-        end
-        box(room,main)
+        drawRoomView(game,players,enemies,graph,room,vp,box,alive,known,occupants)
     end
 end
 function V.draw(game,players,enemies,items)
@@ -1090,8 +1243,10 @@ function V.draw(game,players,enemies,items)
     elseif game.scenario=="wild things" and f then title=shortFloor(f.name) end
     text(title,l.floorText,yellow)
     local p=players[V.target or 0]
-    text(p and GetRoomName(game.scenario,p.roomID) or "",l.roomText)
-    if V.arena then drawArena(l,game,players,key) else
+    -- Room View of a tapped room names that room, not the followed player's.
+    local shownRoom=V.arena and V.arenaView=="room" and not V.follow and V.arenaRoom or (p and p.roomID)
+    text(shownRoom and GetRoomName(game.scenario,shownRoom) or "",l.roomText)
+    if V.arena then drawArena(l,game,players,key,enemies) else
         local groups=V.floorGroups();local selected=1
         for i,group in ipairs(groups) do if contains(group.indices,V.floor) then selected=i end end
         local left=V.mode==1 and 300 or 0
