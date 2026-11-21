@@ -59,7 +59,10 @@ end
 E.lastMinutes=5400
 function E.clockText(game)
     local left=tonumber(game and game.eliminationtime) or 0
-    if left>0 and tostring(game.scenario or ""):find("^elimination") then
+    -- In Elimination the countdown stays shown once the game clock runs, so
+    -- time running out reads 00:00:00.0 with the warning (run of 2026-11-21).
+    local running=(tonumber(game and game.frames) or 0)>0
+    if (left>0 or running) and tostring(game and game.scenario or ""):find("^elimination") then
         return Time2string(left/.03),left<=E.lastMinutes
     end
     return Time2string(((game and game.frames) or 0)/.03),false
