@@ -408,8 +408,11 @@ end
 local function plate(fill,frame,name)
     rect(fill); sprite(name or "title bar",frame)
 end
-local function hit(b,action)
-    V.hits[#V.hits+1]={x=b.x,y=b.y,w=b.w,h=b.h,action=action}
+-- inMap marks a hit drawn as part of the map (an arena room box): it fires on
+-- release without a drag, so a drag that starts on it still pans the map, and
+-- the zoom/FOLLOW controls drawn over the map take precedence.
+local function hit(b,action,inMap)
+    V.hits[#V.hits+1]={x=b.x,y=b.y,w=b.w,h=b.h,action=action,map=inMap}
 end
 -- Following a player jumps straight to their floor, so a tap on a card or
 -- portrait shows where they are at once instead of on the next update.
@@ -646,6 +649,149 @@ local function scenario(l,game)
     local hintY=39
     text(content,{x=b.x,y=b.y+hintY,w=b.w,h=b.h-hintY,size=V.mode==1 and 13 or 11})
 end
+-- Room tint shared by floor maps and the Elimination/Showdown views: gas
+-- yellow (pulsing), YOU's room red, other occupied rooms light blue, rooms YOU
+-- has visited green; nil leaves the room black.
+function V.roomTint(players,id,visited,gasPulse)
+    if gasPulse then return {1,.85,0,.28+.18*gasPulse} end
+    local you=players[V.you or 0]
+    if active(you) and you.roomID==id then return {1,0,0,.25} end
+    for i=1,4 do
+        if active(players[i]) and players[i].roomID==id then return {115/255,178/255,249/255,.25} end
+    end
+    if visited then return {.4,1,.55,.22} end
+end
+-- Items, enemies and player markers, drawn the same on floor maps and in the
+-- arena Room View. at.item(it), at.sp(it), at.enemy(e) and at.player(i) return
+-- screen x,y (players also a fallback flag) or nil when not shown; context keys
+-- the player-label memory and marker motion.
+local function drawMarkers(game,players,enemies,vp,at,context)
+    local g=love.graphics
+    -- Observed room items persist for this run. Scenario items come from the
+    -- already-refreshed global pickup table and remain visible until taken.
+    V.itemsDrawn=0
+    V.itemHits={}
+    local function itemHit(x,y,name)
+        V.itemHits[#V.itemHits+1]={x=x-11,y=y-11,w=22,h=22,name=name}
+    end
+    V.spDrawn=0
+    local ordinaryItems,scenarioItems={},{}
+    for _,it in pairs(Session.items) do
+        local list=(it.type or 0)>=10000 and scenarioItems or ordinaryItems
+        list[#list+1]=it
+    end
+    local spItems={};for _,it in pairs(Session.spItems) do spItems[#spItems+1]=it end
+    local function byId(a,b) return (a.id or 0)<(b.id or 0) end
+    table.sort(ordinaryItems,byId);table.sort(scenarioItems,byId);table.sort(spItems,byId)
+    local function drawItem(it)
+        local x,y=at.item(it)
+        if x then
+            local key=(it.type or 0)>=10000
+            rect({x=x-10,y=y-10,w=20,h=20},key and {1,.38,0,.95} or {0,0,0,.7})
+            g.setColor(1,1,1,1)
+            ItemIcons:draw(tostring(game.currentFile).."/"..tostring(it.type),x-8,y-8,0,16/48,16/48)
+            V.itemsDrawn=V.itemsDrawn+1
+            itemHit(x,y,Catalog.items[it.type] or ("Item "..tostring(it.type)))
+        end
+    end
+    local function drawSP(it)
+        local x,y
+        if at.sp then x,y=at.sp(it) end
+        if x then
+            local entry=Catalog.sp[game.currentFile] and Catalog.sp[game.currentFile][it.id]
+            local personal=entry and entry.owner~=nil
+            g.setColor(0,0,0,.85);g.circle("fill",x,y,7)
+            g.setColor(personal and .2 or .15,personal and .6 or 1,personal and 1 or .2,1)
+            g.polygon("fill",{x,y-6,x+6,y,x,y+6,x-6,y})
+            local label=entry and entry.name or ("SP "..it.id)
+            if personal then label=label.." ("..entry.owner..")" end
+            itemHit(x,y,label);V.spDrawn=V.spDrawn+1
+        end
+    end
+    -- Enemies: small white diamonds with a dark edge, under the player markers.
+    V.enemiesDrawn=0
+    local enemyLabels={}
+    for _,e in ipairs(enemies or {}) do
+        local x,y=at.enemy(e)
+        if x then
+            if V.isHazard(e) then
+                -- Soft red glow behind an orange marker; no HP for traps.
+                Effects.pulseColor("danger",V.elapsed,1,.08,.02,.45,.45)
+                g.circle("fill",x,y,12);g.circle("fill",x,y,9)
+                Effects.endPulse()
+                g.setColor(0,0,0,.85);g.circle("fill",x,y,6.5)
+                g.setColor(1,.55,.05,1);g.circle("fill",x,y,5)
+            else
+                g.setColor(0,0,0,.85);g.polygon("fill",{x,y-7,x+7,y,x,y+7,x-7,y})
+                g.setColor(1,V.isBoss(e) and .05 or 1,V.isBoss(e) and .05 or 1,1);g.polygon("fill",{x,y-5,x+5,y,x,y+5,x-5,y})
+                -- Remaining HP as a percentage beside the marker.
+                local pct=math.floor(e.HP/e.maxHP*100+.5)
+                enemyLabels[#enemyLabels+1]={value=pct.."%",x=x+7,y=y-15}
+            end
+            V.enemiesDrawn=V.enemiesDrawn+1
+        end
+    end
+    local points={}
+    for i=1,4 do
+        local x,y,fallback=at.player(i)
+        if x then points[i]={x=x,y=y,fallback=fallback} end
+    end
+    if V.labelContext~=context then V.labelHidden=nil;V.labelContext=context end
+    V.labelHidden=V.hiddenPlayerLabels(points,V.labelHidden)
+    for i=1,4 do
+        local point=points[i]
+        if point then
+            local x,y,fallback=point.x,point.y,point.fallback
+            if g.actorBegin then g.actorBegin(i,x,y,context..":"..players[i].roomID) end
+            local c=Effects.markerColor(players[i],V.colors[i],V.elapsed)
+            local speaking=Effects.adlib(players[i],V.elapsed)
+            if speaking then
+                g.setColor(0,1,.15,.25+.35*Effects.pulse(V.elapsed));g.circle("fill",x,y,14)
+            end
+            if V.follow and i==V.target then
+                rect({x=vp.x,y=y,w=vp.w,h=1},{c[1],c[2],c[3],.7})
+                rect({x=x,y=vp.y,w=1,h=vp.h},{c[1],c[2],c[3],.7})
+            end
+            g.setColor(c[1],c[2],c[3],.15);g.circle("fill",x,y,speaking and 12 or 19)
+            g.setColor(c[1],c[2],c[3],1);g.setLineWidth(1)
+            if fallback then
+                g.circle("line",x,y,11);icon(players[i],x-9,y-9,18)
+            else
+                -- The chevron points along the player's forward axis (map X/Y,
+                -- y down like the map). Without a usable facing it stays upright.
+                g.push();g.translate(x,y);g.rotate(V.heading(players[i]))
+                g.polygon("fill",{0,-12,10,10,0,4,-10,10})
+                g.pop()
+            end
+            if not V.labelHidden[i] then text(i==V.you and "YOU" or "P"..i,{x=x+12,y=y-24,w=35,size=13},c) end
+            if g.actorEnd then g.actorEnd() end
+        end
+    end
+    -- Foreground priority: players < regular items < SP < scenario items < HP.
+    for _,it in ipairs(ordinaryItems) do drawItem(it) end
+    for _,it in ipairs(spItems) do drawSP(it) end
+    for _,it in ipairs(scenarioItems) do drawItem(it) end
+    for _,label in ipairs(enemyLabels) do
+        rect({x=label.x-1,y=label.y-1,w=29,h=13},{0,0,0,.8})
+        text(label.value,{x=label.x,y=label.y,w=40,size=10},white)
+    end
+end
+-- Name of the item or SP marker under the pointer.
+local function drawHover(vp)
+    local hover=V.hover
+    if not hover then return end
+    for i=#(V.itemHits or {}),1,-1 do
+        local h=V.itemHits[i]
+        if hover.x>=h.x and hover.x<h.x+h.w and hover.y>=h.y and hover.y<h.y+h.h then
+            local width=math.min(vp.w-8,math.max(90,#h.name*6))
+            local x=math.max(vp.x+4,math.min(hover.x+12,vp.x+vp.w-width-4))
+            local y=math.max(vp.y+4,math.min(hover.y-25,vp.y+vp.h-24))
+            rect({x=x,y=y,w=width,h=22},{.02,.04,.08,.96})
+            text(h.name,{x=x+4,y=y+4,w=width-8,size=12,fit=true})
+            break
+        end
+    end
+end
 local function drawMap(l,game,players,enemies,items)
     local g=love.graphics;local vp=l.viewport;local f=V.map and V.map.floors[V.floor]
     V.viewport=vp
@@ -678,17 +824,8 @@ local function drawMap(l,game,players,enemies,items)
     -- Room tint: YOU's room red, other occupied rooms light blue, gas yellow.
     -- With Evil Resource layers the tint follows their room outline.
     for _,p in ipairs(f.places) do
-        local r=V.map.rooms[p.record];local color
-        if V.gasRooms[r.id] then color={1,.85,0,.28+.18*pulse}
-        elseif active(players[V.you or 0]) and players[V.you].roomID==r.id then color={1,0,0,.25}
-        else
-            for i=1,4 do
-                if active(players[i]) and players[i].roomID==r.id then
-                    color={115/255,178/255,249/255,.25};break
-                end
-            end
-        end
-        if not color and Session.visited[r.id] then color={.4,1,.55,.22} end
+        local r=V.map.rooms[p.record]
+        local color=V.roomTint(players,r.id,Session.visited[r.id],V.gasRooms[r.id] and pulse)
         if color then
             local drawn=false
             for _,layer in ipairs(layers or {}) do
@@ -770,134 +907,29 @@ local function drawMap(l,game,players,enemies,items)
             V.routeDrawn=V.routeDrawn+1
         end
     end
-    -- Observed room items persist for this run. Scenario items come from the
-    -- already-refreshed global pickup table and remain visible until taken.
-    V.itemsDrawn=0
-    V.itemHits={}
-    local function itemHit(x,y,name)
-        V.itemHits[#V.itemHits+1]={x=x-11,y=y-11,w=22,h=22,name=name}
-    end
-    V.spDrawn=0
-    local ordinaryItems,scenarioItems={},{}
-    for _,it in pairs(Session.items) do
-        local list=(it.type or 0)>=10000 and scenarioItems or ordinaryItems
-        list[#list+1]=it
-    end
-    local spItems={};for _,it in pairs(Session.spItems) do spItems[#spItems+1]=it end
-    local function byId(a,b) return (a.id or 0)<(b.id or 0) end
-    table.sort(ordinaryItems,byId);table.sort(scenarioItems,byId);table.sort(spItems,byId)
-    local function drawItem(it)
-        local ix,iy=V.itemMarker(V.map,V.floor,it.roomID,it)
-        if ix then
-            local x,y=ox+(ix-cx)*scale,oy+(iy-cy)*scale
-            local key=(it.type or 0)>=10000
-            rect({x=x-10,y=y-10,w=20,h=20},key and {1,.38,0,.95} or {0,0,0,.7})
-            g.setColor(1,1,1,1)
-            ItemIcons:draw(tostring(game.currentFile).."/"..tostring(it.type),x-8,y-8,0,16/48,16/48)
-            V.itemsDrawn=V.itemsDrawn+1
-            itemHit(x,y,Catalog.items[it.type] or ("Item "..tostring(it.type)))
-        end
-    end
-    local function drawSP(it)
-        local probe={id=it.id+1,type=0,count=1,positionX=it.positionX,positionY=it.positionY,height=it.height,floor=it.floor}
-        local ix,iy=V.itemMarker(V.map,V.floor,it.roomID,probe)
-        if ix then
-            local x,y=ox+(ix-cx)*scale,oy+(iy-cy)*scale
-            local entry=Catalog.sp[game.currentFile] and Catalog.sp[game.currentFile][it.id]
-            local personal=entry and entry.owner~=nil
-            g.setColor(0,0,0,.85);g.circle("fill",x,y,7)
-            g.setColor(personal and .2 or .15,personal and .6 or 1,personal and 1 or .2,1)
-            g.polygon("fill",{x,y-6,x+6,y,x,y+6,x-6,y})
-            local label=entry and entry.name or ("SP "..it.id)
-            if personal then label=label.." ("..entry.owner..")" end
-            itemHit(x,y,label);V.spDrawn=V.spDrawn+1
-        end
-    end
-    -- Enemies: small white diamonds with a dark edge, under the player markers.
-    V.enemiesDrawn=0
-    local enemyLabels={}
-    for _,e in ipairs(enemies or {}) do
-        local ex,ey=V.enemyMarker(V.map,V.floor,e)
-        if ex then
-            local x,y=ox+(ex-cx)*scale,oy+(ey-cy)*scale
-            if V.isHazard(e) then
-                -- Soft red glow behind an orange marker; no HP for traps.
-                Effects.pulseColor("danger",V.elapsed,1,.08,.02,.45,.45)
-                g.circle("fill",x,y,12);g.circle("fill",x,y,9)
-                Effects.endPulse()
-                g.setColor(0,0,0,.85);g.circle("fill",x,y,6.5)
-                g.setColor(1,.55,.05,1);g.circle("fill",x,y,5)
-            else
-                g.setColor(0,0,0,.85);g.polygon("fill",{x,y-7,x+7,y,x,y+7,x-7,y})
-                g.setColor(1,V.isBoss(e) and .05 or 1,V.isBoss(e) and .05 or 1,1);g.polygon("fill",{x,y-5,x+5,y,x,y+5,x-5,y})
-                -- Remaining HP as a percentage beside the marker.
-                local pct=math.floor(e.HP/e.maxHP*100+.5)
-                enemyLabels[#enemyLabels+1]={value=pct.."%",x=x+7,y=y-15}
-            end
-            V.enemiesDrawn=V.enemiesDrawn+1
-        end
-    end
-    local points={}
-    for i=1,4 do
-        local px,py,fallback=V.marker(V.map,V.floor,players[i])
-        if px then points[i]={x=ox+(px-cx)*scale,y=oy+(py-cy)*scale,fallback=fallback} end
-    end
-    local labelContext=V.cacheKey..":"..V.floor
-    if V.labelContext~=labelContext then V.labelHidden=nil;V.labelContext=labelContext end
-    V.labelHidden=V.hiddenPlayerLabels(points,V.labelHidden)
-    for i=1,4 do
-        local point=points[i]
-        if point then
-            local x,y,fallback=point.x,point.y,point.fallback
-            if g.actorBegin then g.actorBegin(i,x,y,V.cacheKey..":"..V.floor..":"..players[i].roomID) end
-            local c=Effects.markerColor(players[i],V.colors[i],V.elapsed)
-            local speaking=Effects.adlib(players[i],V.elapsed)
-            if speaking then
-                g.setColor(0,1,.15,.25+.35*Effects.pulse(V.elapsed));g.circle("fill",x,y,14)
-            end
-            if V.follow and i==V.target then
-                rect({x=vp.x,y=y,w=vp.w,h=1},{c[1],c[2],c[3],.7})
-                rect({x=x,y=vp.y,w=1,h=vp.h},{c[1],c[2],c[3],.7})
-            end
-            g.setColor(c[1],c[2],c[3],.15);g.circle("fill",x,y,speaking and 12 or 19)
-            g.setColor(c[1],c[2],c[3],1);g.setLineWidth(1)
-            if fallback then
-                g.circle("line",x,y,11);icon(players[i],x-9,y-9,18)
-            else
-                -- The chevron points along the player's forward axis (map X/Y,
-                -- y down like the map). Without a usable facing it stays upright.
-                g.push();g.translate(x,y);g.rotate(V.heading(players[i]))
-                g.polygon("fill",{0,-12,10,10,0,4,-10,10})
-                g.pop()
-            end
-            if not V.labelHidden[i] then text(i==V.you and "YOU" or "P"..i,{x=x+12,y=y-24,w=35,size=13},c) end
-            if g.actorEnd then g.actorEnd() end
-        end
-    end
-    -- Foreground priority: players < regular items < SP < scenario items < HP.
-    for _,it in ipairs(ordinaryItems) do drawItem(it) end
-    for _,it in ipairs(spItems) do drawSP(it) end
-    for _,it in ipairs(scenarioItems) do drawItem(it) end
-    for _,label in ipairs(enemyLabels) do
-        rect({x=label.x-1,y=label.y-1,w=29,h=13},{0,0,0,.8})
-        text(label.value,{x=label.x,y=label.y,w=40,size=10},white)
-    end
+    local function screen(x,y) return ox+(x-cx)*scale,oy+(y-cy)*scale end
+    drawMarkers(game,players,enemies,vp,{
+        item=function(it)
+            local x,y=V.itemMarker(V.map,V.floor,it.roomID,it)
+            if x then return screen(x,y) end
+        end,
+        sp=function(it)
+            local probe={id=it.id+1,type=0,count=1,positionX=it.positionX,positionY=it.positionY,height=it.height,floor=it.floor}
+            local x,y=V.itemMarker(V.map,V.floor,it.roomID,probe)
+            if x then return screen(x,y) end
+        end,
+        enemy=function(e)
+            local x,y=V.enemyMarker(V.map,V.floor,e)
+            if x then return screen(x,y) end
+        end,
+        player=function(i)
+            local x,y,fallback=V.marker(V.map,V.floor,players[i])
+            if x then local sx,sy=screen(x,y);return sx,sy,fallback end
+        end,
+    },V.cacheKey..":"..V.floor)
     if g.mapEnd then g.mapEnd() end
     g.setScissor()
-    local hover=V.hover
-    if hover then
-        for i=#V.itemHits,1,-1 do
-            local h=V.itemHits[i]
-            if hover.x>=h.x and hover.x<h.x+h.w and hover.y>=h.y and hover.y<h.y+h.h then
-                local width=math.min(vp.w-8,math.max(90,#h.name*6))
-                local x=math.max(vp.x+4,math.min(hover.x+12,vp.x+vp.w-width-4))
-                local y=math.max(vp.y+4,math.min(hover.y-25,vp.y+vp.h-24))
-                rect({x=x,y=y,w=width,h=22},{.02,.04,.08,.96})
-                text(h.name,{x=x+4,y=y+4,w=width-8,size=12,fit=true})
-                break
-            end
-        end
-    end
+    drawHover(vp)
     if next(V.gasRooms) then
         local chip=l.gasChip or {x=vp.x+vp.w-46,y=vp.y+50,w=40,h=43,color={0,0,0,.75}}
         rect(chip);gasTimer(game,l.gasChipContent or chip)
@@ -911,13 +943,10 @@ local function roomLabel(game,id)
     return name
 end
 -- One room box: name, enemies left ("x 02", gray when none or unknown) and the
--- icons of players inside. A Danger/Down occupant makes it flash and glow red.
--- Rooms YOU has not entered are black; entered rooms are light green with dark
--- text (user request, 2026-11-21 recording notes).
-local enteredFill={.50,.82,.54,1}
-local enteredInk={0,0,0,1}
-local enteredMuted={.16,.34,.19,1}
-local enteredBlue={.02,.22,.72,1}
+-- icons of players inside. It is tinted like a floor-map room (V.roomTint: YOU's
+-- room red, other occupied rooms light blue, rooms YOU entered green, the rest
+-- black), and a Danger/Down occupant makes it flash and glow red. A box zoomed
+-- out below two text lines keeps only the count and the icons.
 local function arenaBox(game,id,b,occupants,alive,known,current,entered)
     local g=love.graphics
     local alert=nil
@@ -929,35 +958,43 @@ local function arenaBox(game,id,b,occupants,alive,known,current,entered)
         end
         Effects.endPulse()
     end
-    rect(b,entered and enteredFill or {0,0,0,1})
+    rect(b,{0,0,0,1})
+    local tint=V.roomTint(V.players,id,entered)
+    if tint then rect(b,tint) end
     if alert then
         Effects.pulseColor(alert,V.elapsed,1,0,0,.55,.1);g.rectangle("fill",b.x,b.y,b.w,b.h);Effects.endPulse()
     end
-    local ink,dim,blue=entered and enteredInk or white,entered and enteredMuted or muted,entered and enteredBlue or enemyBlue
     g.setLineWidth(current and 2 or 1)
     rect(b,current and {.95,.85,.35,1} or {.3,.45,.75,1},"line");g.setLineWidth(1)
     local size=b.w>=150 and 13 or (b.w>=95 and 11 or (b.w>=70 and 10 or 9))
+    if b.w>=220 and b.h>=72 then size=16 elseif b.w>=185 and b.h>=60 then size=15 end
     local font=MapFonts and MapFonts[size] or MiniFont
     local lineHeight=font:getHeight()
-    local nameLines=b.h>=lineHeight*3+6 and 2 or 1
-    local name=roomLabel(game,id)
-    if nameLines==1 then text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size,fit=true},ink)
-    else
-        g.setScissor(b.x+2,b.y+1,b.w-4,lineHeight*2+1)
-        text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size},ink);g.setScissor()
+    local compact=b.h<lineHeight*2+6
+    if not compact then
+        -- One or two name lines, wrapped here (no nested scissor: the box is
+        -- drawn inside the map clip).
+        local name=roomLabel(game,id)
+        local _,lines=font:getWrap(name,b.w-6)
+        if b.h<lineHeight*3+6 or #lines<=1 then text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size,fit=true})
+        else
+            text(lines[1],{x=b.x+3,y=b.y+2,w=b.w-6,size=size,fit=true})
+            text(table.concat(lines," ",2),{x=b.x+3,y=b.y+2+lineHeight,w=b.w-6,size=size,fit=true})
+        end
     end
     -- Enemies left, bottom left.
-    local count=alive[id];local y=b.y+b.h-lineHeight-3
+    local count=alive[id]
+    local y=compact and b.y+(b.h-lineHeight)/2 or b.y+b.h-lineHeight-3
     local none=not known[id] or (count or 0)==0
     local d=math.max(3,lineHeight*.3);local cx,cy=b.x+4+d,y+lineHeight/2
-    g.setColor(unpack(none and dim or blue))
+    g.setColor(unpack(none and muted or enemyBlue))
     g.polygon("fill",{cx,cy-d,cx+d,cy,cx,cy+d,cx-d,cy})
     local value=known[id] and string.format("x %02d",math.min(99,count or 0)) or "x --"
-    text(value,{x=cx+d+3,y=y,w=b.w/2,size=size},none and dim or ink)
+    text(value,{x=cx+d+3,y=y,w=b.w/2,size=size},none and muted or white)
     -- Players inside, bottom right.
-    local iconSize=math.min(lineHeight+4,(b.w/2-4)/math.max(1,#occupants))
+    local iconSize=math.min(lineHeight+4,b.h-4,(b.w/2-4)/math.max(1,#occupants))
     local xx=b.x+b.w-3-#occupants*(iconSize+1)
-    for _,i in ipairs(occupants) do icon(V.players[i],xx,b.y+b.h-iconSize-3,iconSize);xx=xx+iconSize+1 end
+    for _,i in ipairs(occupants) do icon(V.players[i],xx,b.y+b.h-iconSize-(compact and (b.h-iconSize)/2 or 3),iconSize);xx=xx+iconSize+1 end
 end
 -- A straight connector as a filled quad (the Decky bridge has no line command).
 local function segment(x1,y1,x2,y2,width)
@@ -1014,8 +1051,10 @@ V.arenaSource=arenaSource
 -- room items; each neighbouring room sits outside it as a box, with an arrow from
 -- the door the run recorded (MapArena.doors) or, without one, from the room edge
 -- in the direction the room lies on the diagram. Without source art the room is
--- a box as well.
-local function drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,occupants)
+-- a box as well. Room, boxes and arrows form one map: zoom, FOLLOW and dragging
+-- move and scale it as a whole, as on a floor map, so boxes keep their place
+-- beside the room and never cover it.
+local function drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,entered)
     local g=love.graphics
     local list=graph and Arena.neighbours(graph,room) or {}
     local nw,nh=math.min(vp.w*.27,124),46
@@ -1044,65 +1083,36 @@ local function drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known
         local e={id=id,u=math.max(0,math.min(1,u)),v=math.max(0,math.min(1,v)),door=door,side=side}
         entries[#entries+1]=e;local l2=sides[side];l2[#l2+1]=e
     end
-    -- Room area: margins only on sides that hold boxes; the bottom strip stays
-    -- free for the enemy count and the FOLLOW button.
+    -- Layout at zoom 1: the room fitted in the area left by the box margins (only
+    -- on sides that hold boxes; the bottom strip stays free for the enemy count
+    -- and the zoom buttons), neighbour boxes around it.
     local left=#sides.left>0 and nw+16 or 8
     local right=#sides.right>0 and nw+16 or 8
     local top=#sides.top>0 and nh+16 or 8
     local bottom=(#sides.bottom>0 and nh+16 or 8)+34
     local area={x=vp.x+left,y=vp.y+top,w=vp.w-left-right,h=vp.h-top-bottom}
     local cx,cy=area.x+area.w/2,area.y+area.h/2
-    local main,frame,toScreen,scale
-    V.roomArtDrawn=false
+    local main,fitScale,artX,artY
     if map then
-        -- main is the fitted room frame the neighbour boxes sit around; zoom and
-        -- pan (+/-, wheel, drag) magnify only the room drawing inside that frame, about
-        -- the room centre or, zoomed in while following, the followed player.
-        local fitScale=math.min(area.w/r.w,area.h/r.h)
-        scale=fitScale*V.zoom
+        fitScale=math.min(area.w/r.w,area.h/r.h)
         main={x=cx-r.w/2*fitScale,y=cy-r.h/2*fitScale,w=r.w*fitScale,h=r.h*fitScale}
-        frame={x=main.x-8,y=main.y-8,w=main.w+16,h=main.h+16}
-        local mx,my=p.x+r.w/2,p.y+r.h/2
-        local target=players[V.target or 0]
-        if not V.follow and V.frozenCenter and V.frozenCenter[3]==room then mx,my=V.frozenCenter[1],V.frozenCenter[2]
-        elseif V.follow and V.zoom>1 and active(target) and target.roomID==room and finite(target.positionX) and finite(target.positionY) then
-            mx,my=Data.position(f,target.positionX,target.positionY)
-        end
-        V.visibleCenter={mx,my,room}
-        local ox,oy=cx+V.panX-mx*scale,cy+V.panY-my*scale
-        toScreen=function(x,z,margin)
-            if not (finite(x) and finite(z)) then return end
-            local px,py=Data.position(f,x,z)
-            px,py=V.clampToRoom(map,src[4],src[3],px,py,(margin or 9)/scale)
-            return ox+px*scale,oy+py*scale
-        end
-        local alert=nil
-        for _,i in ipairs(occupants[room] or {}) do alert=Effects.worst(alert,Effects.health(players[i])) end
-        clip(frame,l)
-        g.push();g.translate(ox,oy);g.scale(scale)
-        if alert then Effects.pulseColor(alert,V.elapsed,1,0,0,.55,.2) else g.setColor(115/255,178/255,249/255,.22) end
-        g.draw(map.fillImage,map.quads[p.record],p.x,p.y)
-        if alert then Effects.endPulse() end
-        g.setColor(43/255,116/255,211/255,1);g.draw(map.wallImage,map.quads[p.record],p.x,p.y)
-        g.pop()
-        g.setScissor()
-        V.roomArtDrawn=true
+        artX,artY=main.x-p.x*fitScale,main.y-p.y*fitScale
     else
         local cw,ch=math.min(area.w,220),math.min(area.h,130)
         main={x=cx-cw/2,y=cy-ch/2,w=cw,h=ch}
     end
-    -- Boxes are ordered by where their doors are in the fitted frame; the arrow
-    -- starts at the door as drawn (zoomed), kept inside that frame.
+    local zoom=V.zoom
+    -- A game position in layout coordinates, kept inside the room like markers.
+    local function layoutPoint(x,z,margin)
+        if not (map and finite(x) and finite(z)) then return end
+        local px,py=Data.position(f,x,z)
+        px,py=V.clampToRoom(map,src[4],src[3],px,py,(margin or 9)/(fitScale*zoom))
+        return artX+px*fitScale,artY+py*fitScale
+    end
     for _,e in ipairs(entries) do
         local x,y=main.x+e.u*main.w,main.y+e.v*main.h
         e.along=(e.side=="top" or e.side=="bottom") and x or y
-        if e.door and toScreen then
-            local dx,dy=toScreen(e.door[1],e.door[2],4)
-            if dx then
-                e.inside=dx>=frame.x and dx<=frame.x+frame.w and dy>=frame.y and dy<=frame.y+frame.h
-                e.dx=math.max(frame.x,math.min(frame.x+frame.w,dx));e.dy=math.max(frame.y,math.min(frame.y+frame.h,dy))
-            end
-        end
+        if e.door then e.lx,e.ly=layoutPoint(e.door[1],e.door[2],4) end
     end
     local function spread(items,size,lo,hi)
         table.sort(items,function(a,b) return a.along<b.along end)
@@ -1116,74 +1126,83 @@ local function drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known
     end
     spread(sides.top,nw,vp.x+2,vp.x+vp.w-2);spread(sides.bottom,nw,vp.x+2,vp.x+vp.w-2)
     spread(sides.left,nh,vp.y+2,vp.y+vp.h-36);spread(sides.right,nh,vp.y+2,vp.y+vp.h-36)
-    local function place(it,b)
-        local x1,y1=it.dx,it.dy
-        if not x1 then x1,y1=edgePoint(main,b.x+b.w/2,b.y+b.h/2) end
+    for _,it in ipairs(sides.top) do it.b={x=it.c-nw/2,y=math.max(vp.y+2,main.y-14-nh),w=nw,h=nh} end
+    for _,it in ipairs(sides.bottom) do it.b={x=it.c-nw/2,y=math.min(vp.y+vp.h-36-nh,main.y+main.h+14),w=nw,h=nh} end
+    for _,it in ipairs(sides.left) do it.b={x=math.max(vp.x+2,main.x-14-nw),y=it.c-nh/2,w=nw,h=nh} end
+    for _,it in ipairs(sides.right) do it.b={x=math.min(vp.x+vp.w-2-nw,main.x+main.w+14),y=it.c-nh/2,w=nw,h=nh} end
+    -- Zoom and pan act on the whole layout about the area centre, the followed
+    -- player (zoomed in while following) or the spot a drag started from.
+    local pivX,pivY=cx,cy
+    local target=players[V.target or 0]
+    local frozen=V.frozenCenter
+    if not V.follow and frozen and frozen[3]==room then pivX,pivY=frozen[1],frozen[2]
+    elseif V.follow and zoom>1 and active(target) and target.roomID==room then
+        local x,y=layoutPoint(target.positionX,target.positionY)
+        if x then pivX,pivY=x,y end
+    end
+    V.visibleCenter={pivX,pivY,room}
+    local function T(x,y) return cx+V.panX+(x-pivX)*zoom,cy+V.panY+(y-pivY)*zoom end
+    local function TB(b) local x,y=T(b.x,b.y);return {x=x,y=y,w=b.w*zoom,h=b.h*zoom} end
+    clip(vp,l)
+    if g.mapBegin then
+        local camX,camY=T(0,0)
+        local continuity=table.concat({V.cacheKey,"room",room,vp.w,zoom,tostring(V.follow),V.panX,V.panY},":")
+        g.mapBegin(vp.x,vp.y,vp.w,vp.h,V.panX,V.panY,camX,camY,continuity)
+    end
+    V.roomArtDrawn=false
+    if map then
+        local x,y=T(artX,artY)
+        g.push();g.translate(x,y);g.scale(fitScale*zoom)
+        local tint=V.roomTint(players,room,entered(room))
+        if tint then g.setColor(unpack(tint));g.draw(map.fillImage,map.quads[p.record],p.x,p.y) end
+        g.setColor(43/255,116/255,211/255,1);g.draw(map.wallImage,map.quads[p.record],p.x,p.y)
+        g.pop()
+        V.roomArtDrawn=true
+    end
+    for y=vp.y,vp.y+vp.h,3 do rect({x=vp.x,y=y,w=vp.w,h=1},{0,0,0,.22}) end
+    -- Door arrows and the neighbour boxes.
+    local shown=TB(main)
+    for _,e in ipairs(entries) do
+        local b=TB(e.b)
+        local x1,y1
+        if e.lx then x1,y1=T(e.lx,e.ly) else x1,y1=edgePoint(shown,b.x+b.w/2,b.y+b.h/2) end
         local x2,y2=edgePoint(b,x1,y1)
         arrow(x1,y1,x2,y2,{.95,.6,.15,.9})
-        if it.dx and it.inside then g.setColor(.95,.6,.15,1);g.circle("fill",x1,y1,4) end
-        box(it.id,b)
+        if e.lx then g.setColor(.95,.6,.15,1);g.circle("fill",x1,y1,4) end
+        box(e.id,b)
     end
-    if not map then
-    for _,it in ipairs(sides.top) do place(it,{x=it.c-nw/2,y=math.max(vp.y+2,main.y-14-nh),w=nw,h=nh}) end
-    for _,it in ipairs(sides.bottom) do place(it,{x=it.c-nw/2,y=math.min(vp.y+vp.h-36-nh,main.y+main.h+14),w=nw,h=nh}) end
-    for _,it in ipairs(sides.left) do place(it,{x=math.max(vp.x+2,main.x-14-nw),y=it.c-nh/2,w=nw,h=nh}) end
-    for _,it in ipairs(sides.right) do place(it,{x=math.min(vp.x+vp.w-2-nw,main.x+main.w+14),y=it.c-nh/2,w=nw,h=nh}) end
-        box(room,main);return
-    end
-    -- Enemies left here, under the room.
-    local count=alive[room];local none=not known[room] or (count or 0)==0
-    g.setColor(unpack(none and muted or enemyBlue))
-    local ex,ey=vp.x+10,vp.y+vp.h-20
-    g.polygon("fill",{ex,ey-5,ex+5,ey,ex,ey+5,ex-5,ey})
-    text(known[room] and string.format("x %02d",math.min(99,count or 0)) or "x --",{x=ex+9,y=ey-7,w=80,size=12},none and muted or white)
-    clip(frame,l)
-    -- Room items YOU has seen here.
-    for _,it in pairs(Session.items) do
-        if it.roomID==room then
-            local x,y=toScreen(it.positionX,it.positionY)
-            if x then
-                rect({x=x-9,y=y-9,w=18,h=18},(it.type or 0)>=10000 and {1,.38,0,.95} or {0,0,0,.7})
-                g.setColor(1,1,1,1)
-                ItemIcons:draw(tostring(game.currentFile).."/"..tostring(it.type),x-7,y-7,0,14/48,14/48)
-            end
+    if map then
+        local function at(x,z,margin)
+            local lx,ly=layoutPoint(x,z,margin)
+            if lx then return T(lx,ly) end
         end
+        drawMarkers(game,players,enemies,vp,{
+            item=function(it) if it.roomID==room then return at(it.positionX,it.positionY) end end,
+            enemy=function(e)
+                local hp,maxHP=e.HP or 0,e.maxHP or 0
+                if e.enabled and e.inGame and e.roomID==room and maxHP>0 and maxHP<60000 and hp>0 and hp<=maxHP then
+                    return at(e.positionX,e.positionY,6)
+                end
+            end,
+            player=function(i)
+                local pl=players[i]
+                if active(pl) and pl.roomID==room then return at(pl.positionX,pl.positionY) end
+            end,
+        },V.cacheKey..":arena:"..room)
+    else
+        box(room,shown)
     end
-    -- Enemies in this room (live slots only describe the loaded room).
-    for _,e in ipairs(enemies or {}) do
-        local hp,maxHP=e.HP or 0,e.maxHP or 0
-        if e.enabled and e.inGame and e.roomID==room and maxHP>0 and maxHP<60000 and hp>0 and hp<=maxHP then
-            local x,y=toScreen(e.positionX,e.positionY,6)
-            if x and V.isHazard(e) then
-                Effects.pulseColor("danger",V.elapsed,1,.08,.02,.45,.45);g.circle("fill",x,y,11);Effects.endPulse()
-                g.setColor(0,0,0,.85);g.circle("fill",x,y,6.5);g.setColor(1,.55,.05,1);g.circle("fill",x,y,5)
-            elseif x then
-                g.setColor(0,0,0,.85);g.polygon("fill",{x,y-7,x+7,y,x,y+7,x-7,y})
-                local boss=V.isBoss(e)
-                g.setColor(1,boss and .05 or 1,boss and .05 or 1,1);g.polygon("fill",{x,y-5,x+5,y,x,y+5,x-5,y})
-            end
-        end
-    end
-    -- Players here: slot colour with a facing chevron.
-    for i=1,4 do
-        local pl=players[i]
-        if active(pl) and pl.roomID==room then
-            local x,y=toScreen(pl.positionX,pl.positionY)
-            if x then
-                local c=Effects.markerColor(pl,V.colors[i],V.elapsed)
-                g.setColor(c[1],c[2],c[3],.2);g.circle("fill",x,y,13)
-                g.push();g.translate(x,y);g.rotate(V.heading(pl))
-                g.setColor(0,0,0,.9);g.polygon("fill",{0,-10,8,7,0,3,-8,7})
-                g.setColor(c[1],c[2],c[3],1);g.polygon("fill",{0,-8,6,5,0,2,-6,5})
-                g.pop()
-            end
-        end
-    end
+    if g.mapEnd then g.mapEnd() end
     g.setScissor()
-    for _,it in ipairs(sides.top) do place(it,{x=it.c-nw/2,y=math.max(vp.y+2,main.y-14-nh),w=nw,h=nh}) end
-    for _,it in ipairs(sides.bottom) do place(it,{x=it.c-nw/2,y=math.min(vp.y+vp.h-36-nh,main.y+main.h+14),w=nw,h=nh}) end
-    for _,it in ipairs(sides.left) do place(it,{x=math.max(vp.x+2,main.x-14-nw),y=it.c-nh/2,w=nw,h=nh}) end
-    for _,it in ipairs(sides.right) do place(it,{x=math.min(vp.x+vp.w-2-nw,main.x+main.w+14),y=it.c-nh/2,w=nw,h=nh}) end
+    drawHover(vp)
+    -- Enemies left here, over the map at the bottom left like the zoom buttons.
+    local count=alive[room];local none=not known[room] or (count or 0)==0
+    local value=known[room] and string.format("x %02d",math.min(99,count or 0)) or "x --"
+    rect({x=vp.x+2,y=vp.y+vp.h-30,w=58,h=22},{0,0,0,.75})
+    g.setColor(unpack(none and muted or enemyBlue))
+    local ex,ey=vp.x+10,vp.y+vp.h-19
+    g.polygon("fill",{ex,ey-5,ex+5,ey,ex,ey+5,ex-5,ey})
+    text(value,{x=ex+9,y=ey-7,w=80,size=12},none and muted or white)
 end
 local function drawArena(l,game,players,key,enemies)
     local g=love.graphics
@@ -1205,11 +1224,16 @@ local function drawArena(l,game,players,key,enemies)
         end
         g.setLineWidth(1);rect(b,on and {.4,.6,1,1} or {.18,.28,.48,1},"line")
         text(view=="room" and "ROOM VIEW" or "GRID VIEW",{x=b.x+4,y=b.y+12,w=b.w-8,size=key=="phone" and 15 or 13,fit=true,align="center"},on and yellow or muted)
-        hit(b,function() V.arenaView=view end)
+        hit(b,function() if V.arenaView~=view then V.arenaView=view;V.reset() end end)
     end
     local vp=l.viewport
+    V.viewport=vp
     rect(vp,{0,0,0,1})
     local alive,known,loaded=Arena.counts(V.enemyList,V.arenaSeen,V.isHazard,graph)
+    -- Entered: YOU has been in the room while the tracker ran, or the game has
+    -- loaded the room's enemies (their list flag; covers a tracker started
+    -- mid-scenario).
+    local function entered(id) return V.arenaSeen[id] or loaded[id] end
     local occupants={}
     for i=1,4 do
         if active(players[i]) then
@@ -1220,12 +1244,14 @@ local function drawArena(l,game,players,key,enemies)
     local room=(not V.follow and V.arenaRoom) or (active(target) and target.roomID) or V.arenaRoom
     V.arenaDrawn={}
     local function box(id,b)
-        -- Entered: YOU has been in the room while the tracker ran, or the game has
-        -- loaded the room's enemies (their list flag; covers a tracker started
-        -- mid-scenario).
-        arenaBox(game,id,b,occupants[id] or {},alive,known,id==room,V.arenaSeen[id] or loaded[id])
+        arenaBox(game,id,b,occupants[id] or {},alive,known,id==room,entered(id))
         V.arenaDrawn[#V.arenaDrawn+1]=id
-        hit(b,function() V.arenaRoom=id;V.follow=false;V.arenaView="room";V.reset();V.frozenCenter=nil end)
+        -- A tap opens the room unzoomed; only the part inside the map counts.
+        local x1,y1=math.max(b.x,vp.x),math.max(b.y,vp.y)
+        local x2,y2=math.min(b.x+b.w,vp.x+vp.w),math.min(b.y+b.h,vp.y+vp.h)
+        if x2>x1 and y2>y1 then
+            hit({x=x1,y=y1,w=x2-x1,h=y2-y1},function() V.arenaRoom=id;V.follow=false;V.arenaView="room";V.reset() end,true)
+        end
     end
     if V.arenaView=="grid" then
         local cells,columns,rows={}, graph and graph.columns or 4,graph and graph.rows or 1
@@ -1309,24 +1335,52 @@ local function drawArena(l,game,players,key,enemies)
             end
             g.circle("fill",pts[1],pts[2],width+1.5);g.circle("fill",pts[#pts-1],pts[#pts],width+1.5)
         end
+        -- The diagram is one map: zoom, FOLLOW (the followed player's room
+        -- centred when zoomed in) and dragging move and scale boxes and links
+        -- together; link widths stay constant on screen.
+        local zoom=V.zoom
+        local cx,cy=vp.x+vp.w/2,vp.y+vp.h/2
+        local pivX,pivY=cx,cy
+        local frozen=V.frozenCenter
+        if not V.follow and frozen and frozen[3]=="grid" then pivX,pivY=frozen[1],frozen[2]
+        elseif V.follow and zoom>1 and active(target) and cells[target.roomID] then
+            local b=boxOf(target.roomID);pivX,pivY=b.cx,b.cy
+        end
+        V.visibleCenter={pivX,pivY,"grid"}
+        local function T(x,y) return cx+V.panX+(x-pivX)*zoom,cy+V.panY+(y-pivY)*zoom end
+        local function TP(pts)
+            local out={}
+            for i=1,#pts,2 do out[i],out[i+1]=T(pts[i],pts[i+1]) end
+            return out
+        end
+        clip(vp,l)
+        if g.mapBegin then
+            local camX,camY=T(0,0)
+            local continuity=table.concat({V.cacheKey,"grid",vp.w,zoom,tostring(V.follow),V.panX,V.panY},":")
+            g.mapBegin(vp.x,vp.y,vp.w,vp.h,V.panX,V.panY,camX,camY,continuity)
+        end
         local lit={}
         for n,link in ipairs(graph and graph.links or {}) do
             if cells[link[1]] and cells[link[2]] then
-                local pts=route(link[1],link[2])
+                local pts=TP(route(link[1],link[2]))
                 if link[1]==room or link[2]==room then lit[#lit+1]=pts
                 else g.setColor(.85,.55,.15,.8);polyline(pts,2) end
             end
         end
         g.setColor(.95,.85,.35,1)
         for _,pts in ipairs(lit) do polyline(pts,3) end
-        for id in pairs(cells) do box(id,boxOf(id)) end
+        for id in pairs(cells) do
+            local b=boxOf(id);local x,y=T(b.x,b.y)
+            box(id,{x=x,y=y,w=b.w*zoom,h=b.h*zoom})
+        end
+        if g.mapEnd then g.mapEnd() end
+        g.setScissor()
     else
         if not room or room==0 then
             text("Waiting for a room",{x=vp.x,y=vp.y+vp.h/2-8,w=vp.w,size=13,align="center"},muted)
             return
         end
-        V.viewport=vp
-        drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,occupants)
+        drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,entered)
     end
 end
 function V.draw(game,players,enemies,items)
@@ -1409,11 +1463,9 @@ function V.draw(game,players,enemies,items)
     local function control(box,labelBox,label,action,color)
         rect(box,color or {.35,.35,.38,.85});text(label,labelBox,color and {0,0,0,1} or white);hit(box,action)
     end
-    if not V.arena or V.arenaView=="room" then
-        control(l.plus,l.plusText,"+",function() V.scale(1.25) end)
-        control(l.minus,l.minusText,"−",function() V.scale(.8) end)
-        if l.fit then control(l.fit,l.fitText,"FIT",function() V.follow=false;V.reset() end) end
-    end
+    control(l.plus,l.plusText,"+",function() V.scale(1.25) end)
+    control(l.minus,l.minusText,"−",function() V.scale(.8) end)
+    if l.fit then control(l.fit,l.fitText,"FIT",function() V.follow=false;V.reset() end) end
     local c=V.colors[V.target or 1]
     control(l.follow,l.followText,V.mode==1 and ("FOLLOW P"..tostring(V.target or 1)) or "FOLLOW",function() V.follow=true;V.arenaRoom=nil;V.reset() end,V.follow and {c[1],c[2],c[3],1} or nil)
     plate(l.legendFill,l.legendFrame)
@@ -1452,6 +1504,12 @@ function V.scrollFloors(delta)
     local count=#V.floorGroups();V.tabsManual=true
     V.tabOffset=math.max(1,math.min(math.max(1,count-(V.tabCount or 5)+1),(V.tabOffset or 1)+delta))
 end
+-- Dragging the arena Room View keeps the room on screen instead of switching
+-- when the followed player changes room.
+function V.holdArenaRoom()
+    local c=V.visibleCenter
+    if V.arena and V.arenaView=="room" and c and type(c[3])=="number" then V.arenaRoom=c[3] end
+end
 function V.scale(factor)
     V.zoom=math.max(.4,math.min(8,V.zoom*factor))
 end
@@ -1466,14 +1524,22 @@ function V.input(action,x,y)
         V.hover=inside and {x=x,y=y} or nil
         if inTabs then V.floorDrag={x=x,y=y,moved=false};return end
         for _,h in ipairs(V.hits) do
-            if x>=h.x and x<h.x+h.w and y>=h.y and y<h.y+h.h then h.action();return end
+            if not h.map and x>=h.x and x<h.x+h.w and y>=h.y and y<h.y+h.h then h.action();return end
         end
-        if inside then V.drag={x=x,y=y};V.frozenCenter=V.visibleCenter;V.follow=false end
+        for _,h in ipairs(V.hits) do
+            if h.map and x>=h.x and x<h.x+h.w and y>=h.y and y<h.y+h.h then V.drag={x=x,y=y,tap=h};return end
+        end
+        if inside then V.drag={x=x,y=y};V.frozenCenter=V.visibleCenter;V.follow=false;V.holdArenaRoom() end
     elseif action=="move" and V.floorDrag then
         if math.abs(x-V.floorDrag.x)>35 then
             V.scrollFloors(x<V.floorDrag.x and 1 or -1);V.floorDrag.x=x;V.floorDrag.moved=true
         end
     elseif action=="move" and V.drag then
+        if V.drag.tap then
+            -- A press on a room box becomes a drag once it moves 8 pixels.
+            if math.abs(x-V.drag.x)+math.abs(y-V.drag.y)<8 then return end
+            V.drag.tap=nil;V.frozenCenter=V.visibleCenter;V.follow=false;V.holdArenaRoom()
+        end
         V.panX=V.panX+x-V.drag.x;V.panY=V.panY+y-V.drag.y;V.drag={x=x,y=y}
     elseif action=="up" then
         if V.floorDrag and not V.floorDrag.moved then
@@ -1482,6 +1548,7 @@ function V.input(action,x,y)
                 if point.x>=h.x and point.x<h.x+h.w and point.y>=h.y and point.y<h.y+h.h then h.action();break end
             end
         end
+        if V.drag and V.drag.tap then V.drag.tap.action() end
         V.drag=nil;V.floorDrag=nil
     elseif action=="in" and inside then V.scale(1.2)
     elseif action=="out" and inside then V.scale(1/1.2)
