@@ -54,6 +54,42 @@ jobs:
           test -f squashfs-root/bin/luaoutbreaktracker.so
           rm -rf squashfs-root
 
+      # Tests live on dev only (tests/ is not copied to main), so main skips this.
+      - name: Set up Python for the frame tests
+        if: hashFiles('tests/run_frames.py') != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test with gameplay frames
+        if: hashFiles('tests/run_frames.py') != ''
+        env:
+          TRACKER_TEST_KEY: ${{ secrets.TRACKER_TEST_KEY }}
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y xvfb libgl1-mesa-dri gnupg
+          frames_dir="$RUNNER_TEMP/frames-appimage"
+          mkdir -p "$frames_dir"
+          (cd "$frames_dir" && APPIMAGE_EXTRACT_AND_RUN=1 \
+            "$GITHUB_WORKSPACE/OutbreakStatusTracker-x86_64.AppImage" --appimage-extract >/dev/null)
+          if [ -f tests/fixtures.tar.gz.gpg ]; then
+            source_args="--bundle tests/fixtures.tar.gz.gpg"
+          else
+            echo "No encrypted frames yet: synthetic smoke run only."
+            source_args="--synthetic --no-expected"
+          fi
+          xvfb-run -a -s "-screen 0 1600x1200x24" python tests/run_frames.py --platform linux \
+            --appdir "$frames_dir/squashfs-root" $source_args --launch-check 15 \
+            --report "$RUNNER_TEMP/frames-report.json"
+
+      - name: Upload the frame test report
+        if: always() && hashFiles('tests/run_frames.py') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: frame-test-report-Linux
+          path: ${{ runner.temp }}/frames-report.json
+          if-no-files-found: ignore
+
       - name: Upload the AppImage
         uses: actions/upload-artifact@v4
         with:

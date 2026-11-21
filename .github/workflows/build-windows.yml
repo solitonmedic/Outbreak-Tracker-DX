@@ -109,6 +109,86 @@ jobs:
             }
           }
 
+      # Tests live on dev only (tests/ is not copied to main), so main skips these.
+      - name: Build the stand-in PCSX2 for the frame tests
+        if: hashFiles('tests/run_frames.py') != ''
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vsInstall = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $devCmd = Join-Path $vsInstall 'Common7/Tools/VsDevCmd.bat'
+          $fake = Join-Path $env:RUNNER_TEMP 'fake'
+          New-Item -ItemType Directory -Force -Path $fake | Out-Null
+          $batch = Join-Path $env:RUNNER_TEMP 'build-fake.cmd'
+          @"
+          @echo off
+          set "WORKSPACE_ROOT=%CD%"
+          call "$devCmd" -arch=x64
+          if errorlevel 1 exit /b 1
+          cd /d "%WORKSPACE_ROOT%"
+          cl /nologo /O2 /Zi tests\fakes\fake_pcsx2.c /Fo"$fake\\" /Fd"$fake\\" /Fe"$fake\pcsx2-qt.exe" /link /DEBUG
+          if errorlevel 1 exit /b 1
+          "@ | Set-Content -Path $batch -Encoding ascii
+          & $batch
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path (Join-Path $fake 'pcsx2-qt.pdb') -PathType Leaf)) { throw 'pcsx2-qt.pdb was not written' }
+
+      - name: Download Mesa software OpenGL for the frame tests
+        if: hashFiles('tests/run_frames.py') != ''
+        shell: pwsh
+        run: |
+          # The runner has no GPU; LÖVE needs OpenGL 2.1. Mesa's llvmpipe is
+          # copied next to the test copies only, never into the distribution.
+          $archive = Join-Path $env:RUNNER_TEMP 'mesa.7z'
+          Invoke-WebRequest `
+            -Uri 'https://github.com/pal1000/mesa-dist-win/releases/download/26.2.6/mesa3d-26.2.6-release-msvc.7z' `
+            -OutFile $archive
+          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          if ($hash -ne 'b2e00615feaba45942343c265cc8c5f576142ca682c1ac6661922d4b72492877') {
+            throw "Mesa archive checksum mismatch: $hash"
+          }
+          $extract = Join-Path $env:RUNNER_TEMP 'mesa-extract'
+          7z x $archive "-o$extract" -y | Out-Null
+          $mesa = Join-Path $env:RUNNER_TEMP 'mesa'
+          New-Item -ItemType Directory -Force -Path $mesa | Out-Null
+          foreach ($name in @('opengl32.dll', 'libgallium_wgl.dll', 'libglapi.dll')) {
+            $source = Join-Path $extract "x64/$name"
+            if (Test-Path $source -PathType Leaf) { Copy-Item $source $mesa }
+          }
+          if (-not (Test-Path (Join-Path $mesa 'opengl32.dll') -PathType Leaf)) { throw 'Mesa opengl32.dll not found' }
+
+      - name: Set up Python for the frame tests
+        if: hashFiles('tests/run_frames.py') != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test with gameplay frames
+        if: hashFiles('tests/run_frames.py') != ''
+        shell: bash
+        env:
+          TRACKER_TEST_KEY: ${{ secrets.TRACKER_TEST_KEY }}
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          set -euo pipefail
+          if [ -f tests/fixtures.tar.gz.gpg ]; then
+            source_args="--bundle tests/fixtures.tar.gz.gpg"
+          else
+            echo "No encrypted frames yet: synthetic smoke run only."
+            source_args="--synthetic --no-expected"
+          fi
+          python tests/run_frames.py --platform windows --dist windows/build/stage/distribution \
+            --fake-pcsx2 "$RUNNER_TEMP/fake/pcsx2-qt.exe" --opengl "$RUNNER_TEMP/mesa" \
+            $source_args --launch-check 15 --report "$RUNNER_TEMP/frames-report.json"
+
+      - name: Upload the frame test report
+        if: always() && hashFiles('tests/run_frames.py') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: frame-test-report-Windows
+          path: ${{ runner.temp }}/frames-report.json
+          if-no-files-found: ignore
+
       - name: Upload the Windows distribution
         uses: actions/upload-artifact@v4
         with:
