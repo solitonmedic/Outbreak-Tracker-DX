@@ -7,8 +7,11 @@
 -- Check from repo root: luajit tools-n-shit/tracker-tests/maps/check-runtime-maps.lua .
 local M = {}
 M.scenarios = {
-    [1] = {{"001", "outbreak"}, {"002", "below freezing point"}, {"028", "the hive"},
-           {"035", "hellfire"}, {"041", "decisions,decisions"}},
+    -- Codes are the game's scenario IDs (structs.h GetScenarioName): 002 holds
+    -- Hellfire's Apple Inn rooms and 035 Below Freezing Point's B7F lab rooms
+    -- (room names in the map files; corrected 2026-11-20, they were swapped).
+    [1] = {{"001", "outbreak"}, {"002", "hellfire"}, {"028", "the hive"},
+           {"035", "below freezing point"}, {"041", "decisions,decisions"}},
     [2] = {{"006", "end of the road"}, {"010", "underbelly"}, {"015", "desperate times"},
            {"026", "flashback"}, {"040", "wild things"}}
 }
