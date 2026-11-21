@@ -388,7 +388,8 @@ local function text(value,b,color)
     local width=b.w
     local scale=b.fit and math.min(1,width/math.max(1,g.getFont():getWidth(value))) or 1
     g.push();g.translate(b.x,b.y);g.scale(scale,1)
-    g.setColor(0,0,0,1);g.printf(plain,1,1,width/scale,b.align or "left")
+    local ink=color or b.color or white
+    if (ink[1]+ink[2]+ink[3])>.9 then g.setColor(0,0,0,1);g.printf(plain,1,1,width/scale,b.align or "left") end
     g.setColor(unpack(color or b.color or white));g.printf(value,0,0,width/scale,b.align or "left")
     g.pop()
 end
@@ -911,7 +912,13 @@ local function roomLabel(game,id)
 end
 -- One room box: name, enemies left ("x 02", gray when none or unknown) and the
 -- icons of players inside. A Danger/Down occupant makes it flash and glow red.
-local function arenaBox(game,id,b,occupants,alive,known,current)
+-- Rooms YOU has not entered are black; entered rooms are light green with dark
+-- text (user request, 2026-11-21 recording notes).
+local enteredFill={.50,.82,.54,1}
+local enteredInk={0,0,0,1}
+local enteredMuted={.16,.34,.19,1}
+local enteredBlue={.02,.22,.72,1}
+local function arenaBox(game,id,b,occupants,alive,known,current,entered)
     local g=love.graphics
     local alert=nil
     for _,i in ipairs(occupants) do alert=Effects.worst(alert,Effects.health(V.players[i])) end
@@ -922,10 +929,11 @@ local function arenaBox(game,id,b,occupants,alive,known,current)
         end
         Effects.endPulse()
     end
-    rect(b,{.025,.045,.085,1})
+    rect(b,entered and enteredFill or {0,0,0,1})
     if alert then
         Effects.pulseColor(alert,V.elapsed,1,0,0,.55,.1);g.rectangle("fill",b.x,b.y,b.w,b.h);Effects.endPulse()
     end
+    local ink,dim,blue=entered and enteredInk or white,entered and enteredMuted or muted,entered and enteredBlue or enemyBlue
     g.setLineWidth(current and 2 or 1)
     rect(b,current and {.95,.85,.35,1} or {.3,.45,.75,1},"line");g.setLineWidth(1)
     local size=b.w>=150 and 13 or (b.w>=95 and 11 or (b.w>=70 and 10 or 9))
@@ -933,19 +941,19 @@ local function arenaBox(game,id,b,occupants,alive,known,current)
     local lineHeight=font:getHeight()
     local nameLines=b.h>=lineHeight*3+6 and 2 or 1
     local name=roomLabel(game,id)
-    if nameLines==1 then text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size,fit=true})
+    if nameLines==1 then text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size,fit=true},ink)
     else
         g.setScissor(b.x+2,b.y+1,b.w-4,lineHeight*2+1)
-        text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size});g.setScissor()
+        text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size},ink);g.setScissor()
     end
     -- Enemies left, bottom left.
     local count=alive[id];local y=b.y+b.h-lineHeight-3
     local none=not known[id] or (count or 0)==0
     local d=math.max(3,lineHeight*.3);local cx,cy=b.x+4+d,y+lineHeight/2
-    g.setColor(unpack(none and muted or enemyBlue))
+    g.setColor(unpack(none and dim or blue))
     g.polygon("fill",{cx,cy-d,cx+d,cy,cx,cy+d,cx-d,cy})
     local value=known[id] and string.format("x %02d",math.min(99,count or 0)) or "x --"
-    text(value,{x=cx+d+3,y=y,w=b.w/2,size=size},none and muted or white)
+    text(value,{x=cx+d+3,y=y,w=b.w/2,size=size},none and dim or ink)
     -- Players inside, bottom right.
     local iconSize=math.min(lineHeight+4,(b.w/2-4)/math.max(1,#occupants))
     local xx=b.x+b.w-3-#occupants*(iconSize+1)
@@ -1007,7 +1015,7 @@ V.arenaSource=arenaSource
 -- the door the run recorded (MapArena.doors) or, without one, from the room edge
 -- in the direction the room lies on the diagram. Without source art the room is
 -- a box as well.
-local function drawRoomView(game,players,enemies,graph,room,vp,box,alive,known,occupants)
+local function drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,occupants)
     local g=love.graphics
     local list=graph and Arena.neighbours(graph,room) or {}
     local nw,nh=math.min(vp.w*.27,124),46
@@ -1044,12 +1052,24 @@ local function drawRoomView(game,players,enemies,graph,room,vp,box,alive,known,o
     local bottom=(#sides.bottom>0 and nh+16 or 8)+34
     local area={x=vp.x+left,y=vp.y+top,w=vp.w-left-right,h=vp.h-top-bottom}
     local cx,cy=area.x+area.w/2,area.y+area.h/2
-    local main,toScreen,scale
+    local main,frame,toScreen,scale
     V.roomArtDrawn=false
     if map then
-        scale=math.min(area.w/r.w,area.h/r.h)
-        local ox,oy=cx-(p.x+r.w/2)*scale,cy-(p.y+r.h/2)*scale
-        main={x=ox+p.x*scale,y=oy+p.y*scale,w=r.w*scale,h=r.h*scale}
+        -- main is the fitted room frame the neighbour boxes sit around; zoom and
+        -- pan (+/-, wheel, drag) magnify only the room drawing inside that frame, about
+        -- the room centre or, zoomed in while following, the followed player.
+        local fitScale=math.min(area.w/r.w,area.h/r.h)
+        scale=fitScale*V.zoom
+        main={x=cx-r.w/2*fitScale,y=cy-r.h/2*fitScale,w=r.w*fitScale,h=r.h*fitScale}
+        frame={x=main.x-8,y=main.y-8,w=main.w+16,h=main.h+16}
+        local mx,my=p.x+r.w/2,p.y+r.h/2
+        local target=players[V.target or 0]
+        if not V.follow and V.frozenCenter and V.frozenCenter[3]==room then mx,my=V.frozenCenter[1],V.frozenCenter[2]
+        elseif V.follow and V.zoom>1 and active(target) and target.roomID==room and finite(target.positionX) and finite(target.positionY) then
+            mx,my=Data.position(f,target.positionX,target.positionY)
+        end
+        V.visibleCenter={mx,my,room}
+        local ox,oy=cx+V.panX-mx*scale,cy+V.panY-my*scale
         toScreen=function(x,z,margin)
             if not (finite(x) and finite(z)) then return end
             local px,py=Data.position(f,x,z)
@@ -1058,21 +1078,31 @@ local function drawRoomView(game,players,enemies,graph,room,vp,box,alive,known,o
         end
         local alert=nil
         for _,i in ipairs(occupants[room] or {}) do alert=Effects.worst(alert,Effects.health(players[i])) end
+        clip(frame,l)
         g.push();g.translate(ox,oy);g.scale(scale)
         if alert then Effects.pulseColor(alert,V.elapsed,1,0,0,.55,.2) else g.setColor(115/255,178/255,249/255,.22) end
         g.draw(map.fillImage,map.quads[p.record],p.x,p.y)
         if alert then Effects.endPulse() end
         g.setColor(43/255,116/255,211/255,1);g.draw(map.wallImage,map.quads[p.record],p.x,p.y)
         g.pop()
+        g.setScissor()
         V.roomArtDrawn=true
     else
         local cw,ch=math.min(area.w,220),math.min(area.h,130)
         main={x=cx-cw/2,y=cy-ch/2,w=cw,h=ch}
     end
+    -- Boxes are ordered by where their doors are in the fitted frame; the arrow
+    -- starts at the door as drawn (zoomed), kept inside that frame.
     for _,e in ipairs(entries) do
-        if e.door and toScreen then e.dx,e.dy=toScreen(e.door[1],e.door[2],4) end
         local x,y=main.x+e.u*main.w,main.y+e.v*main.h
-        e.along=(e.side=="top" or e.side=="bottom") and (e.dx or x) or (e.dy or y)
+        e.along=(e.side=="top" or e.side=="bottom") and x or y
+        if e.door and toScreen then
+            local dx,dy=toScreen(e.door[1],e.door[2],4)
+            if dx then
+                e.inside=dx>=frame.x and dx<=frame.x+frame.w and dy>=frame.y and dy<=frame.y+frame.h
+                e.dx=math.max(frame.x,math.min(frame.x+frame.w,dx));e.dy=math.max(frame.y,math.min(frame.y+frame.h,dy))
+            end
+        end
     end
     local function spread(items,size,lo,hi)
         table.sort(items,function(a,b) return a.along<b.along end)
@@ -1091,20 +1121,23 @@ local function drawRoomView(game,players,enemies,graph,room,vp,box,alive,known,o
         if not x1 then x1,y1=edgePoint(main,b.x+b.w/2,b.y+b.h/2) end
         local x2,y2=edgePoint(b,x1,y1)
         arrow(x1,y1,x2,y2,{.95,.6,.15,.9})
-        if it.dx then g.setColor(.95,.6,.15,1);g.circle("fill",x1,y1,4) end
+        if it.dx and it.inside then g.setColor(.95,.6,.15,1);g.circle("fill",x1,y1,4) end
         box(it.id,b)
     end
+    if not map then
     for _,it in ipairs(sides.top) do place(it,{x=it.c-nw/2,y=math.max(vp.y+2,main.y-14-nh),w=nw,h=nh}) end
     for _,it in ipairs(sides.bottom) do place(it,{x=it.c-nw/2,y=math.min(vp.y+vp.h-36-nh,main.y+main.h+14),w=nw,h=nh}) end
     for _,it in ipairs(sides.left) do place(it,{x=math.max(vp.x+2,main.x-14-nw),y=it.c-nh/2,w=nw,h=nh}) end
     for _,it in ipairs(sides.right) do place(it,{x=math.min(vp.x+vp.w-2-nw,main.x+main.w+14),y=it.c-nh/2,w=nw,h=nh}) end
-    if not map then box(room,main);return end
+        box(room,main);return
+    end
     -- Enemies left here, under the room.
     local count=alive[room];local none=not known[room] or (count or 0)==0
     g.setColor(unpack(none and muted or enemyBlue))
     local ex,ey=vp.x+10,vp.y+vp.h-20
     g.polygon("fill",{ex,ey-5,ex+5,ey,ex,ey+5,ex-5,ey})
     text(known[room] and string.format("x %02d",math.min(99,count or 0)) or "x --",{x=ex+9,y=ey-7,w=80,size=12},none and muted or white)
+    clip(frame,l)
     -- Room items YOU has seen here.
     for _,it in pairs(Session.items) do
         if it.roomID==room then
@@ -1146,6 +1179,11 @@ local function drawRoomView(game,players,enemies,graph,room,vp,box,alive,known,o
             end
         end
     end
+    g.setScissor()
+    for _,it in ipairs(sides.top) do place(it,{x=it.c-nw/2,y=math.max(vp.y+2,main.y-14-nh),w=nw,h=nh}) end
+    for _,it in ipairs(sides.bottom) do place(it,{x=it.c-nw/2,y=math.min(vp.y+vp.h-36-nh,main.y+main.h+14),w=nw,h=nh}) end
+    for _,it in ipairs(sides.left) do place(it,{x=math.max(vp.x+2,main.x-14-nw),y=it.c-nh/2,w=nw,h=nh}) end
+    for _,it in ipairs(sides.right) do place(it,{x=math.min(vp.x+vp.w-2-nw,main.x+main.w+14),y=it.c-nh/2,w=nw,h=nh}) end
 end
 local function drawArena(l,game,players,key,enemies)
     local g=love.graphics
@@ -1171,7 +1209,7 @@ local function drawArena(l,game,players,key,enemies)
     end
     local vp=l.viewport
     rect(vp,{0,0,0,1})
-    local alive,known=Arena.counts(V.enemyList,V.arenaSeen,V.isHazard)
+    local alive,known,loaded=Arena.counts(V.enemyList,V.arenaSeen,V.isHazard,graph)
     local occupants={}
     for i=1,4 do
         if active(players[i]) then
@@ -1182,9 +1220,12 @@ local function drawArena(l,game,players,key,enemies)
     local room=(not V.follow and V.arenaRoom) or (active(target) and target.roomID) or V.arenaRoom
     V.arenaDrawn={}
     local function box(id,b)
-        arenaBox(game,id,b,occupants[id] or {},alive,known,id==room)
+        -- Entered: YOU has been in the room while the tracker ran, or the game has
+        -- loaded the room's enemies (their list flag; covers a tracker started
+        -- mid-scenario).
+        arenaBox(game,id,b,occupants[id] or {},alive,known,id==room,V.arenaSeen[id] or loaded[id])
         V.arenaDrawn[#V.arenaDrawn+1]=id
-        hit(b,function() V.arenaRoom=id;V.follow=false;V.arenaView="room" end)
+        hit(b,function() V.arenaRoom=id;V.follow=false;V.arenaView="room";V.reset();V.frozenCenter=nil end)
     end
     if V.arenaView=="grid" then
         local cells,columns,rows={}, graph and graph.columns or 4,graph and graph.rows or 1
@@ -1199,29 +1240,93 @@ local function drawArena(l,game,players,key,enemies)
             text("Showdown room layout is not mapped yet",{x=vp.x+8,y=vp.y+4,w=vp.w-16,size=11,align="center"},muted)
         end
         -- Leave the bottom strip free for the FOLLOW button drawn over the view.
+        -- Boxes are inset in their cells so links run in the gaps between them
+        -- and never under a box (user note, 2026-11-21).
         local top=vp.y+(graph and 4 or 24);local usable=vp.h-(top-vp.y)-40
+        local gx=vp.x+4
         local cellW=(vp.w-8)/columns;local cellH=math.min(96,usable/rows)
-        local bw=cellW-8;local bh=math.min(cellH-10,70)
-        local function centre(id)
-            local c=cells[id];return vp.x+4+(c[1]+.5)*cellW,top+(c[2]+.5)*cellH
+        local padX=math.max(8,cellW*.11);local bw=cellW-2*padX
+        local bh=math.min(cellH-math.max(14,cellH*.24),70)
+        local occupied={}
+        for id,c in pairs(cells) do occupied[c[1]..","..c[2]]=id end
+        local function boxOf(id)
+            local c=cells[id];local x,y=gx+(c[1]+.5)*cellW,top+(c[2]+.5)*cellH
+            return {x=x-bw/2,y=y-bh/2,w=bw,h=bh,cx=x,cy=y,c=c[1],r=c[2]}
         end
-        for _,link in ipairs(graph and graph.links or {}) do
+        local function empty(c,r) return not occupied[c..","..r] end
+        -- A link as a polyline: straight when the cells between are empty, an L
+        -- through an empty corner cell, otherwise along the gaps between boxes.
+        -- Links sharing a gap get their own lane (0, +4, -4, +8, ...), and of the
+        -- two gap routes the one through less-used gaps is taken.
+        local usage={}
+        local function lane(key,take)
+            local n=usage[key] or 0
+            if take then usage[key]=n+1 end
+            local k=math.ceil(n/2)*4;return n%2==1 and k or -k
+        end
+        local function route(a,b)
+            local A,B=boxOf(a),boxOf(b)
+            local dc,dr=B.c-A.c,B.r-A.r
+            local sx,sy=dc>0 and 1 or -1,dr>0 and 1 or -1
+            if dr==0 then
+                local clear=true
+                for c=math.min(A.c,B.c)+1,math.max(A.c,B.c)-1 do if not empty(c,A.r) then clear=false end end
+                if clear then return {A.cx+sx*bw/2,A.cy,B.cx-sx*bw/2,B.cy} end
+                local row=A.r<rows-1 and A.r+1 or A.r;local e=row>A.r and bh/2 or -bh/2
+                local o=lane("h"..row,true);local y=top+row*cellH+o
+                return {A.cx+o,A.cy+e,A.cx+o,y,B.cx+o,y,B.cx+o,B.cy+e}
+            end
+            if dc==0 then
+                local clear=true
+                for r=math.min(A.r,B.r)+1,math.max(A.r,B.r)-1 do if not empty(A.c,r) then clear=false end end
+                if clear then return {A.cx,A.cy+sy*bh/2,B.cx,B.cy-sy*bh/2} end
+                local col=A.c<columns-1 and A.c+1 or A.c;local e=col>A.c and bw/2 or -bw/2
+                local o=lane("v"..col,true);local x=gx+col*cellW+o
+                return {A.cx+e,A.cy+o,x,A.cy+o,x,B.cy+o,B.cx+e,B.cy+o}
+            end
+            if math.abs(dc)==1 and math.abs(dr)==1 then
+                if empty(B.c,A.r) then return {A.cx+sx*bw/2,A.cy,B.cx,A.cy,B.cx,B.cy-sy*bh/2} end
+                if empty(A.c,B.r) then return {A.cx,A.cy+sy*bh/2,A.cx,B.cy,B.cx-sx*bw/2,B.cy} end
+            end
+            -- First: out of A's top/bottom into the row gap beside A, then the
+            -- column gap beside B. Second: out of A's side into the column gap
+            -- beside A, then the row gap beside B.
+            local row1,col1=A.r+(dr>0 and 1 or 0),B.c+(dc>0 and 0 or 1)
+            local col2,row2=A.c+(dc>0 and 1 or 0),B.r+(dr>0 and 0 or 1)
+            if (usage["h"..row1] or 0)+(usage["v"..col1] or 0)<=(usage["v"..col2] or 0)+(usage["h"..row2] or 0) then
+                local oy,ox=lane("h"..row1,true),lane("v"..col1,true)
+                local y,x=top+row1*cellH+oy,gx+col1*cellW+ox
+                return {A.cx+ox,A.cy+sy*bh/2,A.cx+ox,y,x,y,x,B.cy+oy,B.cx-sx*bw/2,B.cy+oy}
+            end
+            local ox,oy=lane("v"..col2,true),lane("h"..row2,true)
+            local x,y=gx+col2*cellW+ox,top+row2*cellH+oy
+            return {A.cx+sx*bw/2,A.cy+oy,x,A.cy+oy,x,y,B.cx+ox,y,B.cx+ox,B.cy-sy*bh/2}
+        end
+        local function polyline(pts,width)
+            for i=1,#pts-3,2 do
+                segment(pts[i],pts[i+1],pts[i+2],pts[i+3],width)
+                if i>1 then g.rectangle("fill",pts[i]-width/2,pts[i+1]-width/2,width,width) end
+            end
+            g.circle("fill",pts[1],pts[2],width+1.5);g.circle("fill",pts[#pts-1],pts[#pts],width+1.5)
+        end
+        local lit={}
+        for n,link in ipairs(graph and graph.links or {}) do
             if cells[link[1]] and cells[link[2]] then
-                local x1,y1=centre(link[1]);local x2,y2=centre(link[2])
-                local lit=link[1]==room or link[2]==room
-                g.setColor(unpack(lit and {.95,.85,.35,.9} or {.85,.55,.15,.7}))
-                segment(x1,y1,x2,y2,lit and 3 or 2)
+                local pts=route(link[1],link[2])
+                if link[1]==room or link[2]==room then lit[#lit+1]=pts
+                else g.setColor(.85,.55,.15,.8);polyline(pts,2) end
             end
         end
-        for id in pairs(cells) do
-            local x,y=centre(id);box(id,{x=x-bw/2,y=y-bh/2,w=bw,h=bh})
-        end
+        g.setColor(.95,.85,.35,1)
+        for _,pts in ipairs(lit) do polyline(pts,3) end
+        for id in pairs(cells) do box(id,boxOf(id)) end
     else
         if not room or room==0 then
             text("Waiting for a room",{x=vp.x,y=vp.y+vp.h/2-8,w=vp.w,size=13,align="center"},muted)
             return
         end
-        drawRoomView(game,players,enemies,graph,room,vp,box,alive,known,occupants)
+        V.viewport=vp
+        drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,occupants)
     end
 end
 function V.draw(game,players,enemies,items)
@@ -1304,7 +1409,7 @@ function V.draw(game,players,enemies,items)
     local function control(box,labelBox,label,action,color)
         rect(box,color or {.35,.35,.38,.85});text(label,labelBox,color and {0,0,0,1} or white);hit(box,action)
     end
-    if not V.arena then
+    if not V.arena or V.arenaView=="room" then
         control(l.plus,l.plusText,"+",function() V.scale(1.25) end)
         control(l.minus,l.minusText,"−",function() V.scale(.8) end)
         if l.fit then control(l.fit,l.fitText,"FIT",function() V.follow=false;V.reset() end) end
