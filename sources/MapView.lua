@@ -947,7 +947,7 @@ end
 -- room red, other occupied rooms light blue, rooms YOU entered green, the rest
 -- black), and a Danger/Down occupant makes it flash and glow red. A box zoomed
 -- out below two text lines keeps only the count and the icons.
-local function arenaBox(game,id,b,occupants,alive,known,current,entered)
+local function arenaBox(game,id,b,occupants,alive,known,current,entered,label)
     local g=love.graphics
     local alert=nil
     for _,i in ipairs(occupants) do alert=Effects.worst(alert,Effects.health(V.players[i])) end
@@ -973,9 +973,14 @@ local function arenaBox(game,id,b,occupants,alive,known,current,entered)
     local compact=b.h<lineHeight*2+6
     if not compact then
         -- One or two name lines, wrapped here (no nested scissor: the box is
-        -- drawn inside the map clip).
+        -- drawn inside the map clip). A Showdown round label is "ROUND n" over
+        -- the boss's name, or one line when the box is short.
         local name=roomLabel(game,id)
         local _,lines=font:getWrap(name,b.w-6)
+        if label then
+            name=label[2] and label[1].." "..label[2] or label[1]
+            lines={label[1],label[2]}
+        end
         if b.h<lineHeight*3+6 or #lines<=1 then text(name,{x=b.x+3,y=b.y+2,w=b.w-6,size=size,fit=true})
         else
             text(lines[1],{x=b.x+3,y=b.y+2,w=b.w-6,size=size,fit=true})
@@ -1056,7 +1061,8 @@ V.arenaSource=arenaSource
 -- beside the room and never cover it.
 local function drawRoomView(l,game,players,enemies,graph,room,vp,box,alive,known,entered)
     local g=love.graphics
-    local list=graph and Arena.neighbours(graph,room) or {}
+    -- Showdown rounds are not walked between: the room is shown alone.
+    local list=graph and not Arena.isShowdown(game.scenario) and Arena.neighbours(graph,room) or {}
     local nw,nh=math.min(vp.w*.27,124),46
     local map,f,p,src=arenaSource(game,room)
     local doors=Arena.doors[game.scenario] and Arena.doors[game.scenario][room] or {}
@@ -1232,7 +1238,7 @@ local function drawArena(l,game,players,key,enemies)
     -- Showdown goes one way through its stages: stages before the players'
     -- current one are cleared (MapArena.counts).
     local stage
-    if tostring(game.scenario):find("^showdown") then
+    if Arena.isShowdown(game.scenario) then
         for i=1,4 do if active(players[i]) then stage=math.max(stage or 0,players[i].roomID) end end
     end
     local alive,known,loaded=Arena.counts(V.enemyList,V.arenaSeen,V.isHazard,graph,stage)
@@ -1240,6 +1246,7 @@ local function drawArena(l,game,players,key,enemies)
     -- loaded the room's enemies (their list flag; covers a tracker started
     -- mid-scenario).
     local function entered(id) return V.arenaSeen[id] or loaded[id] end
+    local rounds=Arena.isShowdown(game.scenario) and graph and Arena.rounds(graph,V.enemyList) or nil
     local occupants={}
     for i=1,4 do
         if active(players[i]) then
@@ -1250,7 +1257,7 @@ local function drawArena(l,game,players,key,enemies)
     local room=(not V.follow and V.arenaRoom) or (active(target) and target.roomID) or V.arenaRoom
     V.arenaDrawn={}
     local function box(id,b)
-        arenaBox(game,id,b,occupants[id] or {},alive,known,id==room,entered(id))
+        arenaBox(game,id,b,occupants[id] or {},alive,known,id==room,entered(id),rounds and rounds[id])
         V.arenaDrawn[#V.arenaDrawn+1]=id
         -- A tap opens the room unzoomed; only the part inside the map counts.
         local x1,y1=math.max(b.x,vp.x),math.max(b.y,vp.y)

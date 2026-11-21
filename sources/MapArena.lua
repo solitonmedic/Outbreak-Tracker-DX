@@ -220,37 +220,32 @@ A.doors={
         [17]={[11]={2130,9001}},
         [18]={[17]={7705,6258}},
     },
-    -- Showdown 3 (decky-20261121T063920, one way): the arrival spot from the
-    -- previous stage and, for the next stage, the last spot before leaving
-    -- (merge-door-entries.py --exits). Showdown 1 and 2 reuse the rooms' spots.
-    ["showdown 3"]={
-        [1]={[2]={1707,691}},
-        [2]={[1]={5927,3228},[3]={5950,3519}},
-        [3]={[2]={9680,8840},[4]={11000,8688}},
-        [4]={[3]={5802,8348},[5]={4744,8794}},
-        [5]={[4]={16265,1378},[6]={14849,2499}},
-        [6]={[5]={10308,2900},[7]={10969,4026}},
-        [7]={[6]={4803,1277},[8]={1678,1573}},
-        [8]={[7]={9772,1978},[9]={11085,2647}},
-        [9]={[8]={14155,6004},[10]={14482,6397}},
-        [10]={[9]={7062,6633},[11]={6917,7419}},
-        [11]={[10]={5575,7140}},
-    },
 }
--- Showdown 1 (rooms 1-5) and 2 (rooms 6-10) take the Showdown 3 spots of
--- their own rooms' links.
-for _,range in ipairs{{"showdown 1",1,5},{"showdown 2",6,10}} do
-    local doors={}
-    for room,from in pairs(A.doors["showdown 3"]) do
-        if room>=range[2] and room<=range[3] then
-            for other,spot in pairs(from) do
-                if other>=range[2] and other<=range[3] then doors[room]=doors[room] or {};doors[room][other]=spot end
-            end
+
+-- Showdown is a run of boss rounds: its Room View shows the room alone (no
+-- neighbour boxes) and its Grid View names each box after its round.
+function A.isShowdown(scenario) return tostring(scenario or ""):find("^showdown")~=nil end
+-- Round labels for a Showdown graph: {"ROUND n", boss} per room, n in room ID
+-- order (the order the rounds are played) and boss the name of the room's first
+-- enemy-list entry in capitals (Showdown 3 run of 2026-11-21: every round's
+-- first entry is its boss, e.g. G-Mutant, G.Leech, Gigabyte, Nyx-Core). The
+-- name is the reader's enemy-list name (getEnemyList "name"); without a list
+-- the label is the round alone.
+function A.rounds(graph,list)
+    local ids={}
+    for id in pairs(graph and graph.cells or {}) do ids[#ids+1]=id end
+    table.sort(ids)
+    local boss={}
+    for _,e in ipairs(list or {}) do
+        local room=type(e)=="table" and tonumber(e.roomID)
+        if room and room>0 and not boss[room] and (tonumber(e.maxHP) or 0)>0 and type(e.name)=="string" and e.name~="" then
+            boss[room]=e.name:upper()
         end
     end
-    A.doors[range[1]]=doors
+    local out={}
+    for n,id in ipairs(ids) do out[id]={"ROUND "..n,boss[id]} end
+    return out
 end
-
 function A.isArena(scenario)
     local s=tostring(scenario or "")
     return s:find("^elimination")~=nil or s:find("^showdown")~=nil
