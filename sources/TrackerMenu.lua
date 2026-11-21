@@ -24,11 +24,14 @@ end
 function M.draw(width,height,mapActive)
     if love.isDecky then return end
     local g=love.graphics
+    -- Drawn last each frame; put the font, colour and line width back so the
+    -- next frame does not start with the menu's styling.
+    local oldFont,oldColor,oldWidth=g.getFont(),{g.getColor()},g.getLineWidth()
+    local function restore() g.setFont(oldFont);g.setColor(unpack(oldColor));g.setLineWidth(oldWidth) end
     M.launcher={x=width-83,y=mapActive and 5 or height-23,w=78,h=18}
     frame(M.launcher);g.setColor(1,1,.72,1);g.setFont(MiniFont or DefaultFont)
     g.printf("CONTROLS",M.launcher.x,M.launcher.y+2,M.launcher.w,"center")
-    if not M.open then return end
-    local oldFont=g.getFont()
+    if not M.open then restore();return end
     g.setColor(0,0,0,.8);g.rectangle("fill",0,0,width,height)
     local w=math.min(width-12,360);local h=math.min(height-18,680)
     local b={x=(width-w)/2,y=(height-h)/2,w=w,h=h};M.panel=b;M.hits={}
@@ -55,7 +58,7 @@ function M.draw(width,height,mapActive)
         y=y+math.ceil(#group[2]/cols)*29+9
     end
     M.maxScroll=math.max(0,y+M.scroll-(b.y+h-6))
-    g.setScissor();g.setFont(oldFont);g.setColor(1,1,1,1)
+    g.setScissor();restore()
 end
 function M.pointer(action,x,y,button)
     if love.isDecky then return false end
