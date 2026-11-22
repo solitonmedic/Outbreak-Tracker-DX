@@ -299,6 +299,8 @@ local function json(value)
 end
 require("main")
 love.load({})
+-- io.lines() without a file name reads standard input (the service's key presses).
+-- selene: allow(incorrect_standard_library_use)
 for input in io.lines() do
     commands = {}
     color = { 1, 1, 1, 1 }

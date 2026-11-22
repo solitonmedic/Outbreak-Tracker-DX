@@ -16,7 +16,7 @@ local function clone(t)
 end
 local function build(shift)
     local layouts = clone(require("MapLayout"))
-    for key, l in pairs(layouts) do
+    for _, l in pairs(layouts) do
         -- Labels and portraits occupy separate rows above the map.
         l.viewport.y = l.viewport.y + 20
         l.viewport.h = l.viewport.h - 20
@@ -61,11 +61,11 @@ local M = {}
 function M.select(key, game, hint)
     -- Reserve the radar row even during a dropped sample: avoid map resizing.
     local shift = 16
-    if game.scenario == "desperate times" or game.scenario == "wild things" then
+    local escapeTimer = (game.escapetime or 0) > 0 and game.escapetime ~= 65535
+    local fightOrEscape = game.scenario == "desperate times" or game.scenario == "wild things"
+    if fightOrEscape or (game.scenario == "underbelly" and escapeTimer) then
         shift = 60
-    elseif game.scenario == "underbelly" and (game.escapetime or 0) > 0 and game.escapetime ~= 65535 then
-        shift = 60
-    elseif (hint and hint ~= "") or ((game.escapetime or 0) > 0 and game.escapetime ~= 65535) then
+    elseif (hint and hint ~= "") or escapeTimer then
         shift = 40
     end
     return variants[shift][key]

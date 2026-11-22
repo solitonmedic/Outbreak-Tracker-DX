@@ -128,6 +128,8 @@ local baseUpdate, baseDraw = love.update, love.draw
 local frame, current, frameStart = 0, nil, love.timer.getTime()
 debug.sethook(function()
     if love.timer.getTime() - frameStart > 10 then
+        -- debug.sethook() without arguments removes the hook.
+        -- selene: allow(incorrect_standard_library_use)
         debug.sethook()
         note("ERROR frame took over 10 s: " .. debug.traceback("", 2))
         log:close()

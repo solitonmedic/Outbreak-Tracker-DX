@@ -1,77 +1,3 @@
-function GetHealthbar(hp, hpmax)
-    local percent = hp / hpmax
-    if percent > 1 then
-        return 0
-    end
-    if percent == 1 then
-        return 1
-    end
-    if percent >= 0.95 then
-        return 0.95
-    end
-    if percent >= 0.90 then
-        return 0.90
-    end
-    if percent >= 0.85 then
-        return 0.85
-    end
-    if percent >= 0.80 then
-        return 0.80
-    end
-    if percent >= 0.75 then
-        return 0.75
-    end
-    if percent >= 0.70 then
-        return 0.70
-    end
-    if percent >= 0.65 then
-        return 0.65
-    end
-    if percent >= 0.60 then
-        return 0.65
-    end
-    if percent >= 0.55 then
-        return 0.55
-    end
-    if percent >= 0.50 then
-        return 0.50
-    end
-    if percent >= 0.45 then
-        return 0.45
-    end
-    if percent >= 0.40 then
-        return 0.40
-    end
-    if percent >= 0.35 then
-        return 0.35
-    end
-    if percent >= 0.30 then
-        return 0.30
-    end
-    if percent >= 0.25 then
-        return 0.25
-    end
-    if percent >= 0.20 then
-        return 0.20
-    end
-    if percent >= 0.15 then
-        return 0.15
-    end
-    if percent >= 0.10 then
-        return 0.10
-    end
-    if percent >= 0.05 then
-        return 0.05
-    end
-    if percent > 0 then
-        return 0.05
-    end
-    if percent == 0 then
-        return 0
-    end
-    return 0
-end
-
 function GetConditionName(hp, hpmax)
     local percent = hp / hpmax
     if percent >= 0.75 then
@@ -115,7 +41,7 @@ function GetConditionName2(hp, hpmax)
     return "dead"
 end
 
-function GetConditionColor(r, stat)
+function GetConditionColor(r, _stat)
     if r == "fine" then
         return { 68 / 255, 134 / 255, 10 / 255, 0.5 }
     elseif r == "caution" then
@@ -129,7 +55,7 @@ function GetConditionColor(r, stat)
     end
 end
 
-function GetConditionColor2(r, stat)
+function GetConditionColor2(r, _stat)
     if r == "fine" then
         return { 68 / 255, 134 / 255, 10 / 255, 0.5 }
     elseif r == "caution" then
@@ -145,7 +71,7 @@ function GetConditionColor2(r, stat)
     end
 end
 
-function GetConditionColor3(r, stat)
+function GetConditionColor3(r, _stat)
     if r == "fine" then
         return { 109 / 255, 131 / 255, 227 / 255, 1 }
     elseif r == "caution" then
@@ -173,18 +99,6 @@ function GetRoomName(scenario, roomID)
     end
 end
 
-function GetRoomName_j(scenario, roomID)
-    if not (RoomNames_j[scenario] == nil) then
-        if RoomNames_j[scenario][roomID] == nil then
-            return "Room ID: " .. tostring(roomID)
-        else
-            return RoomNames_j[scenario][roomID]
-        end
-    else
-        return "ERROR: Unknown scenario"
-    end
-end
-
 function GetScenarioIDString(id)
     local scenariostring = "\n" .. tostring(Slots[id].slotscenario)
     if Slots[id].status == 3 or Slots[id].status == 4 then
@@ -197,7 +111,6 @@ function GetScenarioIDString(id)
 end
 
 function GetVersionString(id)
-    local vesionstring = tostring(Slots[id].version)
     if Slots[id].version == 0x11 then
         return "DVD-ROM"
     elseif Slots[id].version == 0x12 then
@@ -272,32 +185,6 @@ function GetEnemiesHealthString2(id)
     end
 end
 
-function GetBossHealthString(id)
-    local healthstring = tostring(Boss[id].HP)
-    if
-        Boss[id].HP == 0x7fff
-        or Boss[id].nameID == 11
-        or Boss[id].nameID == 12
-        or Boss[id].nameID == 14
-        or Boss[id].nameID == 26
-        or Boss[id].nameID == 34
-        or Boss[id].nameID == 56
-    then
-        return "Inv."
-    elseif
-        (Boss[id].HP == 0x0 or Boss[id].HP == 0xffff or Boss[id].HP >= 0x8000)
-        and not (Boss[id].nameID == 54 or Boss[id].nameID == 58)
-    then
-        return "Dead"
-    elseif Boss[id].HP == 0xffff and Boss[id].maxHP == 0x1 and Boss[id].nameID == 54 then
-        return "Destroyed"
-    elseif Boss[id].HP == 0x0 and Boss[id].nameID == 58 then
-        return "Exploded"
-    else
-        return healthstring
-    end
-end
-
 function GetEnemyHealthString(id)
     local healthstring = tostring(Enemies[id].HP) .. "/" .. tostring(Enemies[id].maxHP)
     if
@@ -321,16 +208,6 @@ function GetEnemyHealthString(id)
         return "Exploded"
     else
         return healthstring
-    end
-end
-
-function GetBossColor(id)
-    if Boss[id].nameID == 54 or Boss[id].nameID == 58 or Boss[id].nameID == 60 then
-        return { 255 / 255, 80 / 255, 40 / 255, 1 }
-    elseif Boss[id].nameID == 4 or Boss[id].nameID == 46 or Boss[id].nameID == 61 then
-        return { 0, 1, 0, 1 } --non enemy
-    else
-        return { 1, 1, 1, 1 }
     end
 end
 
@@ -398,20 +275,6 @@ function GetVirusState(virus)
     end
 end
 
-function RealTime(x)
-    local h = math.floor(x / 3600)
-    local m = math.floor((x / 60) % 60)
-    local s = math.floor(x % 60)
-    local mi = math.floor((x * 10) % 10 / 1)
-    return string.format("%02d", h)
-        .. ":"
-        .. string.format("%02d", m)
-        .. ":"
-        .. string.format("%02d", s)
-        .. "."
-        .. string.format("%.1d", mi)
-end
-
 function Time2string(x)
     local h = math.floor(((x / 3600000) % 24))
     local m = math.floor((x / 60000) % 60)
@@ -448,9 +311,4 @@ function Time2string5(x) --stopping virus time
     local m = math.floor((x / 3600) % 60)
     local s = math.floor((x / 60) % 60)
     return string.format("%0d", m) .. ":" .. string.format("%02d", s)
-end
-
-function IsOuNumber(num)
-    local num1 = num % 2
-    return string.format(num1)
 end

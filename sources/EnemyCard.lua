@@ -16,8 +16,6 @@ function EnemyCard:draw(x, y)
     love.graphics.push()
     love.graphics.translate(x, y)
 
-    local enemy = Enemies[self.id]
-
     love.graphics.setColor(109 / 255, 131 / 255, 227 / 255, 1)
     love.graphics.rectangle("line", 2, 2, 76, 11, 1, 1, 1)
     if
@@ -70,8 +68,6 @@ function EnemyCard2:draw(x, y)
     love.graphics.push()
     love.graphics.translate(x, y)
 
-    local enemy = Enemies[self.id]
-
     love.graphics.setColor(109 / 255, 131 / 255, 227 / 255, 1)
     love.graphics.rectangle("line", 2, 2, 76, 11, 1, 1, 1)
     if
@@ -118,9 +114,6 @@ end
 function EnemyCard3:draw(x, y)
     love.graphics.push()
     love.graphics.translate(x, y)
-
-    local sb = love.graphics.newSpriteBatch(UIAtlas.tex)
-    local enemy = Enemies[self.id]
 
     love.graphics.setColor(109 / 255, 131 / 255, 227 / 255, 1)
     love.graphics.rectangle("line", 4, 17, 292, 20, 1, 1, 1)
@@ -177,8 +170,6 @@ function EnemyCard4:draw(x, y)
     love.graphics.push()
     love.graphics.translate(x, y)
 
-    local enemy = Enemies[self.id]
-
     love.graphics.setColor(109 / 255, 131 / 255, 227 / 255, 1)
     --love.graphics.rectangle('line',2,2,76,11,1,1,1)
     --if Enemies2[self.id].HP>= 0x8000
@@ -211,65 +202,6 @@ function EnemyCard4:draw(x, y)
     self.roomLabel.text = GetRoomName(GameInfo.scenario, Enemies2[self.id].roomID)
     --self.roomLabelShadow.text = GetRoomName(GameInfo.scenario, Enemies2[self.id].roomID)
     --self.roomLabelShadow:draw()
-    self.roomLabel:draw()
-
-    love.graphics.pop()
-    love.graphics.setColor(1, 1, 1, 1)
-end
-BossCard = {}
-BossCard.__index = BossCard
-
-function BossCard:new(id)
-    local o = {}
-    o.id = id or 1
-    o.nameLabel = Label:new(4, 0, "placeholder", VerySmallFont, "left", "up", 300, 10, { 1, 1, 1, 1 })
-    o.nameLabelShadow = Label:new(5, 1, "placeholder", VerySmallFont, "left", "up", 300, 10, { 0, 0, 0, 1 })
-    o.roomLabel = Label:new(14, 0, "placeholder", VerySmallFont, "center", "up", 300, 10, { 1, 1, 1, 1 })
-    o.roomLabelShadow = Label:new(15, 1, "placeholder", VerySmallFont, "center", "up", 300, 10, { 0, 0, 0, 1 })
-    o.healthLabel = Label:new(0, 1, "placeholder", VerySmallFont, "right", "up", 296, 10, { 1, 1, 1, 1 })
-    o.healthLabelShadow = Label:new(1, 2, "placeholder", VerySmallFont, "right", "up", 296, 10, { 0, 0, 0, 1 })
-
-    return setmetatable(o, self)
-end
-
-function BossCard:draw(x, y)
-    love.graphics.push()
-    love.graphics.translate(x, y)
-
-    local boss = Boss[self.id]
-
-    love.graphics.setColor(109 / 255, 131 / 255, 227 / 255, 1)
-    --love.graphics.rectangle('line',2,2,76,11,1,1,1)
-    --if Bosses[self.id].HP>= 0x8000
-    --or Bosses[self.id].HP == 0x0
-    --or Bosses[self.id].nameID == 11
-    --or Bosses[self.id].nameID == 12
-    --or Bosses[self.id].nameID == 14
-    --or Bosses[self.id].nameID == 26
-    --or Bosses[self.id].nameID == 34
-    --or Bosses[self.id].nameID == 56 then
-    --	love.graphics.setColor(1,0,0,0.3)
-    --	love.graphics.rectangle('fill',4,15,294,1,0,0,1)
-    --love.graphics.rectangle('fill',4,4,(GetHealthbar(Bosses[self.id].HP, Bosses[self.id].maxHP))*72,7,0,0,1)
-    --else
-    love.graphics.setColor(GetConditionColor3(GetConditionName2(Boss[self.id].HP, Boss[self.id].maxHP)))
-    love.graphics.rectangle("fill", 4, 16, (Boss[self.id].HP / Boss[self.id].maxHP) * 292, 1, 0, 0, 0)
-    --end
-
-    self.nameLabel.text = Boss[self.id].name
-    self.nameLabelShadow.text = Boss[self.id].name
-    self.nameLabelShadow:draw()
-    self.nameLabel:draw()
-    self.nameLabel.color = GetBossColor(self.id)
-
-    self.healthLabel.text = GetBossHealthString(self.id)
-    self.healthLabelShadow.text = GetBossHealthString(self.id)
-    self.healthLabelShadow:draw()
-    self.healthLabel:draw()
-
-    self.roomLabel.text = GetRoomName(GameInfo.scenario, Boss[self.id].roomID)
-    self.roomLabelShadow.text = GetRoomName(GameInfo.scenario, Boss[self.id].roomID)
-    self.roomLabelShadow:draw()
     self.roomLabel:draw()
 
     love.graphics.pop()

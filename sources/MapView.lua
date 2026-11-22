@@ -973,7 +973,6 @@ function V.drawSessionLine(game, you, b)
     return #lines * g.getFont():getHeight()
 end
 local function scenario(l, game)
-    local g = love.graphics
     local b = l.information
     if l.tile then
         sprite(game.scenario, l.tile)
@@ -1281,7 +1280,7 @@ V.guideColors = {
     start = { 109 / 255, 235 / 255, 160 / 255, 1 },
     finish = { 243 / 255, 253 / 255, 1, 1 },
 }
-local function drawGuide(guide, layer, point, pixel)
+local function drawGuide(guide, _layer, point, pixel)
     local g = love.graphics
     local C = V.guideColors
     local points, room = {}, {}
@@ -1369,7 +1368,7 @@ local function drawGuide(guide, layer, point, pixel)
         end
     end
 end
-local function drawMap(l, game, players, enemies, items)
+local function drawMap(l, game, players, enemies, _items)
     local g = love.graphics
     local vp = l.viewport
     local f = V.map and V.map.floors[V.floor]
@@ -1437,7 +1436,6 @@ local function drawMap(l, game, players, enemies, items)
         local r = V.map.rooms[p.record]
         local color = V.roomTint(players, r.id, Session.visited[r.id], V.gasRooms[r.id] and pulse)
         if color then
-            local drawn = false
             for _, layer in ipairs(layers or {}) do
                 for _, poly in ipairs(layer.rooms[r.id] or {}) do
                     local pts, tris = geometry(poly, layer)
@@ -1448,7 +1446,6 @@ local function drawMap(l, game, players, enemies, items)
                     for _, t in ipairs(tris) do
                         g.polygon("fill", t)
                     end
-                    drawn = true
                 end
             end
         end
@@ -2123,10 +2120,10 @@ local function drawArena(l, game, players, key, enemies)
         -- Links sharing a gap get their own lane (0, +4, -4, +8, ...), and of the
         -- two gap routes the one through less-used gaps is taken.
         local usage = {}
-        local function lane(key, take)
-            local n = usage[key] or 0
+        local function lane(gap, take)
+            local n = usage[gap] or 0
             if take then
-                usage[key] = n + 1
+                usage[gap] = n + 1
             end
             local k = math.ceil(n / 2) * 4
             return n % 2 == 1 and k or -k
@@ -2233,7 +2230,7 @@ local function drawArena(l, game, players, key, enemies)
             g.mapBegin(vp.x, vp.y, vp.w, vp.h, V.panX, V.panY, camX, camY, continuity)
         end
         local lit = {}
-        for n, link in ipairs(graph and graph.links or {}) do
+        for _, link in ipairs(graph and graph.links or {}) do
             if cells[link[1]] and cells[link[2]] then
                 local pts = TP(route(link[1], link[2]))
                 if link[1] == room or link[2] == room then
@@ -2416,8 +2413,8 @@ function V.draw(game, players, enemies, items)
     plate(l.legendFill, l.legendFrame)
     local cellWidth = (l.legendFrame.w - 16) / 4
     for i = 1, 4 do
-        local p = players[i]
-        local name = p and p.enabled and tostring(p.name or p.type or "--"):upper() or "--"
+        local player = players[i]
+        local name = player and player.enabled and tostring(player.name or player.type or "--"):upper() or "--"
         local prefix = i == V.you and "YOU" or "P" .. i
         local size = V.mode == 1 and 13 or (l.width == 390 and 12 or 11)
         local font = (MapFonts and MapFonts[size]) or MiniFont or DefaultFont

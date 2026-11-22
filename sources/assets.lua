@@ -8,6 +8,34 @@ function SelectUIAtlas(currentFile, release)
     UIAtlas = currentFile == 1 and release == "us" and USUIAtlas or JapaneseUIAtlas
 end
 
+local function LoadTextureAtlas(texture, links) -- Really dirty stuff here
+    local o = {}
+    o.tex = love.graphics.newImage(texture)
+    o.quads = {}
+    o.draw = function(self, name, x, y, r, sx, sy, ox, oy, kx, ky)
+        if self.quads[name] == nil then
+            love.graphics.setFont()
+            love.graphics.print(name, x, y)
+        else
+            love.graphics.draw(self.tex, self.quads[name], x, y, r, sx, sy, ox, oy, kx, ky)
+        end
+    end
+    o.addSB = function(self, sb, name, x, y, r, sx, sy, ox, oy, kx, ky)
+        sb:add(self.quads[name], x, y, r or 0, sx, sy, ox, oy, kx, ky)
+    end
+    for k, v in pairs(links.frameIndex) do
+        o.quads[k] = love.graphics.newQuad(
+            links.sheet.frames[v].x,
+            links.sheet.frames[v].y,
+            links.sheet.frames[v].width,
+            links.sheet.frames[v].height,
+            links.sheet.sheetContentWidth,
+            links.sheet.sheetContentHeight
+        )
+    end
+    return o
+end
+
 function LoadAssets()
     ItemCountFont = love.graphics.newImageFont("assets/ItemCountFont.png", "0123456789")
     TimeFont = love.graphics.newImageFont("assets/TimeFont.png", "0123456789:./")
@@ -35,32 +63,4 @@ function LoadAssets()
     MiniFont = love.graphics.newFont("assets/arialnb.ttf", 11)
     --MiniFont = love.graphics.newFont(9)
     SPFoundSound = love.audio.newSource("assets/sp-found.wav", "static")
-end
-
-function LoadTextureAtlas(texture, links) -- Really dirty stuff here
-    local o = {}
-    o.tex = love.graphics.newImage(texture)
-    o.quads = {}
-    o.draw = function(self, name, x, y, r, sx, sy, ox, oy, kx, ky)
-        if self.quads[name] == nil then
-            love.graphics.setFont()
-            love.graphics.print(name, x, y)
-        else
-            love.graphics.draw(self.tex, self.quads[name], x, y, r, sx, sy, ox, oy, kx, ky)
-        end
-    end
-    o.addSB = function(self, sb, name, x, y, r, sx, sy, ox, oy, kx, ky)
-        sb:add(self.quads[name], x, y, r or 0, sx, sy, ox, oy, kx, ky)
-    end
-    for k, v in pairs(links.frameIndex) do
-        o.quads[k] = love.graphics.newQuad(
-            links.sheet.frames[v].x,
-            links.sheet.frames[v].y,
-            links.sheet.frames[v].width,
-            links.sheet.frames[v].height,
-            links.sheet.sheetContentWidth,
-            links.sheet.sheetContentHeight
-        )
-    end
-    return o
 end

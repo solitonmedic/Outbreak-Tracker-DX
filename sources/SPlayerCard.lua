@@ -25,11 +25,9 @@ function SPlayerCard:draw(x, y)
     love.graphics.push()
     love.graphics.translate(x, y)
 
-    local splayer = SPlayers[self.id]
-
     local sb = love.graphics.newSpriteBatch(UIAtlas.tex)
     local bustname = "bust" .. SPlayers[self.id].name
-    local bx, by, bw, bh = UIAtlas.quads[bustname]:getViewport()
+    local _, _, bw, bh = UIAtlas.quads[bustname]:getViewport()
     local scale = 140 / bh
     local sb2 = love.graphics.newSpriteBatch(ItemIcons2.tex)
     local startitem = SPlayers[self.id].name

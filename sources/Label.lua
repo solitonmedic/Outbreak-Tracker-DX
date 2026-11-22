@@ -24,7 +24,7 @@ function Label:draw()
     if not self.autosize then
         local x = self.x
         local y = 0
-        local wrapWidth, wrapText = self.font:getWrap(self.text, self.width)
+        local _, wrapText = self.font:getWrap(self.text, self.width)
         local lineHeight = self.font:getHeight()
         if self.vAlign == "up" then
             y = self.y

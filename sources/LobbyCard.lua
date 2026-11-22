@@ -18,8 +18,6 @@ function LobbyCard:draw(x, y)
     love.graphics.push()
     love.graphics.translate(x, y)
 
-    local slot = Slots[self.id]
-
     UIAtlas:draw("slot bar", 0, 30, 0, 1)
 
     if Slots[self.id].pass == 1 then

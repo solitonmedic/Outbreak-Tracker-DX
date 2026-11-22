@@ -131,7 +131,7 @@ local function SPSoundText()
     return string.format(_l("M: SP radar sound: %s"), _l(SPSoundEnabled and "On" or "Off"))
 end
 
-function love.load(args)
+function love.load()
     LoadAssets()
     InitResult = tracker.init()
     for i = 1, 20 do
@@ -190,12 +190,10 @@ function love.draw()
     local hd = GameInfo.hostdifficulty
     local hp = GameInfo.hostplayer
     local hmp = GameInfo.hostmaxplayer
-    local ht = GameInfo.hosttime
     local gl = GameInfo.gasflag
     local pass1 = GameInfo.pass1
     local pass2 = GameInfo.pass2
     local pass3 = GameInfo.pass3
-    local pass4 = GameInfo.pass4
     local pass6 = GameInfo.pass6
 
     if InitResult == true and not (GameInfo.currentFile == 255) then
@@ -1677,20 +1675,9 @@ function love.update(dt)
             GameInfo.spTracking = SPMapState
         end
         SelectUIAtlas(GameInfo.currentFile, GameInfo.release)
-        local p = GameInfo.playernum
-        local itemset = GameInfo.itemrandom
-        local r = GameInfo.itemrandom2
-        local gr = GameInfo.gasrandom
         local f = GameInfo.frames
         local s = GameInfo.scenario
-        local d = GameInfo.difficulty
         local hs = GameInfo.hoststatus
-        local hm = GameInfo.hostscenario
-        local hd = GameInfo.hostdifficulty
-        local hp = GameInfo.hostplayer
-        local hmp = GameInfo.hostmaxplayer
-        local ht = GameInfo.hosttime
-        local gl = GameInfo.gasflag
 
         --if GameInfo.cleared >= 12 then
         --timer = timer and timer or 0
@@ -1929,95 +1916,93 @@ function love.keypressed(key)
         end
     end
     if InitResult then
-        if not (s == "") then
-            if key == "kp0" then
-                PlayerSwitch = 0
-                EnemyHPSwitch = 1
-            end
-            if key == "kp1" then
-                PlayerSwitch = 1
-                EnemyHPSwitch = 2
-            end
-            if key == "kp2" then
-                PlayerSwitch = 2
-                EnemyHPSwitch = 2
-            end
-            if key == "kp3" then
-                PlayerSwitch = 3
-                EnemyHPSwitch = 2
-            end
-            if key == "kp4" then
-                PlayerSwitch = 4
-                EnemyHPSwitch = 2
-            end
-            if key == "t" then
-                if TimeSwitch == 0 then
-                    TimeSwitch = 1
-                elseif TimeSwitch == 1 then
-                    TimeSwitch = 0
-                end
-            end
-            if key == "i" then
-                if ItemSwitch == 0 then
-                    ItemSwitch = 1
-                elseif ItemSwitch == 1 then
-                    ItemSwitch = 0
-                end
-            end
-            if key == "q" then
-                if PuzzleSwitch == 0 then
-                    PuzzleSwitch = 1
-                elseif PuzzleSwitch == 1 then
-                    PuzzleSwitch = 0
-                end
-            end
-            if key == "e" then
-                if EnemyHPSwitch == 0 then
-                    EnemyHPSwitch = 1
-                elseif EnemyHPSwitch == 1 then
-                    EnemyHPSwitch = 2
-                elseif EnemyHPSwitch == 2 then
-                    EnemyHPSwitch = 0
-                end
-            end
-            if key == "1" then
-                love.window.setMode(300, (145 * 1), { resizable = true, vsync = 3 })
-                love.window.setPosition(x, y)
-                scalex, scaley = 300, (145 * 1)
-            end
-            if key == "2" then
-                love.window.setMode(300, (145 * 2), { resizable = true, vsync = 3 })
-                love.window.setPosition(x, y)
-                scalex, scaley = 300, (145 * 2)
-            end
-            if key == "3" then
-                love.window.setMode(300, (145 * 3), { resizable = true, vsync = 3 })
-                love.window.setPosition(x, y)
-                scalex, scaley = 300, (145 * 3)
-            end
-            if key == "4" then
-                love.window.setMode(300, (145 * 4), { resizable = true, vsync = 3 })
-                love.window.setPosition(x, y)
-                scalex, scaley = 300, (145 * 4)
-            end
-            if key == "a" then
-                if Style == 0 then
-                    love.window.setMode(300, 160 + (145 * p), { resizable = true, vsync = 3 })
-                    love.window.setPosition(x, y)
-                    scalex, scaley = 300, 160 + (145 * p)
-                else
-                    love.window.setMode(300 * p + 150, 145 + 60, { resizable = true, vsync = 3 })
-                    love.window.setPosition(x, y)
-                    scalex, scaley = 300 * p + 150, 145 + 60
-                end
-            end
-            --if key == "s" then love.window.setMode(110, (145*p),{resizable=true}) love.window.setPosition(x, y)scalex,scaley = 110,(145*p) end
-            --if key == "t" then love.window.setMode(300, 20+(145*p),{resizable=true}) love.window.setPosition(x, y)scalex,scaley = 300, 20+(145*p)end
-            --if key == "e" then love.window.setMode(300, 105+(145*p)) love.window.setPosition(x, y)end
-            --if key == "d" then love.window.setMode(300, 740) love.window.setPosition(x, y)end
-
-            --if key == "h" then love.window.setMode(300*p+150, 145+60,{resizable=true}) love.window.setPosition(x, y)scalex,scaley = 300*p+150, 145+60 Style = 1 end
+        if key == "kp0" then
+            PlayerSwitch = 0
+            EnemyHPSwitch = 1
         end
+        if key == "kp1" then
+            PlayerSwitch = 1
+            EnemyHPSwitch = 2
+        end
+        if key == "kp2" then
+            PlayerSwitch = 2
+            EnemyHPSwitch = 2
+        end
+        if key == "kp3" then
+            PlayerSwitch = 3
+            EnemyHPSwitch = 2
+        end
+        if key == "kp4" then
+            PlayerSwitch = 4
+            EnemyHPSwitch = 2
+        end
+        if key == "t" then
+            if TimeSwitch == 0 then
+                TimeSwitch = 1
+            elseif TimeSwitch == 1 then
+                TimeSwitch = 0
+            end
+        end
+        if key == "i" then
+            if ItemSwitch == 0 then
+                ItemSwitch = 1
+            elseif ItemSwitch == 1 then
+                ItemSwitch = 0
+            end
+        end
+        if key == "q" then
+            if PuzzleSwitch == 0 then
+                PuzzleSwitch = 1
+            elseif PuzzleSwitch == 1 then
+                PuzzleSwitch = 0
+            end
+        end
+        if key == "e" then
+            if EnemyHPSwitch == 0 then
+                EnemyHPSwitch = 1
+            elseif EnemyHPSwitch == 1 then
+                EnemyHPSwitch = 2
+            elseif EnemyHPSwitch == 2 then
+                EnemyHPSwitch = 0
+            end
+        end
+        if key == "1" then
+            love.window.setMode(300, (145 * 1), { resizable = true, vsync = 3 })
+            love.window.setPosition(x, y)
+            scalex, scaley = 300, (145 * 1)
+        end
+        if key == "2" then
+            love.window.setMode(300, (145 * 2), { resizable = true, vsync = 3 })
+            love.window.setPosition(x, y)
+            scalex, scaley = 300, (145 * 2)
+        end
+        if key == "3" then
+            love.window.setMode(300, (145 * 3), { resizable = true, vsync = 3 })
+            love.window.setPosition(x, y)
+            scalex, scaley = 300, (145 * 3)
+        end
+        if key == "4" then
+            love.window.setMode(300, (145 * 4), { resizable = true, vsync = 3 })
+            love.window.setPosition(x, y)
+            scalex, scaley = 300, (145 * 4)
+        end
+        if key == "a" then
+            if Style == 0 then
+                love.window.setMode(300, 160 + (145 * p), { resizable = true, vsync = 3 })
+                love.window.setPosition(x, y)
+                scalex, scaley = 300, 160 + (145 * p)
+            else
+                love.window.setMode(300 * p + 150, 145 + 60, { resizable = true, vsync = 3 })
+                love.window.setPosition(x, y)
+                scalex, scaley = 300 * p + 150, 145 + 60
+            end
+        end
+        --if key == "s" then love.window.setMode(110, (145*p),{resizable=true}) love.window.setPosition(x, y)scalex,scaley = 110,(145*p) end
+        --if key == "t" then love.window.setMode(300, 20+(145*p),{resizable=true}) love.window.setPosition(x, y)scalex,scaley = 300, 20+(145*p)end
+        --if key == "e" then love.window.setMode(300, 105+(145*p)) love.window.setPosition(x, y)end
+        --if key == "d" then love.window.setMode(300, 740) love.window.setPosition(x, y)end
+
+        --if key == "h" then love.window.setMode(300*p+150, 145+60,{resizable=true}) love.window.setPosition(x, y)scalex,scaley = 300*p+150, 145+60 Style = 1 end
     end
 end
 

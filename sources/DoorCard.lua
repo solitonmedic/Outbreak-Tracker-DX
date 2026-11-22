@@ -16,7 +16,6 @@ function DoorCard:draw(x, y)
     love.graphics.push()
     love.graphics.translate(x, y)
 
-    local door = Doors[self.id]
     if
         Doors[self.id].HP == 500
         or Doors[self.id].flag == 0

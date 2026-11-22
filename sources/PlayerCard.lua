@@ -84,7 +84,7 @@ function PlayerCard:draw(x, y, portraitOnly)
     Effects.background(player, 0, 0, 300, 145, TrackerPresentationTime or 0)
     local sb = love.graphics.newSpriteBatch(UIAtlas.tex)
     local bustname = "bust" .. Players[self.id].type
-    local bx, by, bw, bh = UIAtlas.quads[bustname]:getViewport()
+    local _, _, bw, bh = UIAtlas.quads[bustname]:getViewport()
     local scale = 140 / bh
 
     if Effects.health(player) == "dead" then
