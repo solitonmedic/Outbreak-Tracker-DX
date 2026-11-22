@@ -1,61 +1,66 @@
-local IconLinks = require "icondata"
-local IconLinks2 = require "icondata2"
-local UIAtlasInfo = require "uidata"
-RoomNames = require "roomnames"
+local IconLinks = require("icondata")
+local IconLinks2 = require("icondata2")
+local UIAtlasInfo = require("uidata")
+RoomNames = require("roomnames")
 local JapaneseUIAtlas, USUIAtlas
 
 function SelectUIAtlas(currentFile, release)
-	UIAtlas = currentFile == 1 and release == "us" and USUIAtlas or JapaneseUIAtlas
+    UIAtlas = currentFile == 1 and release == "us" and USUIAtlas or JapaneseUIAtlas
 end
 
 function LoadAssets()
-	ItemCountFont = love.graphics.newImageFont("assets/ItemCountFont.png", "0123456789")
-	TimeFont = love.graphics.newImageFont("assets/TimeFont.png", "0123456789:./")
-	VirusFont = love.graphics.newImageFont("assets/VirusFont.png", "0123456789.%")
-	VirusFont:setFilter("nearest", "linear")
-	JapaneseUIAtlas = LoadTextureAtlas("assets/ui.png", UIAtlasInfo)
-	USUIAtlas = LoadTextureAtlas("assets/ui-us.png", UIAtlasInfo)
-	UIAtlas = JapaneseUIAtlas
-	MapUIAtlas = USUIAtlas
-	MapFonts = {}
-	for size=9,16 do
-		MapFonts[size] = love.graphics.newFont("assets/arialnb.ttf", size)
-		-- Arial has no kanji; scenario titles fall back to a Noto Sans CJK JP subset
-		-- (OFL, see assets/NotoSansCJKjp-Scenario-OFL.txt). The Decky bridge has no
-		-- fallbacks; its browser renders kanji with a system font instead.
-		if MapFonts[size].setFallbacks then
-			MapFonts[size]:setFallbacks(love.graphics.newFont("assets/NotoSansCJKjp-Scenario.otf", size))
-		end
-	end
-	ItemIcons = LoadTextureAtlas("assets/icons.png", IconLinks)
-	ItemIcons2 = LoadTextureAtlas("assets/StartingItem.png", IconLinks2)
-	DefaultFont = love.graphics.newFont("assets/arialbd.ttf",18)
-	SmallFont = love.graphics.newFont("assets/arialbd.ttf",15)
-	VerySmallFont = love.graphics.newFont("assets/arialbd.ttf",13)
-	MiniFont = love.graphics.newFont("assets/arialnb.ttf",11)
-	--MiniFont = love.graphics.newFont(9)
-	SPFoundSound = love.audio.newSource("assets/sp-found.wav", "static")
+    ItemCountFont = love.graphics.newImageFont("assets/ItemCountFont.png", "0123456789")
+    TimeFont = love.graphics.newImageFont("assets/TimeFont.png", "0123456789:./")
+    VirusFont = love.graphics.newImageFont("assets/VirusFont.png", "0123456789.%")
+    VirusFont:setFilter("nearest", "linear")
+    JapaneseUIAtlas = LoadTextureAtlas("assets/ui.png", UIAtlasInfo)
+    USUIAtlas = LoadTextureAtlas("assets/ui-us.png", UIAtlasInfo)
+    UIAtlas = JapaneseUIAtlas
+    MapUIAtlas = USUIAtlas
+    MapFonts = {}
+    for size = 9, 16 do
+        MapFonts[size] = love.graphics.newFont("assets/arialnb.ttf", size)
+        -- Arial has no kanji; scenario titles fall back to a Noto Sans CJK JP subset
+        -- (OFL, see assets/NotoSansCJKjp-Scenario-OFL.txt). The Decky bridge has no
+        -- fallbacks; its browser renders kanji with a system font instead.
+        if MapFonts[size].setFallbacks then
+            MapFonts[size]:setFallbacks(love.graphics.newFont("assets/NotoSansCJKjp-Scenario.otf", size))
+        end
+    end
+    ItemIcons = LoadTextureAtlas("assets/icons.png", IconLinks)
+    ItemIcons2 = LoadTextureAtlas("assets/StartingItem.png", IconLinks2)
+    DefaultFont = love.graphics.newFont("assets/arialbd.ttf", 18)
+    SmallFont = love.graphics.newFont("assets/arialbd.ttf", 15)
+    VerySmallFont = love.graphics.newFont("assets/arialbd.ttf", 13)
+    MiniFont = love.graphics.newFont("assets/arialnb.ttf", 11)
+    --MiniFont = love.graphics.newFont(9)
+    SPFoundSound = love.audio.newSource("assets/sp-found.wav", "static")
 end
 
 function LoadTextureAtlas(texture, links) -- Really dirty stuff here
-	local o = {}
-	o.tex = love.graphics.newImage(texture)
-	o.quads = {}
-	o.draw = function (self, name, x, y, r, sx, sy, ox, oy, kx, ky)
-		if (self.quads[name] == nil) then
-			love.graphics.setFont()
-			love.graphics.print(name, x, y)
-		else
-			love.graphics.draw(self.tex, self.quads[name], x, y, r, sx, sy, ox, oy, kx, ky)
-		end
-	end
-	o.addSB = function (self, sb, name, x, y, r, sx, sy, ox, oy, kx, ky)
-		sb:add( self.quads[name], x, y, r or 0, sx, sy, ox, oy, kx, ky)
-	end
-	for k, v in pairs(links.frameIndex) do
-		o.quads[k] = love.graphics.newQuad(links.sheet.frames[v].x, links.sheet.frames[v].y, 
-											links.sheet.frames[v].width, links.sheet.frames[v].height, 
-											links.sheet.sheetContentWidth, links.sheet.sheetContentHeight)
-	end
-	return o
+    local o = {}
+    o.tex = love.graphics.newImage(texture)
+    o.quads = {}
+    o.draw = function(self, name, x, y, r, sx, sy, ox, oy, kx, ky)
+        if self.quads[name] == nil then
+            love.graphics.setFont()
+            love.graphics.print(name, x, y)
+        else
+            love.graphics.draw(self.tex, self.quads[name], x, y, r, sx, sy, ox, oy, kx, ky)
+        end
+    end
+    o.addSB = function(self, sb, name, x, y, r, sx, sy, ox, oy, kx, ky)
+        sb:add(self.quads[name], x, y, r or 0, sx, sy, ox, oy, kx, ky)
+    end
+    for k, v in pairs(links.frameIndex) do
+        o.quads[k] = love.graphics.newQuad(
+            links.sheet.frames[v].x,
+            links.sheet.frames[v].y,
+            links.sheet.frames[v].width,
+            links.sheet.frames[v].height,
+            links.sheet.sheetContentWidth,
+            links.sheet.sheetContentHeight
+        )
+    end
+    return o
 end

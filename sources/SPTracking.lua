@@ -26,8 +26,12 @@ function SPTracking.alert(state)
     if type(state) ~= "table" or state.available ~= true or not integer(state.room, 0, 0xFFFF) then
         return false
     end
-    if state.room ~= alertRoom then alertRoom, alerted = state.room, false end
-    if alerted or (state.radarState ~= "direction" and state.radarState ~= "near") then return false end
+    if state.room ~= alertRoom then
+        alertRoom, alerted = state.room, false
+    end
+    if alerted or (state.radarState ~= "direction" and state.radarState ~= "near") then
+        return false
+    end
     alerted = true
     return true
 end
@@ -36,7 +40,9 @@ end
 -- sound or map pins. Every SP consumer reads the state through this.
 function SPTracking.state(game)
     local s = type(game) == "table" and tostring(game.scenario or "") or ""
-    if s:find("^elimination") or s:find("^showdown") then return nil end
+    if s:find("^elimination") or s:find("^showdown") then
+        return nil
+    end
     return type(game) == "table" and game.spTracking or nil
 end
 
@@ -48,23 +54,40 @@ end
 -- Keep the guarded private provider's bearing/glow intact. Desktop room-only
 -- samples can derive a direction from their already-exported item/player data;
 -- no proximity/prompt claim is added when that provider does not supply one.
-function SPTracking.forMap(state,player)
-    if type(state)~="table" or state.available~=true or state.radarState~=nil then return state end
-    if not (player and player.enabled and player.inGame and player.roomID==state.room) then return state end
-    local function finite(v) return type(v)=="number" and v==v and math.abs(v)<1000000 end
-    local px,py,fx,fy=player.positionX,player.positionY,player.forwardX,player.forwardY
-    if not (finite(px) and finite(py) and finite(fx) and finite(fy)) or math.abs(fx*fx+fy*fy-1)>.06 then return state end
-    local nearest,best
-    for _,it in ipairs(state.roomItems or {}) do
+function SPTracking.forMap(state, player)
+    if type(state) ~= "table" or state.available ~= true or state.radarState ~= nil then
+        return state
+    end
+    if not (player and player.enabled and player.inGame and player.roomID == state.room) then
+        return state
+    end
+    local function finite(v)
+        return type(v) == "number" and v == v and math.abs(v) < 1000000
+    end
+    local px, py, fx, fy = player.positionX, player.positionY, player.forwardX, player.forwardY
+    if not (finite(px) and finite(py) and finite(fx) and finite(fy)) or math.abs(fx * fx + fy * fy - 1) > 0.06 then
+        return state
+    end
+    local nearest, best
+    for _, it in ipairs(state.roomItems or {}) do
         if it.enabled and not it.collected and finite(it.x) and finite(it.y) then
-            local d=(it.x-px)^2+(it.y-py)^2
-            if not best or d<best then best=d;nearest=it end
+            local d = (it.x - px) ^ 2 + (it.y - py) ^ 2
+            if not best or d < best then
+                best = d
+                nearest = it
+            end
         end
     end
-    if not nearest or best<.001 then return state end
-    local out={};for k,v in pairs(state) do out[k]=v end
-    local angle=math.atan2(nearest.x-px,-(nearest.y-py))-math.atan2(fx,-fy)
-    out.radarState="direction";out.bearing=math.atan2(math.sin(angle),math.cos(angle))
+    if not nearest or best < 0.001 then
+        return state
+    end
+    local out = {}
+    for k, v in pairs(state) do
+        out[k] = v
+    end
+    local angle = math.atan2(nearest.x - px, -(nearest.y - py)) - math.atan2(fx, -fy)
+    out.radarState = "direction"
+    out.bearing = math.atan2(math.sin(angle), math.cos(angle))
     return out
 end
 
@@ -76,27 +99,47 @@ end
 -- the Penpot "glow" variant (orange compass and halos). The "near" prompt state also
 -- glows when it has a bearing. "glow" is not a radarState of its own.
 function SPTracking.draw(state, timerX, timerY, font)
-    if type(state) ~= "table" or state.available ~= true or state.limit ~= 8 or
-        not integer(state.collected, 0, state.limit) then return false end
+    if
+        type(state) ~= "table"
+        or state.available ~= true
+        or state.limit ~= 8
+        or not integer(state.collected, 0, state.limit)
+    then
+        return false
+    end
 
     local name = state.radarState
-    if name == "glow" then return false end
-    if state.collected == state.limit then name = "complete" end
-    if name == "complete" and state.collected ~= state.limit then return false end
+    if name == "glow" then
+        return false
+    end
+    if state.collected == state.limit then
+        name = "complete"
+    end
+    if name == "complete" and state.collected ~= state.limit then
+        return false
+    end
     local showRadar = name ~= nil
-    if name ~= nil and not layout.variants[name] then return false end
-    if name == "direction" and (type(state.bearing) ~= "number" or
-        state.bearing ~= state.bearing or math.abs(state.bearing) == math.huge) then return false end
+    if name ~= nil and not layout.variants[name] then
+        return false
+    end
+    if
+        name == "direction"
+        and (type(state.bearing) ~= "number" or state.bearing ~= state.bearing or math.abs(state.bearing) == math.huge)
+    then
+        return false
+    end
 
-    local bearingOk = type(state.bearing) == "number" and state.bearing == state.bearing and
-        math.abs(state.bearing) ~= math.huge
-    local glow = (name == "direction" or name == "near") and bearingOk and
-        (state.glow == true or name == "near")
-    if glow then name = "glow" end
+    local bearingOk = type(state.bearing) == "number"
+        and state.bearing == state.bearing
+        and math.abs(state.bearing) ~= math.huge
+    local glow = (name == "direction" or name == "near") and bearingOk and (state.glow == true or name == "near")
+    if glow then
+        name = "glow"
+    end
     local variant = layout.variants[name or "idle"]
     local g = love.graphics
     font = font or DefaultFont
-    local oldFont, oldColor, oldWidth = g.getFont(), {g.getColor()}, g.getLineWidth()
+    local oldFont, oldColor, oldWidth = g.getFont(), { g.getColor() }, g.getLineWidth()
     g.push()
     g.translate(timerX + variant.x, timerY + variant.y - layout.referenceY)
     g.setFont(font)
@@ -105,18 +148,19 @@ function SPTracking.draw(state, timerX, timerY, font)
     local pivotX, pivotY
     if name == "direction" or name == "glow" then
         local left, top, right, bottom = math.huge, math.huge, -math.huge, -math.huge
-        for _,e in ipairs(variant.elements) do
+        for _, e in ipairs(variant.elements) do
             if e.role == "arrow" or e.role == "bar" then
-                left, top = math.min(left,e.x), math.min(top,e.y)
-                right, bottom = math.max(right,e.x+e.width), math.max(bottom,e.y+e.height)
+                left, top = math.min(left, e.x), math.min(top, e.y)
+                right, bottom = math.max(right, e.x + e.width), math.max(bottom, e.y + e.height)
             end
         end
-        pivotX, pivotY = (left+right)/2, (top+bottom)/2
+        pivotX, pivotY = (left + right) / 2, (top + bottom) / 2
     end
-    for _,e in ipairs(variant.elements) do
+    for _, e in ipairs(variant.elements) do
         if e.type == "text" then
-            local text = e.role == "current" and tostring(state.collected) or
-                e.role == "maximum" and tostring(state.limit) or e.text
+            local text = e.role == "current" and tostring(state.collected)
+                or e.role == "maximum" and tostring(state.limit)
+                or e.text
             g.setColor(unpack(e.fill))
             g.print(text, e.x, e.y, 0, e.scale, e.scale)
         elseif showRadar then
@@ -129,13 +173,18 @@ function SPTracking.draw(state, timerX, timerY, font)
             g.translate(e.x, e.y)
             g.setColor(unpack(e.fill))
             if e.type == "ellipse" then
-                g.ellipse("fill", e.width/2, e.height/2, e.width/2, e.height/2)
+                g.ellipse("fill", e.width / 2, e.height / 2, e.width / 2, e.height / 2)
                 if e.strokeWidth and e.strokeWidth > 0 then
                     g.setColor(unpack(e.stroke))
                     g.setLineWidth(e.strokeWidth)
                     -- Penpot uses an inner stroke; LÖVE strokes are centred.
-                    g.ellipse("line", e.width/2, e.height/2,
-                        (e.width-e.strokeWidth)/2, (e.height-e.strokeWidth)/2)
+                    g.ellipse(
+                        "line",
+                        e.width / 2,
+                        e.height / 2,
+                        (e.width - e.strokeWidth) / 2,
+                        (e.height - e.strokeWidth) / 2
+                    )
                 end
             elseif e.type == "rectangle" then
                 g.rectangle("fill", 0, 0, e.width, e.height)

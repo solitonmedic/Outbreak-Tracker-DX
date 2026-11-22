@@ -443,7 +443,7 @@ local language = {
     ["Dog"] = "Dog",
     ["Lion"] = "Lion",
     ["Zombie"] = "Zombie",
-    ["\"Dorothy\""] = "\"Dorothy\"",
+    ['"Dorothy"'] = '"Dorothy"',
     ["Alyssa"] = "Alyssa",
     ["Axeman"] = "Axeman",
     ["Bob"] = "Bob",
@@ -993,7 +993,7 @@ local language_ru = {
     ["Dog"] = "Собака",
     ["Lion"] = "Lion",
     ["Zombie"] = "Зомби",
-    ["\"Dorothy\""] = "\"Дороти\"",
+    ['"Dorothy"'] = '"Дороти"',
     ["Alyssa"] = "Алисса",
     ["Axeman"] = "Axeman",
     ["Bob"] = "Боб",
@@ -1093,13 +1093,13 @@ local language_ru = {
 }
 
 function _l(text)
-    if (LanguageSwitch == 1) then
-        if not(language_ru[text] == nil) then
+    if LanguageSwitch == 1 then
+        if not (language_ru[text] == nil) then
             return language_ru[text]
         end
     end
-    if (LanguageSwitch == 0) then
-        if not(language[text] == nil) then
+    if LanguageSwitch == 0 then
+        if not (language[text] == nil) then
             return language[text]
         end
     end

@@ -3,7 +3,7 @@ local SheetInfo = {}
 SheetInfo.sheet =
 {
     frames = {
-    
+
         {
             --1 .45 magazine
             x=0,

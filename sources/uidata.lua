@@ -13,7 +13,7 @@ local SheetInfo = {}
 SheetInfo.sheet =
 {
     frames = {
-    
+
         {
             -- below freezing point
             x=830,

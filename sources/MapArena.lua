@@ -23,46 +23,195 @@
 -- room is loaded; killed enemies keep HP 65535.
 -- Safety: no memory, file or game access. Reusable.
 -- Run: MapView requires it. Check: luajit tools-n-shit/tracker-tests/maps/check-arena.lua .
-local A={}
+local A = {}
 
 -- cells: [roomID]={column,row}; links: room pairs joined by a door.
-A.graphs={
-    ["elimination 1"]={columns=5,rows=6,
-        cells={[9]={0,0},[8]={1,0},[18]={3,0},[17]={4,0},
-            [7]={0,1},[11]={1,1},[15]={2,1},[16]={3,1},
-            [10]={1,2},[12]={2,2},[13]={3,2},
-            [6]={0,3},[1]={1,3},
-            [2]={2,4},[14]={3,4},
-            [5]={0,5},[4]={1,5},[3]={2,5}},
-        links={{9,8},{8,11},{8,7},{11,15},{11,12},{11,10},{10,6},{10,1},{7,6},{6,4},
-            {4,5},{4,3},{3,2},{2,1},{1,12},{12,13},{15,16},{16,17},{17,18},{16,13},{13,14}}},
-    ["elimination 2"]={columns=5,rows=4,
-        cells={[1]={0,0},[2]={1,0},[3]={2,0},[4]={3,0},[6]={4,0},
-            [15]={1,1},[5]={3,1},
-            [14]={1,2},[11]={2,2},[9]={3,2},[7]={4,2},
-            [13]={0,3},[12]={1,3},[10]={2,3},[8]={4,3}},
-        links={{1,2},{2,3},{3,4},{4,6},{4,5},{6,8},{1,15},{1,14},{15,5},{11,5},{14,13},
-            {13,9},{11,12},{11,10},{12,8},{10,9},{9,5},{9,7},{9,8},{7,8}}},
-    ["elimination 3"]={columns=6,rows=6,
-        cells={[15]={0,0},[16]={1,0},[17]={2,0},[18]={3,0},[19]={4,0},
-            [11]={2,1},[9]={3,1},[20]={4,1},[21]={5,1},
-            [13]={0,2},[12]={1,2},[10]={3,2},
-            [8]={3,3},[7]={4,3},
-            [14]={0,4},[1]={1,4},[2]={2,4},[3]={3,4},[4]={4,4},[6]={5,4},
-            [5]={4,5}},
-        links={{15,11},{15,16},{15,13},{16,12},{13,17},{17,11},{17,18},{18,19},{19,21},{19,20},
-            {21,7},{8,7},{9,10},{10,11},{9,8},{8,3},{12,11},{12,13},{13,14},{1,2},{2,3},
-            {3,4},{4,5},{5,6},{6,7}}},
-    ["showdown 1"]={columns=3,rows=2,
-        cells={[1]={0,0},[2]={1,0},[3]={2,0},[4]={2,1},[5]={1,1}},
-        links={{1,2},{2,3},{3,4},{4,5}}},
-    ["showdown 2"]={columns=3,rows=2,
-        cells={[6]={0,0},[7]={1,0},[8]={2,0},[9]={2,1},[10]={1,1}},
-        links={{6,7},{7,8},{8,9},{9,10}}},
-    ["showdown 3"]={columns=3,rows=4,
-        cells={[1]={0,0},[2]={1,0},[3]={2,0},[4]={2,1},[5]={1,1},[6]={0,1},
-            [7]={0,2},[8]={1,2},[9]={2,2},[10]={2,3},[11]={1,3}},
-        links={{1,2},{2,3},{3,4},{4,5},{5,6},{6,7},{7,8},{8,9},{9,10},{10,11}}},
+A.graphs = {
+    ["elimination 1"] = {
+        columns = 5,
+        rows = 6,
+        cells = {
+            [9] = { 0, 0 },
+            [8] = { 1, 0 },
+            [18] = { 3, 0 },
+            [17] = { 4, 0 },
+            [7] = { 0, 1 },
+            [11] = { 1, 1 },
+            [15] = { 2, 1 },
+            [16] = { 3, 1 },
+            [10] = { 1, 2 },
+            [12] = { 2, 2 },
+            [13] = { 3, 2 },
+            [6] = { 0, 3 },
+            [1] = { 1, 3 },
+            [2] = { 2, 4 },
+            [14] = { 3, 4 },
+            [5] = { 0, 5 },
+            [4] = { 1, 5 },
+            [3] = { 2, 5 },
+        },
+        links = {
+            { 9, 8 },
+            { 8, 11 },
+            { 8, 7 },
+            { 11, 15 },
+            { 11, 12 },
+            { 11, 10 },
+            { 10, 6 },
+            { 10, 1 },
+            { 7, 6 },
+            { 6, 4 },
+            { 4, 5 },
+            { 4, 3 },
+            { 3, 2 },
+            { 2, 1 },
+            { 1, 12 },
+            { 12, 13 },
+            { 15, 16 },
+            { 16, 17 },
+            { 17, 18 },
+            { 16, 13 },
+            { 13, 14 },
+        },
+    },
+    ["elimination 2"] = {
+        columns = 5,
+        rows = 4,
+        cells = {
+            [1] = { 0, 0 },
+            [2] = { 1, 0 },
+            [3] = { 2, 0 },
+            [4] = { 3, 0 },
+            [6] = { 4, 0 },
+            [15] = { 1, 1 },
+            [5] = { 3, 1 },
+            [14] = { 1, 2 },
+            [11] = { 2, 2 },
+            [9] = { 3, 2 },
+            [7] = { 4, 2 },
+            [13] = { 0, 3 },
+            [12] = { 1, 3 },
+            [10] = { 2, 3 },
+            [8] = { 4, 3 },
+        },
+        links = {
+            { 1, 2 },
+            { 2, 3 },
+            { 3, 4 },
+            { 4, 6 },
+            { 4, 5 },
+            { 6, 8 },
+            { 1, 15 },
+            { 1, 14 },
+            { 15, 5 },
+            { 11, 5 },
+            { 14, 13 },
+            { 13, 9 },
+            { 11, 12 },
+            { 11, 10 },
+            { 12, 8 },
+            { 10, 9 },
+            { 9, 5 },
+            { 9, 7 },
+            { 9, 8 },
+            { 7, 8 },
+        },
+    },
+    ["elimination 3"] = {
+        columns = 6,
+        rows = 6,
+        cells = {
+            [15] = { 0, 0 },
+            [16] = { 1, 0 },
+            [17] = { 2, 0 },
+            [18] = { 3, 0 },
+            [19] = { 4, 0 },
+            [11] = { 2, 1 },
+            [9] = { 3, 1 },
+            [20] = { 4, 1 },
+            [21] = { 5, 1 },
+            [13] = { 0, 2 },
+            [12] = { 1, 2 },
+            [10] = { 3, 2 },
+            [8] = { 3, 3 },
+            [7] = { 4, 3 },
+            [14] = { 0, 4 },
+            [1] = { 1, 4 },
+            [2] = { 2, 4 },
+            [3] = { 3, 4 },
+            [4] = { 4, 4 },
+            [6] = { 5, 4 },
+            [5] = { 4, 5 },
+        },
+        links = {
+            { 15, 11 },
+            { 15, 16 },
+            { 15, 13 },
+            { 16, 12 },
+            { 13, 17 },
+            { 17, 11 },
+            { 17, 18 },
+            { 18, 19 },
+            { 19, 21 },
+            { 19, 20 },
+            { 21, 7 },
+            { 8, 7 },
+            { 9, 10 },
+            { 10, 11 },
+            { 9, 8 },
+            { 8, 3 },
+            { 12, 11 },
+            { 12, 13 },
+            { 13, 14 },
+            { 1, 2 },
+            { 2, 3 },
+            { 3, 4 },
+            { 4, 5 },
+            { 5, 6 },
+            { 6, 7 },
+        },
+    },
+    ["showdown 1"] = {
+        columns = 3,
+        rows = 2,
+        cells = { [1] = { 0, 0 }, [2] = { 1, 0 }, [3] = { 2, 0 }, [4] = { 2, 1 }, [5] = { 1, 1 } },
+        links = { { 1, 2 }, { 2, 3 }, { 3, 4 }, { 4, 5 } },
+    },
+    ["showdown 2"] = {
+        columns = 3,
+        rows = 2,
+        cells = { [6] = { 0, 0 }, [7] = { 1, 0 }, [8] = { 2, 0 }, [9] = { 2, 1 }, [10] = { 1, 1 } },
+        links = { { 6, 7 }, { 7, 8 }, { 8, 9 }, { 9, 10 } },
+    },
+    ["showdown 3"] = {
+        columns = 3,
+        rows = 4,
+        cells = {
+            [1] = { 0, 0 },
+            [2] = { 1, 0 },
+            [3] = { 2, 0 },
+            [4] = { 2, 1 },
+            [5] = { 1, 1 },
+            [6] = { 0, 1 },
+            [7] = { 0, 2 },
+            [8] = { 1, 2 },
+            [9] = { 2, 2 },
+            [10] = { 2, 3 },
+            [11] = { 1, 3 },
+        },
+        links = {
+            { 1, 2 },
+            { 2, 3 },
+            { 3, 4 },
+            { 4, 5 },
+            { 5, 6 },
+            { 6, 7 },
+            { 7, 8 },
+            { 8, 9 },
+            { 9, 10 },
+            { 10, 11 },
+        },
+    },
 }
 
 -- Source rooms and door spots, generated by tools-n-shit/research/match-arena-rooms.py --lua
@@ -79,171 +228,197 @@ A.graphs={
 -- merge-door-entries.py: median of all arrivals, which agreed within 20 units),
 -- adding the Elimination 1 run decky-20261121T055250 and the Elimination 3 run
 -- decky-20261121T061335; earlier entries are kept as they were.
-A.sources={
-    ["elimination 1"]={
-        [1]={1,"041",80,4}, -- Entrance hall, 3/3 points
-        [2]={1,"002",50,3}, -- Room 30*, 5/5 points
-        [3]={2,"006",60,8}, -- Office building warehouse, 9/9 points
-        [4]={2,"040",14,3}, -- Connecting passage, 6/6 points
-        [5]={1,"028",11,6}, -- Nurse center, 19/19 points
-        [6]={1,"035",4,4}, -- B7F south passway, 8/8 points
-        [7]={2,"010",11,4}, -- Break room, 4/4 points
-        [8]={2,"040",25,3}, -- Stage, 11/11 points
-        [9]={2,"015",8,3}, -- Rooftop, 7/7 points
-        [10]={2,"015",4,2}, -- 1F lobby, 7/7 points
-        [11]={1,"001",5,5}, -- Staff room, 5/5 points
-        [12]={2,"026",6,8}, -- Main building 1F hall, 5/5 points
-        [13]={1,"035",9,5}, -- B6F security center, 6/6 points
-        [14]={2,"010",24,5}, -- Pump room, 4/4 points
-        [15]={2,"006",8,1}, -- Experimentation chamber, 5/5 points
-        [16]={1,"041",54,7}, -- T-shaped passway, 6/6 points
-        [17]={1,"002",43,2}, -- Security office, 5/5 points
-        [18]={2,"026",2,1}, -- Cabin, 2/2 points
+A.sources = {
+    ["elimination 1"] = {
+        [1] = { 1, "041", 80, 4 }, -- Entrance hall, 3/3 points
+        [2] = { 1, "002", 50, 3 }, -- Room 30*, 5/5 points
+        [3] = { 2, "006", 60, 8 }, -- Office building warehouse, 9/9 points
+        [4] = { 2, "040", 14, 3 }, -- Connecting passage, 6/6 points
+        [5] = { 1, "028", 11, 6 }, -- Nurse center, 19/19 points
+        [6] = { 1, "035", 4, 4 }, -- B7F south passway, 8/8 points
+        [7] = { 2, "010", 11, 4 }, -- Break room, 4/4 points
+        [8] = { 2, "040", 25, 3 }, -- Stage, 11/11 points
+        [9] = { 2, "015", 8, 3 }, -- Rooftop, 7/7 points
+        [10] = { 2, "015", 4, 2 }, -- 1F lobby, 7/7 points
+        [11] = { 1, "001", 5, 5 }, -- Staff room, 5/5 points
+        [12] = { 2, "026", 6, 8 }, -- Main building 1F hall, 5/5 points
+        [13] = { 1, "035", 9, 5 }, -- B6F security center, 6/6 points
+        [14] = { 2, "010", 24, 5 }, -- Pump room, 4/4 points
+        [15] = { 2, "006", 8, 1 }, -- Experimentation chamber, 5/5 points
+        [16] = { 1, "041", 54, 7 }, -- T-shaped passway, 6/6 points
+        [17] = { 1, "002", 43, 2 }, -- Security office, 5/5 points
+        [18] = { 2, "026", 2, 1 }, -- Cabin, 2/2 points
     },
-    ["elimination 2"]={
-        [1]={2,"040",3,1}, -- In front of Elephant Restaurant, 27/27 points
-        [2]={2,"026",4,3}, -- Suspension bridge, 26/26 points
-        [3]={2,"006",57,5}, -- Main street South, 10/10 points
-        [4]={1,"035",3,4}, -- B7F experiment room, 8/9 points
-        [5]={1,"028",2,4}, -- 1F passway, 28/28 points
-        [6]={1,"001",14,8}, -- Rooftop, 16/16 points
-        [7]={2,"026",5,4}, -- Hospital back gate, 6/6 points
-        [8]={1,"041",85,3}, -- 1F passage B, 18/19 points
-        [9]={2,"010",18,1}, -- East concourse, 29/29 points
-        [10]={1,"001",2,4}, -- Stairs between 1F and 2F, 4/4 points
-        [11]={1,"002",47,2}, -- North west passage 3, 56/70 points
-        [12]={2,"040",18,3}, -- Lakeside area, 10/10 points
-        [13]={1,"035",19,6}, -- B5F passway of area B, 10/10 points
-        [14]={2,"015",3,2}, -- Police station front entrance, 5/11 points
-        [15]={1,"002",32,2}, -- Owner's room, 10/10 points
+    ["elimination 2"] = {
+        [1] = { 2, "040", 3, 1 }, -- In front of Elephant Restaurant, 27/27 points
+        [2] = { 2, "026", 4, 3 }, -- Suspension bridge, 26/26 points
+        [3] = { 2, "006", 57, 5 }, -- Main street South, 10/10 points
+        [4] = { 1, "035", 3, 4 }, -- B7F experiment room, 8/9 points
+        [5] = { 1, "028", 2, 4 }, -- 1F passway, 28/28 points
+        [6] = { 1, "001", 14, 8 }, -- Rooftop, 16/16 points
+        [7] = { 2, "026", 5, 4 }, -- Hospital back gate, 6/6 points
+        [8] = { 1, "041", 85, 3 }, -- 1F passage B, 18/19 points
+        [9] = { 2, "010", 18, 1 }, -- East concourse, 29/29 points
+        [10] = { 1, "001", 2, 4 }, -- Stairs between 1F and 2F, 4/4 points
+        [11] = { 1, "002", 47, 2 }, -- North west passage 3, 56/70 points
+        [12] = { 2, "040", 18, 3 }, -- Lakeside area, 10/10 points
+        [13] = { 1, "035", 19, 6 }, -- B5F passway of area B, 10/10 points
+        [14] = { 2, "015", 3, 2 }, -- Police station front entrance, 5/11 points
+        [15] = { 1, "002", 32, 2 }, -- Owner's room, 10/10 points
     },
-    ["elimination 3"]={
-        [1]={1,"001",1,3}, -- J's BAR, 12/12 points
-        [2]={2,"026",7,8}, -- Reception office, 5/5 points
-        [3]={2,"040",19,3}, -- Path in front of Observation Deck, 11/11 points
-        [4]={1,"002",27,1}, -- Apple Inn square, 14/14 points
-        [5]={1,"041",52,7}, -- North car, 9/9 points
-        [6]={2,"010",15,4}, -- Stairwell, 12/12 points
-        [7]={2,"040",24,3}, -- Show animals' boarding house, 25/25 points
-        [8]={2,"015",5,2}, -- East office, 15/15 points
-        [9]={1,"035",13,5}, -- B6F east passway, 9/9 points
-        [10]={2,"006",10,2}, -- Stairwell, 9/9 points
-        [11]={1,"041",8,13}, -- Underground tunnel, 21/21 points
-        [12]={1,"028",12,4}, -- Examination room, 14/14 points
-        [13]={2,"010",22,5}, -- B2F passage, 14/14 points
-        [15]={1,"035",24,7}, -- Main shaft, 22/22 points
-        [16]={1,"001",17,4}, -- 1F of the apartment, 8/9 points
-        [17]={2,"015",13,1}, -- Underground parking garage, 5/5 points
-        [18]={2,"006",32,4}, -- Drainage area, 11/11 points
+    ["elimination 3"] = {
+        [1] = { 1, "001", 1, 3 }, -- J's BAR, 12/12 points
+        [2] = { 2, "026", 7, 8 }, -- Reception office, 5/5 points
+        [3] = { 2, "040", 19, 3 }, -- Path in front of Observation Deck, 11/11 points
+        [4] = { 1, "002", 27, 1 }, -- Apple Inn square, 14/14 points
+        [5] = { 1, "041", 52, 7 }, -- North car, 9/9 points
+        [6] = { 2, "010", 15, 4 }, -- Stairwell, 12/12 points
+        [7] = { 2, "040", 24, 3 }, -- Show animals' boarding house, 25/25 points
+        [8] = { 2, "015", 5, 2 }, -- East office, 15/15 points
+        [9] = { 1, "035", 13, 5 }, -- B6F east passway, 9/9 points
+        [10] = { 2, "006", 10, 2 }, -- Stairwell, 9/9 points
+        [11] = { 1, "041", 8, 13 }, -- Underground tunnel, 21/21 points
+        [12] = { 1, "028", 12, 4 }, -- Examination room, 14/14 points
+        [13] = { 2, "010", 22, 5 }, -- B2F passage, 14/14 points
+        [15] = { 1, "035", 24, 7 }, -- Main shaft, 22/22 points
+        [16] = { 1, "001", 17, 4 }, -- 1F of the apartment, 8/9 points
+        [17] = { 2, "015", 13, 1 }, -- Underground parking garage, 5/5 points
+        [18] = { 2, "006", 32, 4 }, -- Drainage area, 11/11 points
         -- Not entered in the run: the only map room with the same name (name only).
-        [19]={1,"028",4,4}, -- Hall
-        [20]={1,"002",51,3}, -- Room 306
-        [21]={1,"041",72,6}, -- Unloading passage
+        [19] = { 1, "028", 4, 4 }, -- Hall
+        [20] = { 1, "002", 51, 3 }, -- Room 306
+        [21] = { 1, "041", 72, 6 }, -- Unloading passage
     },
     -- Showdown 3 VH run decky-20261121T063920 (rooms 1-11); Showdown 2's run of
     -- 2026-10-24 lands on the same five rooms; Showdown 1 uses rooms 1-5.
-    ["showdown 3"]={
-        [1]={1,"035",32,8}, -- Marshaling yard, 49/49 points
-        [2]={1,"028",33,1}, -- Underpass entrance, 86/103 points
-        [3]={2,"006",66,5}, -- Apple Inn front lobby, 24/24 points
-        [4]={1,"041",80,3}, -- Entrance hall, 43/44 points
-        [5]={1,"041",74,6}, -- Front square, 48/48 points
-        [6]={2,"040",12,3}, -- Elephant Stage, 64/64 points (Showdown 2 run 55/55)
-        [7]={2,"040",27,3}, -- Front Gate, 80/80 points (114/114)
-        [8]={2,"010",32,3}, -- East tunnel, 91/91 points (74/74)
-        [9]={2,"006",56,5}, -- Main street North, 57/57 points (48/48)
-        [10]={2,"006",63,7}, -- Rooftop - Elevated railway, 36/36 points (144/144)
-        [11]={2,"015",8,3}, -- Rooftop, 104/104 points
+    ["showdown 3"] = {
+        [1] = { 1, "035", 32, 8 }, -- Marshaling yard, 49/49 points
+        [2] = { 1, "028", 33, 1 }, -- Underpass entrance, 86/103 points
+        [3] = { 2, "006", 66, 5 }, -- Apple Inn front lobby, 24/24 points
+        [4] = { 1, "041", 80, 3 }, -- Entrance hall, 43/44 points
+        [5] = { 1, "041", 74, 6 }, -- Front square, 48/48 points
+        [6] = { 2, "040", 12, 3 }, -- Elephant Stage, 64/64 points (Showdown 2 run 55/55)
+        [7] = { 2, "040", 27, 3 }, -- Front Gate, 80/80 points (114/114)
+        [8] = { 2, "010", 32, 3 }, -- East tunnel, 91/91 points (74/74)
+        [9] = { 2, "006", 56, 5 }, -- Main street North, 57/57 points (48/48)
+        [10] = { 2, "006", 63, 7 }, -- Rooftop - Elevated railway, 36/36 points (144/144)
+        [11] = { 2, "015", 8, 3 }, -- Rooftop, 104/104 points
     },
 }
 -- Rooms without a source: their name fits several map rooms and no run has
 -- entered them yet. Room View draws them as a box.
-A.sources["showdown 1"]={}
-A.sources["showdown 2"]={}
-for id,src in pairs(A.sources["showdown 3"]) do
-    if id<=5 then A.sources["showdown 1"][id]=src elseif id<=10 then A.sources["showdown 2"][id]=src end
+A.sources["showdown 1"] = {}
+A.sources["showdown 2"] = {}
+for id, src in pairs(A.sources["showdown 3"]) do
+    if id <= 5 then
+        A.sources["showdown 1"][id] = src
+    elseif id <= 10 then
+        A.sources["showdown 2"][id] = src
+    end
 end
-A.unsourced={["elimination 3"]={[14]="Locker room: Outbreak, The Hive and Flashback each have one"}}
-A.doors={
-    ["elimination 1"]={
-        [1]={[2]={6125,9354}},
-        [2]={[3]={9875,10946}},
-        [3]={[4]={8980,3401}},
-        [4]={[3]={9670,4649},[5]={9075,4449},[6]={10120,3049}},
-        [5]={[4]={5970,1799}},
-        [6]={[7]={2901,2874},[10]={2701,3874}},
-        [7]={[8]={6954,1825}},
-        [8]={[9]={2880,6539},[11]={3946,7525}},
-        [9]={[8]={6075,8154}},
-        [10]={[1]={4375,9054},[6]={4325,9496},[11]={5674,8480}},
-        [11]={[8]={8404,12775},[10]={8896,13125}},
-        [12]={[1]={8825,6196}},
-        [13]={[12]={2899,2676},[14]={3525,2051}},
-        [14]={[13]={7915,1654}},
-        [15]={[16]={3601,3575}},
-        [16]={[13]={2400,4852},[17]={2470,4249}},
-        [17]={[16]={9252,9770},[18]={9249,9330}},
-        [18]={[17]={996,675}},
+A.unsourced = { ["elimination 3"] = { [14] = "Locker room: Outbreak, The Hive and Flashback each have one" } }
+A.doors = {
+    ["elimination 1"] = {
+        [1] = { [2] = { 6125, 9354 } },
+        [2] = { [3] = { 9875, 10946 } },
+        [3] = { [4] = { 8980, 3401 } },
+        [4] = { [3] = { 9670, 4649 }, [5] = { 9075, 4449 }, [6] = { 10120, 3049 } },
+        [5] = { [4] = { 5970, 1799 } },
+        [6] = { [7] = { 2901, 2874 }, [10] = { 2701, 3874 } },
+        [7] = { [8] = { 6954, 1825 } },
+        [8] = { [9] = { 2880, 6539 }, [11] = { 3946, 7525 } },
+        [9] = { [8] = { 6075, 8154 } },
+        [10] = { [1] = { 4375, 9054 }, [6] = { 4325, 9496 }, [11] = { 5674, 8480 } },
+        [11] = { [8] = { 8404, 12775 }, [10] = { 8896, 13125 } },
+        [12] = { [1] = { 8825, 6196 } },
+        [13] = { [12] = { 2899, 2676 }, [14] = { 3525, 2051 } },
+        [14] = { [13] = { 7915, 1654 } },
+        [15] = { [16] = { 3601, 3575 } },
+        [16] = { [13] = { 2400, 4852 }, [17] = { 2470, 4249 } },
+        [17] = { [16] = { 9252, 9770 }, [18] = { 9249, 9330 } },
+        [18] = { [17] = { 996, 675 } },
     },
-    ["elimination 2"]={
-        [1]={[2]={11506,10656},[14]={13125,14721},[15]={13025,13354}},
-        [2]={[1]={4250,2350}},
-        [3]={[2]={13404,8846},[4]={14475,9050}}, -- 4: user-marked door spot
-        [4]={[3]={2997,2050},[5]={2901,2680}},
-        [5]={[4]={6235,2830},[9]={6217,2910},[11]={5852,3270},[15]={5940,2850}}, -- 15: user-marked
-        [6]={[4]={9630,13150},[8]={10475,12421}},
-        [7]={[8]={9300,5226},[9]={8950,3100}}, -- 8: user-marked, arrival from 8 at the same spot
-        [8]={[6]={7220,8249},[7]={6754,8175},[9]={6002,7620},[12]={4954,7275}},
-        [9]={[5]={8380,1550},[7]={9425,2250},[8]={8130,2901},[10]={8380,2850},[13]={8130,1951}},
-        [10]={[9]={9834,12531}},
-        [11]={[5]={8902,8920},[10]={8302,9770},[12]={7646,9824}},
-        [12]={[8]={7025,2749}},
-        [13]={[9]={420,1751},[14]={402,3184}},
-        [14]={[1]={3454,9775},[13]={2750,9950}},
-        [15]={[5]={7875,9440}},
+    ["elimination 2"] = {
+        [1] = { [2] = { 11506, 10656 }, [14] = { 13125, 14721 }, [15] = { 13025, 13354 } },
+        [2] = { [1] = { 4250, 2350 } },
+        [3] = { [2] = { 13404, 8846 }, [4] = { 14475, 9050 } }, -- 4: user-marked door spot
+        [4] = { [3] = { 2997, 2050 }, [5] = { 2901, 2680 } },
+        [5] = { [4] = { 6235, 2830 }, [9] = { 6217, 2910 }, [11] = { 5852, 3270 }, [15] = { 5940, 2850 } }, -- 15: user-marked
+        [6] = { [4] = { 9630, 13150 }, [8] = { 10475, 12421 } },
+        [7] = { [8] = { 9300, 5226 }, [9] = { 8950, 3100 } }, -- 8: user-marked, arrival from 8 at the same spot
+        [8] = { [6] = { 7220, 8249 }, [7] = { 6754, 8175 }, [9] = { 6002, 7620 }, [12] = { 4954, 7275 } },
+        [9] = {
+            [5] = { 8380, 1550 },
+            [7] = { 9425, 2250 },
+            [8] = { 8130, 2901 },
+            [10] = { 8380, 2850 },
+            [13] = {
+                8130,
+                1951,
+            },
+        },
+        [10] = { [9] = { 9834, 12531 } },
+        [11] = { [5] = { 8902, 8920 }, [10] = { 8302, 9770 }, [12] = { 7646, 9824 } },
+        [12] = { [8] = { 7025, 2749 } },
+        [13] = { [9] = { 420, 1751 }, [14] = { 402, 3184 } },
+        [14] = { [1] = { 3454, 9775 }, [13] = { 2750, 9950 } },
+        [15] = { [5] = { 7875, 9440 } },
     },
-    ["elimination 3"]={
-        [2]={[1]={10430,5751}},
-        [3]={[2]={6602,6370},[8]={4327,4548}},
-        [4]={[3]={8385,10238},[5]={8550,11000}},
-        [5]={[4]={750,3575},[6]={615,4575}},
-        [6]={[5]={6730,593},[7]={6096,875}},
-        [7]={[6]={3946,8675}},
-        [8]={[3]={4580,9058},[7]={5925,9404}},
-        [9]={[8]={4898,3724}},
-        [10]={[9]={4375,1399}},
-        [11]={[10]={5819,3699},[12]={5175,4229},[15]={5182,1298}},
-        [12]={[11]={6749,3730},[13]={6580,4607},[16]={6121,3725}},
-        [13]={[12]={6570,3485},[15]={6750,1080}},
-        [15]={[11]={2301,1820},[13]={1607,3492},[16]={2992,3493}},
-        [16]={[12]={10346,13587},[15]={10351,12326}},
-        [17]={[11]={2130,9001}},
-        [18]={[17]={7705,6258}},
+    ["elimination 3"] = {
+        [2] = { [1] = { 10430, 5751 } },
+        [3] = { [2] = { 6602, 6370 }, [8] = { 4327, 4548 } },
+        [4] = { [3] = { 8385, 10238 }, [5] = { 8550, 11000 } },
+        [5] = { [4] = { 750, 3575 }, [6] = { 615, 4575 } },
+        [6] = { [5] = { 6730, 593 }, [7] = { 6096, 875 } },
+        [7] = { [6] = { 3946, 8675 } },
+        [8] = { [3] = { 4580, 9058 }, [7] = { 5925, 9404 } },
+        [9] = { [8] = { 4898, 3724 } },
+        [10] = { [9] = { 4375, 1399 } },
+        [11] = { [10] = { 5819, 3699 }, [12] = { 5175, 4229 }, [15] = { 5182, 1298 } },
+        [12] = { [11] = { 6749, 3730 }, [13] = { 6580, 4607 }, [16] = { 6121, 3725 } },
+        [13] = { [12] = { 6570, 3485 }, [15] = { 6750, 1080 } },
+        [15] = { [11] = { 2301, 1820 }, [13] = { 1607, 3492 }, [16] = { 2992, 3493 } },
+        [16] = { [12] = { 10346, 13587 }, [15] = { 10351, 12326 } },
+        [17] = { [11] = { 2130, 9001 } },
+        [18] = { [17] = { 7705, 6258 } },
     },
 }
 
 -- Showdown is a run of boss rounds: its Room View shows the room alone (no
 -- neighbour boxes) and its Grid View names each box after its round.
-function A.isShowdown(scenario) return tostring(scenario or ""):find("^showdown")~=nil end
+function A.isShowdown(scenario)
+    return tostring(scenario or ""):find("^showdown") ~= nil
+end
 -- Round labels for a Showdown graph: {"ROUND n", boss} per room, n in room ID
 -- order (the order the rounds are played) and boss the name of the room's first
 -- enemy-list entry in capitals (Showdown 3 run of 2026-11-21: every round's
 -- first entry is its boss, e.g. G-Mutant, G.Leech, Gigabyte, Nyx-Core). The
 -- name is the reader's enemy-list name (getEnemyList "name"); without a list
 -- the label is the round alone.
-function A.rounds(graph,list)
-    local ids={}
-    for id in pairs(graph and graph.cells or {}) do ids[#ids+1]=id end
+function A.rounds(graph, list)
+    local ids = {}
+    for id in pairs(graph and graph.cells or {}) do
+        ids[#ids + 1] = id
+    end
     table.sort(ids)
-    local boss={}
-    for _,e in ipairs(list or {}) do
-        local room=type(e)=="table" and tonumber(e.roomID)
-        if room and room>0 and not boss[room] and (tonumber(e.maxHP) or 0)>0 and type(e.name)=="string" and e.name~="" then
-            boss[room]=e.name:upper()
+    local boss = {}
+    for _, e in ipairs(list or {}) do
+        local room = type(e) == "table" and tonumber(e.roomID)
+        if
+            room
+            and room > 0
+            and not boss[room]
+            and (tonumber(e.maxHP) or 0) > 0
+            and type(e.name) == "string"
+            and e.name ~= ""
+        then
+            boss[room] = e.name:upper()
         end
     end
-    local out={}
-    for n,id in ipairs(ids) do out[id]={"ROUND "..n,boss[id]} end
+    local out = {}
+    for n, id in ipairs(ids) do
+        out[id] = { "ROUND " .. n, boss[id] }
+    end
     return out
 end
 -- Showdown rounds already cleared, as a set of room IDs. A round is cleared once
@@ -253,28 +428,41 @@ end
 -- of the 11 rounds turns cleared exactly once, at the last checkpoint before the
 -- players moved on (round 11 once all three Tyrants died), and never earlier.
 function A.roundsCleared(list)
-    local boss,dead,cleared={},{},{}
-    for _,e in ipairs(list or {}) do
-        local room=type(e)=="table" and tonumber(e.roomID)
-        if room and room>0 and (tonumber(e.maxHP) or 0)>0 then
-            local kind=tonumber(e.nameID)
-            if boss[room]==nil then boss[room]=kind;dead[room]=true end
-            if kind==boss[room] and tonumber(e.HP)~=65535 then dead[room]=false end
+    local boss, dead, cleared = {}, {}, {}
+    for _, e in ipairs(list or {}) do
+        local room = type(e) == "table" and tonumber(e.roomID)
+        if room and room > 0 and (tonumber(e.maxHP) or 0) > 0 then
+            local kind = tonumber(e.nameID)
+            if boss[room] == nil then
+                boss[room] = kind
+                dead[room] = true
+            end
+            if kind == boss[room] and tonumber(e.HP) ~= 65535 then
+                dead[room] = false
+            end
         end
     end
-    for room,done in pairs(dead) do if done then cleared[room]=true end end
+    for room, done in pairs(dead) do
+        if done then
+            cleared[room] = true
+        end
+    end
     return cleared
 end
 function A.isArena(scenario)
-    local s=tostring(scenario or "")
-    return s:find("^elimination")~=nil or s:find("^showdown")~=nil
+    local s = tostring(scenario or "")
+    return s:find("^elimination") ~= nil or s:find("^showdown") ~= nil
 end
 
 -- Neighbours of a room in its graph, in link order.
-function A.neighbours(graph,id)
-    local out={}
-    for _,link in ipairs(graph and graph.links or {}) do
-        if link[1]==id then out[#out+1]=link[2] elseif link[2]==id then out[#out+1]=link[1] end
+function A.neighbours(graph, id)
+    local out = {}
+    for _, link in ipairs(graph and graph.links or {}) do
+        if link[1] == id then
+            out[#out + 1] = link[2]
+        elseif link[2] == id then
+            out[#out + 1] = link[1]
+        end
     end
     return out
 end
@@ -286,7 +474,7 @@ end
 -- gas tanks are left out by isHazard. Entries with 1 max HP are parts, not
 -- enemies (Fire, 63 Megabytes flea swarm, 62 Nyx parts; Showdown 3 run), and are
 -- not counted either.
-A.uncounted={[34]=true,[56]=true,[60]=true}
+A.uncounted = { [34] = true, [56] = true, [60] = true }
 -- Enemies left per room, from the whole scenario enemy list. Elimination fills
 -- the list for every room when the scenario starts (runs of 2026-11-20/21: E1,
 -- E2 and E3 first in-game checkpoints); an entry's flag stays 0 until its room
@@ -301,30 +489,50 @@ A.uncounted={[34]=true,[56]=true,[60]=true}
 -- Showdown is played one way in room ID order, so the caller passes the stage
 -- the players are in as clearedBelow and every earlier stage reads 0, as does
 -- any round A.roundsCleared reports (its boss kind is dead).
-function A.counts(list,seen,isHazard,graph,clearedBelow)
-    local known,alive,loaded={},{},{}
-    for id in pairs(seen or {}) do known[id]=true;alive[id]=alive[id] or 0 end
-    local filled=false
-    for _,e in pairs(list or {}) do
-        local room=type(e)=="table" and tonumber(e.roomID)
-        local hp,maxHP=room and tonumber(e.HP) or 0,room and tonumber(e.maxHP) or 0
-        if room and room>0 and maxHP>0 then
-            filled=true;known[room]=true;alive[room]=alive[room] or 0
-            if (tonumber(e.flag) or 0)~=0 then loaded[room]=true end
-            if hp>0 and hp~=65535 and hp<=maxHP and maxHP>1 and not A.uncounted[tonumber(e.nameID)]
-                and not (isHazard and isHazard(e)) then
-                alive[room]=alive[room]+1
+function A.counts(list, seen, isHazard, graph, clearedBelow)
+    local known, alive, loaded = {}, {}, {}
+    for id in pairs(seen or {}) do
+        known[id] = true
+        alive[id] = alive[id] or 0
+    end
+    local filled = false
+    for _, e in pairs(list or {}) do
+        local room = type(e) == "table" and tonumber(e.roomID)
+        local hp, maxHP = room and tonumber(e.HP) or 0, room and tonumber(e.maxHP) or 0
+        if room and room > 0 and maxHP > 0 then
+            filled = true
+            known[room] = true
+            alive[room] = alive[room] or 0
+            if (tonumber(e.flag) or 0) ~= 0 then
+                loaded[room] = true
+            end
+            if
+                hp > 0
+                and hp ~= 65535
+                and hp <= maxHP
+                and maxHP > 1
+                and not A.uncounted[tonumber(e.nameID)]
+                and not (isHazard and isHazard(e))
+            then
+                alive[room] = alive[room] + 1
             end
         end
     end
     if filled and graph then
-        for id in pairs(graph.cells) do known[id]=true;alive[id]=alive[id] or 0 end
+        for id in pairs(graph.cells) do
+            known[id] = true
+            alive[id] = alive[id] or 0
+        end
     end
     if clearedBelow then
-        local cleared=A.roundsCleared(list)
-        for id in pairs(alive) do if id<clearedBelow or cleared[id] then alive[id]=0 end end
+        local cleared = A.roundsCleared(list)
+        for id in pairs(alive) do
+            if id < clearedBelow or cleared[id] then
+                alive[id] = 0
+            end
+        end
     end
-    return alive,known,loaded
+    return alive, known, loaded
 end
 
 return A
