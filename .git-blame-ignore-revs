@@ -1,0 +1,12 @@
+# Commits that only changed layout or encoding. GitHub's blame view skips them,
+# and so does "git blame" after: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# Store the Chinese comments in the address tables as UTF-8
+d4328cec472eab8d0050e63184b14152d5975bbb
+# Format the Lua code with StyLua
+023449a8c1920c2f71707350ab81302e2fac3c9b
+# Format the C and C++ code with clang-format
+9b6525a4716b54942b6d477d445f0b8998a17ac3
+# Format the Python code with Ruff
+e6c1805351be066df5ea292140b23d2a20177f16
+# Format the Decky web code with Biome
+c2875de51bf66b91e3bfea29e4169eade5043e45
