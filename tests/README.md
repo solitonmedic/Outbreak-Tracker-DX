@@ -31,8 +31,9 @@ Expected results come in three families:
 - `windows` is the C build that reads process memory.
 - `decky` is the phone page's own views.
 
-The `pine` and `windows` families differ only in the help text's port credit,
-which the Windows package leaves out.
+The `pine` and `windows` families read exactly the same values. Their views
+differ only in the F2 item views, where the macOS/Linux build lists the items
+of the current room only.
 
 ## Files
 
@@ -56,7 +57,7 @@ reads. They are made by the local tool
 1. traces every read while the UI goes through every control;
 2. keeps those bytes only;
 3. refuses any printable text that is not a game constant, a code guard, a
-   listed numeric structure (File 2 inventories: item IDs and counts) or a
+   listed numeric structure (File 2 inventories and positions) or a
    number whose bytes happen to be printable. Printable bytes inside a block
    the reader reads only to reject it (the File 2 room-crown table in
    Flashback) are blanked to zeros while the block stays rejected;
@@ -112,7 +113,7 @@ results, reviewed the same way.
 |---|---|
 | Japanese File 1 (SLPM-65428) | room list, room just created, Outbreak gameplay |
 | U.S. File 1 (SLUS-20765 with Ver2.162) | room list, created room, Outbreak (early, J's BAR, result screen), The Hive (Cindy's bag, door attack, rooftop code), Decisions, Decisions (clock answer, code answer) |
-| Japanese File 2 | from the Deck recordings: Wild Things, Desperate Times, Underbelly, Flashback, Elimination, Showdown |
+| Japanese File 2 (SLPM-65692) | Wild Things (before the start, Very Hard run), Desperate Times Very Hard, Underbelly, Flashback Easy (forest), Elimination 1, 2 and 3, Showdown 3 Very Hard |
 
 Not covered, because no recordings exist yet:
 
