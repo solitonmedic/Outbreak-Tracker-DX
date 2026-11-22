@@ -43,10 +43,12 @@ Safety: memory comes only from the frames; sockets and processes are temporary
   and the real PCSX2 is never contacted. Decrypted fixtures stay in a temporary
   folder that is deleted afterwards; nothing from them is uploaded.
 Run from repo-merged/, for example:
-  python3 tests/run_frames.py --platform mac --app "Outbreak Status Tracker.app" --synthetic --write-expected --fixtures /tmp/fx
+  python3 tests/run_frames.py --platform mac --app "Outbreak Status Tracker.app" \
+    --synthetic --write-expected --fixtures /tmp/fx
   python3 tests/run_frames.py --platform mac --app "Outbreak Status Tracker.app" --fixtures /tmp/fx
   python3 tests/run_frames.py --build-test-reader /tmp/test-reader.so
-  TRACKER_TEST_KEY=... python3 tests/run_frames.py --platform linux --appdir squashfs-root --bundle tests/fixtures.tar.gz.gpg
+  TRACKER_TEST_KEY=... python3 tests/run_frames.py --platform linux --appdir squashfs-root \
+    --bundle tests/fixtures.tar.gz.gpg
 Check: exit status 0 and one PASS line per frame; a changed frame byte or a
   broken Lua view makes it fail with the differing fields.
 """

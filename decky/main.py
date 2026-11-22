@@ -55,7 +55,10 @@ class Plugin:
             "pineSlot": pine_slot,
             "message": getattr(self, "startup_error", None)
             or web.get("lastError")
-            or "Scan the code or open the link on a device on your network. Add it to the home screen to use it like an app.",
+            or (
+                "Scan the code or open the link on a device on your network. "
+                "Add it to the home screen to use it like an app."
+            ),
             **web,
         }
 

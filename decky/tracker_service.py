@@ -239,7 +239,8 @@ class TrackerService:
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header(
                     "Content-Security-Policy",
-                    "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'",
+                    "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; "
+                    "img-src 'self'; connect-src 'self'; frame-ancestors 'none'",
                 )
                 self.end_headers()
                 self.wfile.write(data)

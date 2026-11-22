@@ -21,7 +21,9 @@ Safety: temporary plugin copy and socket folder; the real PCSX2 is never
   contacted; decrypted fixtures are deleted afterwards.
 Run from repo-merged/:
   python3 tests/decky_frames.py --zip outbreak-tracker.zip --bundle tests/fixtures.tar.gz.gpg
-  python3 tests/decky_frames.py --layout --reader-so "Outbreak Status Tracker.app/Contents/Resources/game/luaoutbreaktracker.so" --fixtures /tmp/fx --write-expected
+  python3 tests/decky_frames.py --layout \
+    --reader-so "Outbreak Status Tracker.app/Contents/Resources/game/luaoutbreaktracker.so" \
+    --fixtures /tmp/fx --write-expected
 Check: exit status 0 with one PASS line per frame.
 """
 
