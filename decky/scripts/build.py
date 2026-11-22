@@ -63,6 +63,9 @@ def build(expected):
         raise RuntimeError("Build unexpectedly changed source files")
 
     package = json.loads((plugin / "package.json").read_text())
+    release = (repo / "VERSION").read_text().strip()  # one release number for every platform
+    if package["version"] != release:
+        raise RuntimeError(f"decky/package.json version {package['version']} differs from VERSION {release}")
     metadata = {
         "version": package["version"], "sourceCommit": commit,
         "builtAtUtc": datetime.now(timezone.utc).isoformat(),

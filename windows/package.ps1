@@ -110,9 +110,18 @@ finally {
 # resource editor needs a normal PE executable rather than one with a .love
 # archive appended to it.
 Copy-Item $loveExePath $launcherPath -Force
-& $ResourceEditorPath $launcherPath --set-icon $iconPath
+# One release number for every platform, from the repository's VERSION file.
+$version = (Get-Content -LiteralPath (Join-Path $repoRoot 'VERSION') -Raw).Trim()
+& $ResourceEditorPath $launcherPath --set-icon $iconPath `
+    --set-file-version $version --set-product-version $version `
+    --set-version-string 'ProductName' 'Outbreak Status Tracker' `
+    --set-version-string 'FileDescription' 'Outbreak Status Tracker'
 if ($LASTEXITCODE -ne 0) {
-    throw "Failed to apply the Outbreak Tracker icon with $ResourceEditorPath"
+    throw "Failed to apply the Outbreak Tracker icon and version with $ResourceEditorPath"
+}
+$stamped = (Get-Item -LiteralPath $launcherPath).VersionInfo.ProductVersion
+if ($stamped -ne $version) {
+    throw "The launcher's product version is '$stamped', expected '$version'"
 }
 
 # Keep the native reader beside the executable so require can load it.

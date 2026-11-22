@@ -1,6 +1,6 @@
 # Build Outbreak Status Tracker
 
-Run these commands from the repository root. The source is shared across platforms, but each platform builds its own native reader and package. The GitHub [Build all platforms workflow](https://github.com/solitonmedic/Outbreak-Tracker-DX/actions/workflows/build-all.yml) can build all three, plus the Decky plugin, on their native runners; it starts only when manually dispatched.
+Run these commands from the repository root. The source is shared across platforms, but each platform builds its own native reader and package. The release number of every package (macOS app, Linux AppImage, Windows executable, Decky plugin) comes from the `VERSION` file; the Decky build stops if `decky/package.json` gives a different one. The GitHub [Build all platforms workflow](https://github.com/solitonmedic/Outbreak-Tracker-DX/actions/workflows/build-all.yml) can build all three, plus the Decky plugin, on their native runners; it starts only when manually dispatched.
 
 ## macOS
 

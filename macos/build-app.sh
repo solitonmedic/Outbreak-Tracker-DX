@@ -13,6 +13,7 @@ build_type="${OUTBREAK_BUILD_TYPE:-Release}"
 cmake_source="${OUTBREAK_CMAKE_SOURCE:-$root_dir/macos}"
 love_app="${LOVE_APP:-/Applications/love.app}"
 icon_source="$root_dir/sources/outbreak-tracker-icon-hd.png"
+version=$(tr -d '[:space:]' < "$root_dir/VERSION")  # one release number for every platform
 [ -d "$love_app" ] || { echo "LÖVE not found: $love_app" >&2; exit 1; }
 [ -f "$icon_source" ] || { echo "App icon not found: $icon_source" >&2; exit 1; }
 
@@ -61,5 +62,7 @@ cp -R "$root_dir/assets" "$game_dir/assets"
 rm -rf "${game_dir:?}/assets/maps/game"
 cp "$native_module" "$game_dir/luaoutbreaktracker.so"
 rm -f "$native_module"
+plutil -replace CFBundleShortVersionString -string "$version" "$app_dir/Contents/Info.plist"
+plutil -replace CFBundleVersion -string "$version" "$app_dir/Contents/Info.plist"
 plutil -lint "$app_dir/Contents/Info.plist"
-echo "Built: $app_dir"
+echo "Built: $app_dir ($version)"
