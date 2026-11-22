@@ -9,6 +9,10 @@
 // the On/Off button (default On). Check: offline check-sp-sound-frames.py.
 // Map input: pointer drag, pinch, wheel, double-tap zoom; bounded shared map actions.
 // Map artwork loads from the bundled assets; there is no disc selection or import.
+// CONTROLS: the desktop menu's design, groups and labels (sources/TrackerMenu.lua),
+// placed over the canvas where the desktop draws it. It fades in on pointer
+// activity (mouse movement, a touch, the wheel) and fades out when the mouse
+// leaves the page or after 3 s without activity; hidden, it lets taps through.
 "use strict";
 const canvas = document.querySelector("#tracker"), ctx = canvas.getContext("2d");
 const message = document.querySelector("#message");
@@ -55,15 +59,18 @@ async function animate(now) {
   requestAnimationFrame(animate);
 }
 const soundStats = {played:0, missed:0};
+// Title, columns and [key, label] per group, as in sources/TrackerMenu.lua.
 const groups = [
-  ["Views", false, [["home","Main tracker"],["f1","Help"],["f2","Item views"],["f3","Next room"],["l","Language"]]],
-  ["Show", false, [["i","Room items"],["t","Timers"],["q","Puzzle hints"],["e","Enemy HP"],["f4","Enemy list"]]],
-  ["Sound", false, [["m","SP radar sound: On"]]],
-  ["Layout", false, [["v","Vertical"],["h","Horizontal"],["d","Default size"],["a","Auto size"]]],
-  ["Map", false, [["n","Map + compact cards"],["b","Cards beside map"],["f","Follow player"]]],
-  ["Players shown", true, [["1","1"],["2","2"],["3","3"],["4","4"]]],
-  ["Enemy list shows", true, [["kp0","All"],["kp1","P1"],["kp2","P2"],["kp3","P3"],["kp4","P4"]]],
+  ["VIEWS", 2, [["home","MAIN TRACKER"],["f1","HELP"],["f2","ITEM VIEWS"],["f3","NEXT ROOM"],["l","LANGUAGE"]]],
+  ["SHOW", 2, [["i","ROOM ITEMS"],["t","TIMERS"],["q","PUZZLE HINTS"],["e","ENEMY HP"],["f4","ENEMY LIST"]]],
+  ["SOUND", 2, [["m","SP RADAR SOUND: ON"]]],
+  ["LAYOUT", 2, [["v","VERTICAL"],["h","HORIZONTAL"],["d","DEFAULT SIZE"],["a","AUTO SIZE"]]],
+  ["MAP", 2, [["n","MAP + CARDS"],["b","CARDS BESIDE MAP"],["f","FOLLOW PLAYER"]]],
+  ["PLAYERS SHOWN", 4, [["1","1"],["2","2"],["3","3"],["4","4"]]],
+  ["ENEMY LIST", 5, [["kp0","ALL"],["kp1","P1"],["kp2","P2"],["kp3","P3"],["kp4","P4"]]],
 ];
+// Toggles keep the menu open; every other control closes it, as on the desktop.
+const keepOpen = new Set(["m","t","q","e"]);
 const controls = groups.flatMap(([, , keys]) => keys);
 async function sendKey(key) {
   try {
@@ -73,26 +80,42 @@ async function sendKey(key) {
 }
 const controlsRoot = document.querySelector("#controls");
 let spSoundButton = null;
-for(const [title,segmented,keys] of groups) {
+for(const [title,columns,keys] of groups) {
   const group=document.createElement("div"), heading=document.createElement("h3"), row=document.createElement("div");
-  group.className="group"; heading.textContent=title; row.className=segmented?"row segmented":"row";
+  group.className="group"; heading.textContent=title; row.className="row cols"+columns;
   for(const [key,label] of keys) {
     const button=document.createElement("button"); button.type="button"; button.textContent=label; button.title=key.toUpperCase();
     if(key==="m") { spSoundButton=button; button.setAttribute("aria-pressed","true"); }
-    button.addEventListener("click",()=>{void sendKey(key);if(key==="home")setSheet(false);}); row.append(button);
+    button.addEventListener("click",()=>{void sendKey(key);if(!keepOpen.has(key))setSheet(false);}); row.append(button);
   }
   group.append(heading,row); controlsRoot.append(group);
 }
 function updateSoundControl(enabled) {
   const on=enabled!==false;
-  spSoundButton.textContent="SP radar sound: "+(on?"On":"Off");
+  spSoundButton.textContent="SP RADAR SOUND: "+(on?"ON":"OFF");
   spSoundButton.setAttribute("aria-pressed",String(on));
 }
 const sheet = document.querySelector("#sheet"), menu = document.querySelector("#menu");
 function setSheet(open) { sheet.hidden=!open; menu.setAttribute("aria-expanded",String(open)); }
 menu.addEventListener("click",()=>setSheet(true));
 document.querySelector("main").addEventListener("click",()=>{if(!mapActive)setSheet(true);});
-setTimeout(()=>{if(!mapActive)menu.classList.add("idle");},4000);
+let menuTimer=0;
+function showMenu() {
+  menu.classList.add("shown"); clearTimeout(menuTimer);
+  menuTimer=setTimeout(()=>menu.classList.remove("shown"),3000);
+}
+function hideMenu() { clearTimeout(menuTimer); menu.classList.remove("shown"); }
+for(const type of ["pointermove","pointerdown","wheel"])addEventListener(type,showMenu,{passive:true});
+addEventListener("mouseout",event=>{if(!event.relatedTarget)hideMenu();});
+// The button sits where the desktop draws it: 78x18 tracker pixels, 5 from the
+// right, at the bottom (5 from the top while a map is shown). --u is one
+// tracker pixel on screen; the open menu uses --mu, at least 1.25 px.
+function placeMenu(width,height,scale) {
+  const box=canvas.getBoundingClientRect(), root=document.documentElement.style;
+  root.setProperty("--u",scale+"px");root.setProperty("--mu",Math.max(scale,1.25)+"px");
+  menu.style.left=(box.left+(width-83)*scale)+"px";
+  menu.style.top=(box.top+(mapActive?5:height-23)*scale)+"px";
+}
 document.querySelector("#close").addEventListener("click",()=>setSheet(false));
 document.querySelector("#backdrop").addEventListener("click",()=>setSheet(false));
 addEventListener("keydown",event=>{
@@ -249,6 +272,7 @@ async function render(frame,now=performance.now()) {
   const ratio=(devicePixelRatio||1)*cssWidth/w;
   if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}
   canvas.style.width=cssWidth+"px";canvas.style.height=cssHeight+"px";
+  placeMenu(w,h,cssWidth/w);
   ctx.setTransform(ratio,0,0,ratio,0,0);ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
   ctx.lineWidth=1;
   let depth=0;pulseFactor=1;
@@ -293,7 +317,6 @@ async function poll() {
     if(!response.ok)throw new Error(response.status===403?"This device is not on the Deck's local network.":"Tracker service unavailable");
     const frame=await response.json();
     mapMode=frame.game?.mapview?.mode||0;mapActive=mapMode>0;
-    if(mapActive)menu.classList.remove("idle");
     frameWidth=frame.width||300;frameHeight=frame.height||740;
     canvas.style.touchAction=mapActive?"none":"auto";
     updateSoundControl(frame.game?.spsoundenabled);

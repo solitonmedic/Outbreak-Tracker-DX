@@ -18,16 +18,20 @@ a new count. Browsers allow sound only after a tap or key press, so tap the page
 once (opening the controls is enough). iOS stops a home-screen app's sound when it
 goes to the background or the screen locks; tap it once again after returning. On
 an iPhone the ring/silent switch also mutes it.
-Use **SP radar sound: On/Off** in the phone controls, or press **M**, to toggle
+Use **SP RADAR SOUND: ON/OFF** in the phone controls, or press **M**, to toggle
 the alert. It defaults on each reader session and changes for every connected
 page. Muted sightings are not replayed when sound is enabled again; the radar
 continues working while muted.
 Touch buttons mirror those controls; every connected device shares one view.
 
 The page has no header: the tracker is scaled to fit the visible screen (width and
-height, no scrolling) on a high-resolution canvas. A round button at the bottom
-right opens a sheet of controls grouped as Views, Show, Layout, Players shown and
-Enemy list shows; status text appears on top only when not live. Vertical mode
+height, no scrolling) on a high-resolution canvas. A **CONTROLS** button, placed
+and styled as on the desktop trackers (bottom right, or top right on a map), fades
+in when the pointer moves or the screen is touched and fades out after 3 seconds
+or when the mouse leaves the page. It opens the desktop **TRACKER CONTROLS** menu
+(Views, Show, Sound, Layout, Map, Players shown, Enemy list); tapping the tracker
+outside a map opens it too. Drag to pan a map, pinch or scroll to zoom, and
+double-tap to zoom. Status text appears on top only when not live. Vertical mode
 suits phones; horizontal mode remains available. The reader polls at five updates per second, but only while a device
 has the page open: it starts on the first request and stops 15 seconds after the last,
 so PCSX2 gets no PINE traffic otherwise (the panel then shows the reader as idle). The
