@@ -1,7 +1,11 @@
 #!/bin/sh
+# Runs the tracker from this checkout without building the AppImage: copies the
+# shared Lua UI, the Linux override and the assets into a temporary folder with
+# the native reader from linux/build, then starts LÖVE (LOVE_BIN, or the LÖVE
+# Flatpak with LOVE_FLATPAK=1). Build the reader first (BUILDING.md), then run: ./linux/run.sh
 set -eu
 
-root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 love_bin=${LOVE_BIN:-love}
 build_dir=${BUILD_DIR:-$root_dir/linux/build}
 module="$build_dir/luaoutbreaktracker.so"

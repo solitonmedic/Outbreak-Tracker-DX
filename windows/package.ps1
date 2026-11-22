@@ -1,3 +1,10 @@
+# Packages the Windows tracker: the shared Lua UI, the Windows overrides, the
+# assets and luaoutbreaktracker.dll from the Visual Studio build go into a .love
+# game, which is fused with LÖVE's love.exe into OutbreakTracker.exe (given the
+# tracker icon and the version from VERSION with rcedit) and staged with LÖVE's
+# DLLs in windows/build/stage/distribution, plus a ZIP unless -SkipArchive.
+# Run in PowerShell after the msbuild step (BUILDING.md):
+#   ./windows/package.ps1 -LoveRuntimeDirectory C:\path\to\love-11.5-win64 -ResourceEditorPath C:\path\to\rcedit-x64.exe
 param(
     [string]$LoveRuntimeDirectory = $env:LOVE_WINDOWS_DIR,
     [string]$ResourceEditorPath = $env:RCEDIT_PATH,

@@ -6,7 +6,7 @@
 # Run from the repository root: ./macos/debug/run.sh (see macos/debug/README.md).
 set -eu
 
-root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+root_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 love_bin="${LOVE_BIN:-/Applications/love.app/Contents/MacOS/love}"
 build_dir="$root_dir/macos/terminal-build-debug-arm64"
 module="$build_dir/luaoutbreaktracker.so"

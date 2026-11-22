@@ -1,6 +1,11 @@
 #!/bin/sh
+# Builds "Outbreak Status Tracker.app": the native reader for Apple silicon and
+# Intel (CMake project macos/), joined with lipo, plus the shared Lua UI, the
+# assets and a copy of LÖVE. The app's version comes from VERSION.
+# Run from anywhere: ./macos/build-app.sh  (needs LÖVE 11.5 in /Applications, or LOVE_APP)
+# Check: the last line is "Built: <app> (<version>)".
 set -eu
-root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 
 # Optional environment: OUTBREAK_APP_DIR (output app), OUTBREAK_BUILD_PREFIX
 # (CMake build folders, one per architecture: <prefix>-arm64, <prefix>-x86_64),

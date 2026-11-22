@@ -6,7 +6,7 @@
 # Prerequisites and checks: macos/debug/README.md.
 # Run from the repository root: ./macos/debug/build-app.sh
 set -eu
-root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+root_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 [ $# -eq 0 ] || { echo "Usage: $0" >&2; exit 2; }
 app_dir="${OUTBREAK_APP_DIR:-$root_dir/Outbreak Status Tracker Debug.app}"
 

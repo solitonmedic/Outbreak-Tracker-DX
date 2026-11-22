@@ -1,7 +1,11 @@
 #!/bin/sh
+# Runs the tracker from this checkout without building the app: copies the
+# shared Lua UI, the macOS override and the assets into a temporary folder with
+# the Terminal reader from macos/terminal-build-arm64, then starts LÖVE on it.
+# Build that reader first (BUILDING.md), then run: ./macos/run.sh  (LOVE_BIN: another LÖVE)
 set -eu
 
-root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 love_bin="${LOVE_BIN:-/Applications/love.app/Contents/MacOS/love}"
 build_dir="$root_dir/macos/terminal-build-arm64"
 module="$build_dir/luaoutbreaktracker.so"

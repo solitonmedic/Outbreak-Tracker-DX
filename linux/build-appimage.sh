@@ -1,7 +1,13 @@
 #!/bin/sh
+# Builds OutbreakStatusTracker-x86_64.AppImage: the shared Lua UI, the assets and
+# the native reader from linux/build go into the official LÖVE AppImage, which is
+# renamed, given the tracker icon and the version from VERSION, and repacked.
+# Build the reader first (BUILDING.md), then run: ./linux/build-appimage.sh
+# LOVE_APPIMAGE and APPIMAGETOOL point at those downloads; OUTBREAK_APPIMAGE at the output.
+# Check: the last line is "Built: <AppImage>".
 set -eu
 
-root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 build_dir=${BUILD_DIR:-$root_dir/linux/build}
 love_appimage=${LOVE_APPIMAGE:-$root_dir/linux/love-11.5-x86_64.AppImage}
 appimagetool=${APPIMAGETOOL:-$root_dir/linux/appimagetool-x86_64.AppImage}
