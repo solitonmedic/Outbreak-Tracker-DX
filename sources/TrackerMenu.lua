@@ -3,8 +3,12 @@
 -- Inputs: pointer/keyboard controls and view dimensions. Outputs: menu drawing
 -- and existing whitelisted love.keypressed actions; no files/PINE/game writes.
 -- Run: click CONTROLS or right-click/Tab; Decky uses the matching browser sheet.
+-- The CONTROLS button fades in while the pointer is over the tracker window and
+-- fades out when it leaves or rests for IDLE seconds (M.update, M.pointerMoved,
+-- M.pointerFocus); a hidden button lets clicks through to the map.
 -- Check: tracker-tests/maps/check-presentation.lua and synthetic desktop preview.
-local M={open=false,scroll=0,hits={}}
+local M={open=false,scroll=0,hits={},alpha=0,hover=false,idle=0}
+local IDLE,FADE_IN,FADE_OUT=3,.2,.6
 M.groups={
     {"VIEWS",{{"home","MAIN TRACKER"},{"f1","HELP"},{"f2","ITEM VIEWS"},{"f3","NEXT ROOM"},{"l","LANGUAGE"}}},
     {"SHOW",{{"i","ROOM ITEMS"},{"t","TIMERS"},{"q","PUZZLE HINTS"},{"e","ENEMY HP"},{"f4","ENEMY LIST"}}},
@@ -15,11 +19,21 @@ M.groups={
     {"ENEMY LIST",{{"kp0","ALL"},{"kp1","P1"},{"kp2","P2"},{"kp3","P3"},{"kp4","P4"}}},
 }
 local function inside(b,x,y) return b and x>=b.x and x<b.x+b.w and y>=b.y and y<b.y+b.h end
-local function frame(b)
-    local g=love.graphics
-    g.setColor(.025,.045,.085,.98);g.rectangle("fill",b.x,b.y,b.w,b.h)
-    g.setLineWidth(1);g.setColor(.22,.35,.62,1);g.rectangle("line",b.x,b.y,b.w,b.h)
-    g.setColor(.06,.12,.24,1);g.rectangle("line",b.x+2,b.y+2,b.w-4,b.h-4)
+local function frame(b,alpha)
+    local g,a=love.graphics,alpha or 1
+    g.setColor(.025,.045,.085,.98*a);g.rectangle("fill",b.x,b.y,b.w,b.h)
+    g.setLineWidth(1);g.setColor(.22,.35,.62,a);g.rectangle("line",b.x,b.y,b.w,b.h)
+    g.setColor(.06,.12,.24,a);g.rectangle("line",b.x+2,b.y+2,b.w-4,b.h-4)
+end
+-- Pointer activity over the window (motion, clicks, wheel) and the window's
+-- mouse-focus changes (the pointer entering or leaving it).
+function M.pointerMoved() M.hover=true;M.idle=0 end
+function M.pointerFocus(entered) M.hover=entered and true or false;M.idle=0 end
+function M.update(dt)
+    if love.isDecky then return end
+    M.idle=M.idle+dt
+    if M.open or (M.hover and M.idle<IDLE) then M.alpha=math.min(1,M.alpha+dt/FADE_IN)
+    else M.alpha=math.max(0,M.alpha-dt/FADE_OUT) end
 end
 function M.draw(width,height,mapActive)
     if love.isDecky then return end
@@ -29,8 +43,10 @@ function M.draw(width,height,mapActive)
     local oldFont,oldColor,oldWidth=g.getFont(),{g.getColor()},g.getLineWidth()
     local function restore() g.setFont(oldFont);g.setColor(unpack(oldColor));g.setLineWidth(oldWidth) end
     M.launcher={x=width-83,y=mapActive and 5 or height-23,w=78,h=18}
-    frame(M.launcher);g.setColor(1,1,.72,1);g.setFont(MiniFont or DefaultFont)
-    g.printf("CONTROLS",M.launcher.x,M.launcher.y+2,M.launcher.w,"center")
+    if M.alpha>0 then
+        frame(M.launcher,M.alpha);g.setColor(1,1,.72,M.alpha);g.setFont(MiniFont or DefaultFont)
+        g.printf("CONTROLS",M.launcher.x,M.launcher.y+2,M.launcher.w,"center")
+    end
     if not M.open then restore();return end
     g.setColor(0,0,0,.8);g.rectangle("fill",0,0,width,height)
     local w=math.min(width-12,360);local h=math.min(height-18,680)
@@ -63,7 +79,7 @@ end
 function M.pointer(action,x,y,button)
     if love.isDecky then return false end
     if action=="down" and button==2 then M.open=not M.open;return true end
-    if action=="down" and inside(M.launcher,x,y) then M.open=true;M.scroll=0;return true end
+    if action=="down" and M.alpha>0 and inside(M.launcher,x,y) then M.open=true;M.scroll=0;return true end
     if not M.open then return false end
     if action=="down" then
         for _,h in ipairs(M.hits) do if inside(h,x,y) then

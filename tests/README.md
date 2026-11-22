@@ -17,7 +17,10 @@ For every frame, on every platform:
   enemy HP, enemy list, SP sound, layouts and window sizes, players shown, the
   maps (map with cards, cards beside the map, follow) and the CONTROLS menu.
   The map state and the positions of the player and enemy markers are
-  recorded too.
+  recorded too, and so is the CONTROLS button's fade: the wrapper ignores the
+  system's pointer events and moves its own pointer (hover, leave, 3 s rest),
+  so the button must be hidden until the pointer arrives, fade out after it
+  leaves and be gone after 3 s without movement.
 - **Facts.** Hand-checked values per frame (scenario, difficulty, character,
   room, clock) and text that must appear (for example a puzzle answer that
   was confirmed in game).
@@ -42,7 +45,7 @@ of the current room only.
 | `run_frames.py` | Desktop runner: lays out the shipped game files and runtime per platform, serves each frame, compares the results; also builds the test reader and the encrypted bundle |
 | `decky_frames.py` | Decky runner: the plugin's native reader (against `expected/pine`) and its `reader.lua` views (against `expected/decky`) |
 | `frames.py` | Frame file format, the fake PINE server, result comparison and facts |
-| `automation/main.lua` | Wrapper around the platform's own `main.lua`: fixed 1/30 s steps, warm-up, one control per 3 frames, JSON result |
+| `automation/main.lua` | Wrapper around the platform's own `main.lua`: fixed 1/30 s steps, warm-up, one control per 3 frames, a synthetic pointer for the CONTROLS fade, JSON result |
 | `automation/frames_dump.lua`, `frames_json.lua` | Reader API dump and a deterministic JSON encoder |
 | `reader/` | Stand-in Windows headers: `sources/main.c` built as C (the Windows code path) into a Lua module that reads a frame file; used for the Windows family on macOS/Linux and for tracing reads |
 | `fakes/fake_pcsx2.c` | Windows stand-in `pcsx2-qt.exe` exporting `EEmem`, built in the Windows workflow |

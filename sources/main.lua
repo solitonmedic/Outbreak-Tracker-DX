@@ -1174,6 +1174,7 @@ end
 
 function love.update(dt)
 	TrackerPresentationTime=(TrackerPresentationTime or 0)+dt
+	TrackerMenu.update(dt)
 	if not InitResult or GameInfo.currentFile == 255 then
 		RetryTimer = RetryTimer + dt
 		if RetryTimer >= 5 then
@@ -1423,10 +1424,17 @@ local function mapPoint(x,y)
 end
 function love.mousepressed(x,y,button)
 	local mx,my=mapPoint(x,y)
-	if TrackerMenu.pointer("down",mx,my,button) then return end
+	local used=TrackerMenu.pointer("down",mx,my,button)
+	TrackerMenu.pointerMoved()
+	if used then return end
 	if button==1 then MapView.input("down",mapPoint(x,y)) end
 end
+-- The CONTROLS button shows only while the pointer is over the window.
+function love.mousefocus(inside)
+	TrackerMenu.pointerFocus(inside)
+end
 function love.mousemoved(x,y)
+	TrackerMenu.pointerMoved()
 	if TrackerMenu.open then return end
 	MapView.input("hover",mapPoint(x,y));MapView.input("move",mapPoint(x,y))
 end
@@ -1435,6 +1443,7 @@ function love.mousereleased(x,y,button)
 	if button==1 then MapView.input("up",mapPoint(x,y)) end
 end
 function love.wheelmoved(_,dy)
+	TrackerMenu.pointerMoved()
 	if TrackerMenu.wheel(dy) then return end
 	local x,y=love.mouse.getPosition()
 	if dy~=0 then MapView.input(dy>0 and "in" or "out",mapPoint(x,y)) end
