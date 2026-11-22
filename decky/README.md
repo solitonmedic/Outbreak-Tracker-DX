@@ -1,180 +1,326 @@
 # Outbreak Tracker for Decky
 
-The plugin starts a read-only PCSX2 PINE reader and serves a phone view on
-LAN port 28080. Scan the QR code in Decky or open its link on another device
-on the same network. The page draws the original shared Lua tracker UI with its
-existing sprite atlases, fonts, card logic, release limits and keyboard controls.
+Outbreak Tracker for Decky lets you monitor your Resident Evil Outbreak sessions from your phone while playing on the Steam Deck.
 
-The drawing bridge also handles ellipse, polygon, rotation and line-width
-commands for the shared SP counter/radar component. Its layout is generated
-from Penpot into `sources/layout.lua`; text uses the password-hint font.
-`sources/SPTracking.lua` draws the counter and player-relative compass from a
-validated reader state (the room records of `sources/SPMapReader.h`) and stays
-hidden while that state is unavailable.
-When the radar first shows an SP item after a room change, the page plays
-`assets/sp-found.wav` once; it does not play again until the room changes. The
-reader sends a play count for each sound with every frame and each open page plays
-a new count. Browsers allow sound only after a tap or key press, so tap the page
-once (opening the controls is enough). iOS stops a home-screen app's sound when it
-goes to the background or the screen locks; tap it once again after returning. On
-an iPhone the ring/silent switch also mutes it.
-Use **SP RADAR SOUND: ON/OFF** in the phone controls, or press **M**, to toggle
-the alert. It defaults on each reader session and changes for every connected
-page. Muted sightings are not replayed when sound is enabled again; the radar
-continues working while muted.
-Touch buttons mirror those controls; every connected device shares one view.
+The plugin reads game data through PCSX2's PINE interface and displays the existing Outbreak Tracker UI in your browser, complete with its original sprites, fonts, player cards, maps, puzzle hints and SP radar.
 
-The page has no header: the tracker is scaled to fit the visible screen (width and
-height, no scrolling) on a high-resolution canvas. A **CONTROLS** button, placed
-and styled as on the desktop trackers (bottom right, or top right on a map), fades
-in when the pointer moves or the screen is touched and fades out after 3 seconds
-or when the mouse leaves the page. It opens the desktop **TRACKER CONTROLS** menu
-(Views, Show, Sound, Layout, Map, Players shown, Enemy list); tapping the tracker
-outside a map opens it too. Drag to pan a map, pinch or scroll to zoom, and
-double-tap to zoom. Status text appears on top only when not live. Vertical mode
-suits phones; horizontal mode remains available. The reader polls at five updates per second, but only while a device
-has the page open: it starts on the first request and stops 15 seconds after the last,
-so PCSX2 gets no PINE traffic otherwise (the panel then shows the reader as idle). The
-service marks delayed data stale and retries a lost reader. No RAM snapshots or frame files are
-saved. PINE supports a single client: stop this reader before using another tracker
-or a recorder. Use **Stop phone view and reader** in Decky to release it.
+## Installation
 
-## Source and prerequisites
+1. Download the plugin ZIP from the GitHub Actions **Build Decky plugin** workflow or build it yourself.
+2. Open Decky settings on your Steam Deck.
+3. Enable Developer mode.
+4. Select **Install Plugin from ZIP File** and locate the ZIP.
+5. Open Outbreak Tracker from the Decky menu.
+6. Launch PCSX2 with PINE enabled and start a supported game.
+7. Scan the QR code with your phone.
 
-The plugin lives in this repository's `decky/` folder. Its native reader is built for
-Linux x86_64, so build it on the Steam Deck, on another x86_64 Linux machine, or with
-the manual GitHub workflow `.github/workflows/build-decky.yml` (`Build Decky plugin`),
-which uploads the plugin as the `Outbreak-Tracker-Decky-Plugin` artifact. The workflow
-uploads the `outbreak-tracker/` folder rather than the built ZIP, so the artifact GitHub
-downloads is itself the installable ZIP, with no ZIP inside it.
+Your phone and Steam Deck must be on the same network. You can also open the tracker directly at:
 
-A local build needs Git, Python 3, internet access and Node **24.19.0** with Corepack,
-installed with nvm at `~/.nvm/versions/node/v24.19.0/`. `build.py` calls that Node
-directly, so an interactive shell or an nvm shell profile is not required. Corepack
-downloads pinned **pnpm 9.15.9** into a user cache. The native build uses a user-only
-micromamba GCC/CMake/Pillow environment made by `bootstrap_native.py` from the pinned
-`native-toolchain.lock`. No system package installation is required. At runtime the
-plugin uses the Deck's existing `/usr/bin/luajit`.
+`http://<deck address>:28080/`
 
-## Build
+No account or access token is required. The address remains the same across restarts unless the Deck's IP address changes.
 
-Run from the repository root:
+## Using the tracker
 
-```sh
-python3 decky/scripts/bootstrap_native.py   # once per machine
-python3 decky/scripts/build.py --expect-commit "$(git rev-parse HEAD)"
-```
+The tracker fills your browser window without scrolling. Vertical mode works best on phones, while horizontal mode remains available for wider displays.
 
-The build needs a clean checkout at the commit you pass. It uses the committed pnpm
-lockfile, checks TypeScript, builds the frontend, compiles the existing Linux native
-reader with pinned PINE sources, generates font metrics, parses Python, and verifies
-the ZIP contents. No live PINE reads occur.
+Tap the screen or move your pointer to reveal the **CONTROLS** button. It disappears after three seconds of inactivity or when the pointer leaves the page.
 
-Outputs go to `decky/.artifacts/`: the ZIP `outbreak-tracker-<version>-<commit>.zip`
-and `build-report.json` with the commit, tool versions and SHA-256. The ZIP contains an
-`outbreak-tracker/` directory with the native reader, shared Lua UI, original assets,
-browser frontend, backend, package metadata, licenses and `build-info.json`. Build
-output and dependencies are ignored by Git. Keep older ZIPs to roll back.
+The controls menu uses the same options as the desktop tracker:
 
-In GitHub Actions, `build.py` uses the Node on `PATH` (from `actions/setup-node`)
-because `GITHUB_ACTIONS=true`.
+- Views
+- Show
+- Sound
+- Layout
+- Map
+- Players shown
+- Enemy list
 
-## Install, refresh, inspect and roll back
+Touch controls mirror the desktop keyboard shortcuts. All connected devices share the same tracker view and settings.
 
-On the Deck, open Decky settings, enable Developer mode, and use **Install Plugin
-from ZIP File** to browse to the ZIP (the build folder `decky/.artifacts/` is hidden,
-so show hidden files or copy the ZIP somewhere else first). The build never writes
-into the root-owned installed plugin directory or restarts the loader.
-
-Open **Outbreak Tracker** from the Decky menu, check its version and commit, then
-scan the QR code on your phone. There is no login and no token: the link is just
-`http://<deck address>:28080/` and stays the same across restarts.
-
-The service listens on port 28080 and exposes only packaged web/artwork files plus
-the frame and control endpoints. It answers only clients on private, link-local,
-loopback or Tailscale addresses, and only for requests addressed to an IP, a
-single-label or a `.local` host name (this blocks DNS rebinding). Controls are
-accepted only as same-origin JSON requests from the tracker page, so other websites
-cannot press keys. Anyone on your local network can open the page and change the
-shared view; they cannot read game memory or do anything else. It adds no firewall
-or router rules; do not forward port 28080 from your router.
-
-**Home-screen app (PWA).** The page has a web app manifest, an Apple touch icon and
-standalone meta tags using the Outbreak Tracker HD icon. On iPhone Safari use Share →
-Add to Home Screen; it then opens full screen without Safari's bars (the margin logic
-for the hidden-toolbar case is skipped in that mode). The Deck's address is plain
-`http://`, so browsers do not offer a service worker or offline mode; the app needs
-the Deck and the phone view running. If your router changes the Deck's address, add
-the app again (a DHCP reservation for the Deck avoids this). The icons are committed PNGs under
-`web/icons/`, made from `sources/outbreak-tracker-icon-hd.png`.
-
-Start PCSX2 with PINE enabled and a supported game. The native reader uses
-`/run/user/1000/pcsx2.sock` for default slot 28011. A waiting status means that a
-supported game or endpoint is unavailable; enabling the setting alone does not
-prove a connection. Existing U.S. mapping and puzzle limits remain in effect.
-
-For another revision, install its ZIP again and reopen the plugin panel. Use
-Decky's Developer reload control if available. Inspect Decky's logs view or the
-plugin log under `/home/deck/homebrew/logs/Outbreak Tracker/`. The backend uses
-Decky's logger; exact filenames follow the installed loader version. To remove
-the plugin, use Decky's installed-plugin uninstall control. To roll back, install
-the prior ZIP and compare its displayed commit. Unloading or uninstalling stops the child reader and HTTP service. No game data
-is persisted; build tools and development ZIPs remain in user development paths.
-
-## Reader and browser implementation
-
-`reader.lua` runs the existing `sources/main.lua` and card modules using a small
-LÖVE graphics adapter. It sends drawing commands and typed game status over a
-private child-process pipe. `web/app.js` draws them on Canvas using original
-textures and fonts, including image-font separators. The bridge does not export
-raw RAM, duplicate memory-address maps, or execute browser-supplied code. Native
-compilation reuses `linux/CMakeLists.txt`, which compiles `sources/main.c` with
-the switches of the builds that read over PINE.
-
-New endpoints: `GET /api/frame` and `POST /api/key` with a whitelisted
-key, both restricted as described above. Decky methods `get_status` and `set_running`
-expose lifecycle state and the phone link. Waiting/error/stale states are distinct from live. Browser and native
-visual parity still require comparison in the user's game and phone browser.
-
-## Template provenance and license
-
-Adapted from Steam Deck Homebrew's [Decky plugin template at
-90d0780e882a17f5714fc6de044c645f22608290](https://github.com/SteamDeckHomebrew/decky-plugin-template/tree/90d0780e882a17f5714fc6de044c645f22608290).
-The frontend entry point, Decky API/UI integration, Rollup setup, Python lifecycle
-and package layout follow that template. Its BSD 3-Clause license is retained in
-`LICENSE`; this license applies to this plugin scaffold, without relicensing other
-repository code or assets. Original sample actions and root/debug flags were
-replaced with a setup-status panel running with normal plugin privileges.
-
-The [script index](scripts/README.md) explains build and synchronization entrypoints.
+Connection status appears at the top of the screen whenever live game data is unavailable.
 
 ## Map views
 
-In phone Controls, choose **Map + compact cards** or **Cards beside map** (keyboard
-**N** or **B**). Select a player to follow them, or use **F**. Drag to pan, pinch or
-scroll to zoom, double-tap to zoom, and switch floors from the floor row. The menu
-button stays visible while using the map. All connected pages share these controls.
+Open Controls and select **Map + compact cards** or **Cards beside map**. Keyboard users can press `N` or `B`.
 
-Maps for the five main scenarios of Japanese File 1 and File 2 are built into the
-plugin, and the File 1 maps also serve the U.S. release. They load automatically.
-No disc path, import, upload, download, user-cache setup or game file is required.
+Maps are included for the five main scenarios of each Japanese release of File 1 and File 2. U.S. File 1 uses the same maps as the Japanese release.
 
-Fitted floors use Evil Resource artwork with blue walls, yellow doors and room
-tints. Your room is red; other occupied rooms use a lighter blue. Gas rooms
-pulse with a yellow glow. Floors without Evil Resource artwork show their rooms as
-dark shapes with blue outlines, traced from the game's room layout.
+Maps load automatically. No game discs, external downloads, imports or additional setup are required.
 
-The wide layout is 760×740, desktop vertical is 300×740 and the phone layout is
-390×844, following the tracker-style design. Floor rows scroll by swipe or wheel
-when a scenario has additional floors.
+### Navigation
 
-Slot colours are P1 red, P2 blue, P3 yellow and P4 green. A chevron marks a usable world
-position and points the way that character faces; a portrait in a ring indicates
-room-only placement, including ambiguous height bands. Select the desired floor
-manually in those rooms; height is not read yet. YOU is the game's own local
-player, and the legend shows each player's in-game name. Tap a card, portrait or
-legend entry to follow that player. Desperate Times gas rooms glow yellow, and
-puzzle hints, medals/passwords and scenario timers remain visible. Enemies in play
-are small white diamonds with their HP percentage, and the items in your current
-room show as tracker item icons. U.S. File 1 uses the same maps as the
-Japanese release; extra File 2 scenarios are not enabled.
+- Drag to move around the map.
+- Pinch, scroll or double-tap to zoom.
+- Select a floor from the floor selector.
+- Tap a player card, portrait or legend entry to follow that player.
+- Press `F` to follow a player using the keyboard.
+
+The Controls button remains visible while viewing the map. Floor selectors support swiping and scrolling when additional floors are available.
+
+### Reading the map
+
+Floors use artwork from Evil Resource where available, with blue walls and yellow doors. Other floors use room outlines traced from the game's layout.
+
+| Indicator | Meaning |
+|---|---|
+| Red room | Your current room |
+| Light blue room | Room occupied by another player |
+| Pulsing yellow room | Gas-filled room in Desperate Times |
+| Player chevron | Player position and facing direction |
+| Ringed portrait | Player's room is known, but precise placement is unavailable |
+| White diamond | Enemy and its remaining HP percentage |
+| Item icon | Item in your current room |
+| YOU | Your local player |
+
+Player colors correspond to their respective slots:
+
+- P1: Red
+- P2: Blue
+- P3: Yellow
+- P4: Green
+
+The legend displays each player's in-game name. Puzzle hints, medals, passwords and scenario timers remain visible.
+
+Height tracking is not yet supported. Rooms with ambiguous height ranges require manual floor selection.
+
+Extra File 2 scenarios are not currently supported.
+
+### Layout dimensions
+
+| Layout | Dimensions |
+|---|---|
+| Wide | 760 × 740 |
+| Desktop vertical | 300 × 740 |
+| Phone | 390 × 844 |
+
+## SP counter and radar
+
+The SP radar displays the direction of an SP item relative to your character.
+
+When the radar first detects an SP item after entering a room, it plays an alert. The alert will not repeat until you change rooms.
+
+To mute the alert, select **SP RADAR SOUND: ON/OFF** in Controls or press `M`.
+
+The alert is enabled by default whenever the reader starts. Changing this setting affects every connected device. The radar continues working while muted, and missed alerts will not replay when sound is restored.
+
+### Sound on mobile devices
+
+Browsers require a tap or key press before they can play audio. Opening the Controls menu satisfies this requirement.
+
+On iPhones:
+
+- Silent mode also mutes radar alerts.
+- Returning from the lock screen or another app may require another tap to restore audio.
+
+The SP counter and radar remain hidden whenever valid tracking data is unavailable.
+
+## Add to your home screen
+
+Outbreak Tracker can run as a standalone home-screen web app.
+
+In Safari on your iPhone:
+
+1. Open the tracker.
+2. Tap Share.
+3. Select Add to Home Screen.
+
+The tracker opens without Safari's address bar or navigation toolbar and uses the Outbreak Tracker HD icon.
+
+The web app requires an active connection to your Steam Deck. Offline mode and service workers are unavailable because the tracker uses a local HTTP connection.
+
+If your Deck's IP address changes, add the tracker to your home screen again. Setting a DHCP reservation on your router can prevent this.
+
+## Reader behavior
+
+The plugin starts a read-only PCSX2 PINE reader and polls game data five times per second.
+
+The reader starts when the first device requests data and stops 15 seconds after the last device disconnects. PCSX2 receives no PINE traffic while the reader is idle.
+
+The service marks delayed data as stale and attempts to reconnect if the reader becomes unavailable.
+
+PINE supports only one client at a time. Before opening another tracker or recorder, select **Stop phone view and reader** in Decky.
+
+No RAM snapshots, frame files or game data are saved.
+
+## Network access and security
+
+The phone view runs on TCP port `28080`.
+
+The service accepts connections from private, link-local, loopback and Tailscale addresses. Requests must address the Deck using an IP address, single-label hostname or `.local` hostname to prevent DNS rebinding.
+
+Browser controls require same-origin JSON requests. The service exposes packaged web files, artwork and the tracker endpoints without providing direct access to raw game memory.
+
+Anyone on your local network can open the tracker and change its shared view.
+
+The plugin does not modify firewall or router settings. **Do not forward port 28080 to the internet.**
+
+## Building from source
+
+The plugin source is located in `decky/`.
+
+The native reader targets Linux x86_64. You can build the plugin on a Steam Deck, another x86_64 Linux machine or through GitHub Actions.
+
+### Prerequisites
+
+- Git
+- Python 3
+- Internet access
+- Node.js 24.19.0 with Corepack
+- pnpm 9.15.9
+
+Install Node.js through nvm at:
+
+`~/.nvm/versions/node/v24.19.0/`
+
+The build script calls this Node installation directly, so loading an interactive nvm shell profile is unnecessary.
+
+Corepack downloads the pinned pnpm version automatically. The native toolchain uses a user-local micromamba environment containing GCC, CMake and Pillow, with versions pinned in `native-toolchain.lock`.
+
+No system package installation is required.
+
+At runtime, the plugin uses the Steam Deck's existing `/usr/bin/luajit`.
+
+### Local build
+
+Run the following commands from the repository root:
+
+```sh
+python3 decky/scripts/bootstrap_native.py
+python3 decky/scripts/build.py --expect-commit "$(git rev-parse HEAD)"
+```
+
+Only run `bootstrap_native.py` once per machine.
+
+The build requires a clean Git checkout at the specified commit. It:
+
+- Uses the committed pnpm lockfile.
+- Checks TypeScript and builds the frontend.
+- Compiles the native Linux reader using pinned PINE sources.
+- Generates font metrics.
+- Checks Python syntax.
+- Verifies the plugin ZIP contents.
+
+Building does not require a running PCSX2 instance or perform live PINE reads.
+
+### Build output
+
+Files are written to `decky/.artifacts/`:
+
+- `outbreak-tracker-<version>-<commit>.zip`
+- `build-report.json`
+
+The build report records the commit, tool versions and SHA-256 checksum.
+
+The ZIP contains an `outbreak-tracker/` directory with the native reader, shared Lua UI, original assets, browser frontend, backend, package metadata, licenses and `build-info.json`.
+
+Git ignores generated build files and dependencies. Keep previous ZIPs if you need to roll back.
+
+The output directory is hidden. Enable hidden files when browsing for the ZIP in Decky or copy it to another directory.
+
+The build process never writes to Decky's root-owned installed-plugin directory or restarts the loader.
+
+### GitHub Actions
+
+Run the **Build Decky plugin** workflow:
+
+`.github/workflows/build-decky.yml`
+
+The workflow publishes an artifact named `Outbreak-Tracker-Decky-Plugin`.
+
+GitHub packages the `outbreak-tracker/` directory directly, so the downloaded artifact is already an installable ZIP.
+
+When `GITHUB_ACTIONS=true`, the build uses the Node installation provided by `actions/setup-node` on `PATH`.
+
+## Updating and troubleshooting
+
+To update the plugin, install the new ZIP and reopen the Decky panel. Use Decky's Developer reload option if available.
+
+The plugin panel displays its version and Git commit so you can confirm which revision is running.
+
+### PCSX2 connection
+
+The native reader connects to:
+
+`/run/user/1000/pcsx2.sock`
+
+The default PINE slot is `28011`.
+
+If the tracker remains in a waiting state, verify that PCSX2 is running, PINE is enabled, a supported game is loaded and another PINE client is not connected.
+
+Enabling PINE alone does not confirm a successful connection. Waiting, error, stale and live states are reported separately.
+
+Existing U.S. release mapping and puzzle limitations still apply.
+
+### Logs
+
+View logs through Decky or inspect:
+
+`/home/deck/homebrew/logs/Outbreak Tracker/`
+
+The backend uses Decky's logger. Log filenames depend on the installed loader version.
+
+### Rollback and removal
+
+To roll back, install a previous plugin ZIP and verify its displayed commit.
+
+To remove the plugin, use Decky's uninstall option. Unloading or uninstalling stops both the reader and HTTP service.
+
+Development tools and previously built ZIPs remain in their original directories.
+
+## Implementation
+
+The Decky plugin uses the existing Outbreak Tracker Lua interface rather than maintaining a separate browser UI.
+
+`reader.lua` runs `sources/main.lua` and its card modules through a small LÖVE graphics adapter. Drawing commands and typed game status travel through a private child-process pipe.
+
+`web/app.js` renders those commands on a high-resolution Canvas using the original textures, fonts and image-font separators.
+
+Phone browser and desktop visual parity still requires testing against a running game.
+
+Native compilation reuses `linux/CMakeLists.txt`, which compiles `sources/main.c` with the switches of the builds that read over PINE.
+
+The bridge does not expose raw RAM, duplicate memory-address maps or execute browser-supplied code.
+
+### SP radar implementation
+
+The drawing bridge supports ellipses, polygons, rotation and line widths for the shared SP counter and radar.
+
+Penpot generates the component layout in `sources/layout.lua`. The component uses the existing password-hint font.
+
+`sources/SPTracking.lua` draws the counter and player-relative compass using validated room records from `sources/SPMapReader.h`.
+
+When the radar detects an SP item, it plays `assets/sp-found.wav`. The reader sends sound play counts with each frame, allowing connected browsers to play new alerts without repeating previous ones.
+
+### HTTP endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/frame` | Retrieve tracker frames and status |
+| `POST /api/key` | Submit an allowed tracker keyboard command |
+
+Decky exposes `get_status` and `set_running` for reader status, service controls and the phone link.
+
+### Web app assets
+
+The web app includes a manifest, Apple touch icon and standalone display metadata.
+
+Its icons are stored in `web/icons/` and generated from:
+
+`sources/outbreak-tracker-icon-hd.png`
+
+The browser skips hidden-toolbar margin adjustments when running as a standalone home-screen app.
+
+## License and credits
+
+The plugin scaffold is adapted from the [Steam Deck Homebrew Decky plugin template](https://github.com/SteamDeckHomebrew/decky-plugin-template/tree/90d0780e882a17f5714fc6de044c645f22608290).
+
+The frontend entry point, Decky API integration, Rollup configuration, Python lifecycle and package structure follow that template.
+
+The original sample actions and root/debug flags have been replaced with a setup and status panel running under normal plugin privileges.
+
+The scaffold retains its BSD 3-Clause license in `LICENSE`. This license does not replace the licenses of other repository code or assets.
+
+Map artwork is provided by Evil Resource where available.
+
+See the [script index](scripts/README.md) for build and synchronization scripts.
