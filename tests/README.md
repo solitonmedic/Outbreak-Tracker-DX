@@ -55,8 +55,11 @@ reads. They are made by the local tool
 
 1. traces every read while the UI goes through every control;
 2. keeps those bytes only;
-3. refuses any printable text that is not a game constant, a code guard or a
-   number whose bytes happen to be printable;
+3. refuses any printable text that is not a game constant, a code guard, a
+   listed numeric structure (File 2 inventories: item IDs and counts) or a
+   number whose bytes happen to be printable. Printable bytes inside a block
+   the reader reads only to reject it (the File 2 room-crown table in
+   Flashback) are blanked to zeros while the block stays rejected;
 4. proves that the trimmed frame gives exactly the same results as the full
    checkpoint on both reader families.
 
@@ -87,7 +90,9 @@ facts only.
 1. Add an entry to `tools-n-shit/research/test-frame-selection.json`, then run
    the extraction tool:
    - File 1 frames on the Mac.
-   - File 2 frames on the Deck with `--via decky`. Recordings never leave the Deck.
+   - File 2 frames on the Deck with `--via decky`, using the plugin's toolchain
+     (`CC`, `LUAJIT_INCLUDE` and `ZLIB_PREFIX`, as in the tool's header). Recordings
+     never leave the Deck; only the trimmed frames are copied back.
 2. Add its facts to `facts.json` in the fixtures folder.
 3. Regenerate the expected results:
    - `--write-expected` for `mac` (pine family);

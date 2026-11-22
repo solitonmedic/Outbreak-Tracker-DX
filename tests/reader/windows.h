@@ -39,7 +39,7 @@ static void test_load(void)
 	test_memory = calloc(1, TEST_MEMORY_SIZE);
 	if (!test_memory) abort();
 	const char* trace = getenv("TRACKER_TRACE");
-	if (trace && *trace) test_trace = fopen(trace, "w");
+	if (trace && *trace) test_trace = fopen(trace, "a"); /* appended: one trace can span several runs */
 	const char* image = getenv("TRACKER_IMAGE");
 	const char* frame = getenv("TRACKER_FRAME");
 	if (image && *image) {

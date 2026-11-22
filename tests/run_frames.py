@@ -8,7 +8,9 @@ Purpose: reusable release test, run by the GitHub workflows and locally. For
   platform's own main.lua, and compares the result with the expected JSON for
   that platform family and with the frame's hand-checked facts.
 Location/language: tests/run_frames.py; Python 3 standard library (gpg for
-  --bundle, clang/gcc and LuaJIT headers for --build-test-reader).
+  --bundle, clang/gcc, zlib and LuaJIT headers for --build-test-reader; CC,
+  LUAJIT_INCLUDE and ZLIB_PREFIX point at a compiler, headers or a zlib folder
+  outside the default paths, as on the Steam Deck).
 Platforms (--platform):
   mac             a built "Outbreak Status Tracker.app" (--app); family pine
   linux           an extracted AppImage folder, squashfs-root (--appdir); its
@@ -424,8 +426,14 @@ def build_test_reader(output):
     if not luajit:
         sys.exit("LuaJIT headers not found; set LUAJIT_INCLUDE")
     compiler = os.environ.get("CC") or shutil.which("clang") or shutil.which("cc") or shutil.which("gcc")
-    command = [compiler, "-shared", "-fPIC", "-x", "c", "-std=c11", "-w", "-I", str(HERE / "reader"),
-               "-I", str(REPO / "sources"), "-I", luajit, str(HERE / "reader" / "module.c"), "-lz", "-o", str(output)]
+    # GCC 14 makes these legacy-C diagnostics errors; MSVC and clang only warn.
+    legacy = ["-Wno-incompatible-pointer-types", "-Wno-int-conversion", "-Wno-implicit-function-declaration"]
+    command = [compiler, "-shared", "-fPIC", "-x", "c", "-std=c11", "-w"] + legacy + ["-I", str(HERE / "reader"),
+               "-I", str(REPO / "sources"), "-I", luajit]
+    zlib = os.environ.get("ZLIB_PREFIX")  # zlib outside the compiler's default paths
+    if zlib:
+        command += ["-I", str(Path(zlib, "include")), "-L", str(Path(zlib, "lib"))]
+    command += [str(HERE / "reader" / "module.c"), "-lz", "-o", str(output)]
     if sys.platform == "darwin":
         command[1:1] = ["-undefined", "dynamic_lookup"]
     subprocess.run(command, check=True)
