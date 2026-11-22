@@ -13,6 +13,7 @@
 // placed over the canvas where the desktop draws it. It fades in on pointer
 // activity (mouse movement, a touch, the wheel) and fades out when the mouse
 // leaves the page or after 3 s without activity; hidden, it lets taps through.
+// biome-ignore lint/suspicious/noRedundantUseStrict: index.html loads app.js as a classic script, where strict mode is not implied.
 "use strict";
 const canvas = document.querySelector("#tracker"),
     ctx = canvas.getContext("2d");
@@ -310,7 +311,7 @@ async function playSounds(counts) {
         const seen = soundCounts.has(path) ? soundCounts.get(path) : soundBaseline ? 0 : count;
         soundCounts.set(path, count);
         if (count <= seen) continue;
-        if (!audio || audio.state !== "running") {
+        if (audio?.state !== "running") {
             soundStats.missed += count - seen;
             continue;
         }

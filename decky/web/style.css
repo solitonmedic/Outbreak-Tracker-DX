@@ -24,6 +24,7 @@ body {
 main {
     box-sizing: border-box;
     height: 100%;
+    /* biome-ignore lint/suspicious/noDuplicateProperties: 100% above is the fallback for browsers without dvh units. */
     height: 100dvh;
     display: flex;
     align-items: center;

@@ -85,7 +85,10 @@ function Content() {
             </PanelSectionRow>
             {status?.phoneUrl && (
                 <PanelSectionRow>
-                    <ButtonItem layout="below" onClick={() => Navigation.NavigateToExternalWeb(status.phoneUrl!)}>
+                    <ButtonItem
+                        layout="below"
+                        onClick={() => status?.phoneUrl && Navigation.NavigateToExternalWeb(status.phoneUrl)}
+                    >
                         Open tracker on Deck
                     </ButtonItem>
                 </PanelSectionRow>
