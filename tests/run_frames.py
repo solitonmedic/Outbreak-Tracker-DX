@@ -331,7 +331,7 @@ def main():
                     expected_path.parent.mkdir(parents=True, exist_ok=True)
                     expected_path.write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
                 elif expected_path.exists() and not args.no_expected:
-                    problems += frames.compare(frames.load_json(expected_path), result)
+                    problems += frames.compare(frames.compared(frames.load_json(expected_path)), frames.compared(result))
                 elif not args.no_expected:
                     problems.append("no expected result for family %s" % family)
             shutil.rmtree(work, ignore_errors=True)

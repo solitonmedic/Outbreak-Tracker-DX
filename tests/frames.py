@@ -171,6 +171,12 @@ def compare(expected, actual):
     return problems
 
 
+def compared(result):
+    """The parts of a result that are compared: everything except "meta" (the
+    LÖVE version and operating system it ran on, for information only)."""
+    return {key: value for key, value in result.items() if key != "meta"}
+
+
 def check_facts(entry, actual):
     """entry: {"facts": {dotted.path: value}, "texts": [substring, ...]}.
     Every listed path must hold its value, and every listed text must appear in
