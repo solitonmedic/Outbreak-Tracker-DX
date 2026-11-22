@@ -45,15 +45,6 @@ STEPS = ["main", "f1", "f1", "f2", "f2", "f2", "f3", "f3", "home", "l", "l", "i"
          "q", "q", "e", "e", "f4", "f4", "m", "m", "v", "h", "d", "a", "1", "2", "3", "4",
          "kp1", "kp0", "n", "f", "f", "b", "home"]
 WARM, PER = 40, 3
-API_SCRIPT = r'''
-package.path = "?.lua;shared/?.lua;" .. package.path
-package.cpath = "bin/?.so;" .. package.cpath
-local tracker = require "luaoutbreaktracker"
-local Dump, Json = require "frames_dump", require "frames_json"
-assert(tracker.init(), "reader init failed")
-for i = 1, 40 do tracker.updateLobby(); tracker.updateRoom(); tracker.update() end
-io.write(Json.encode(Dump.api(tracker)))
-'''
 
 
 def plugin_from_zip(path, work):
@@ -94,7 +85,7 @@ def run_plugin(plugin, work, timeout, memory=None, env_extra=None):
     fake = frames.FakePine(runtime, memory) if memory is not None else None
     problems, result = [], {"views": []}
     try:
-        api = subprocess.run(["luajit", "-e", API_SCRIPT], cwd=plugin, env=env, capture_output=True,
+        api = subprocess.run(["luajit", "-e", frames.READER_API_SCRIPT], cwd=plugin, env=env, capture_output=True,
                              text=True, encoding="utf-8", errors="replace", timeout=timeout)
         if api.returncode != 0:
             problems.append("reader API dump failed: " + api.stderr[-600:])

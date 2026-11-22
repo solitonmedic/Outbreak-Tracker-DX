@@ -82,12 +82,18 @@ python3 tests/run_frames.py --platform mac --app "Outbreak Status Tracker.app" -
 python3 tests/run_frames.py --platform linux-layout --app "Outbreak Status Tracker.app" --fixtures ../local-tools/frame-fixtures
 python3 tests/run_frames.py --build-test-reader /tmp/test-reader.so
 python3 tests/run_frames.py --platform windows-layout --app "Outbreak Status Tracker.app" --test-reader /tmp/test-reader.so --fixtures ../local-tools/frame-fixtures
+python3 tests/run_frames.py --platform windows-api --test-reader /tmp/test-reader.so --fixtures ../local-tools/frame-fixtures
 python3 tests/decky_frames.py --layout --reader-so "Outbreak Status Tracker.app/Contents/Resources/game/luaoutbreaktracker.so" --fixtures ../local-tools/frame-fixtures
 ```
 
 `--synthetic` replaces the fixtures with two generated frames, a blank one and
 a synthetic U.S. File 1 one. Add `--no-expected` for a check of errors and
 facts only.
+
+`windows-api` opens no window: it loads the test reader (the Windows code path)
+into plain LuaJIT and compares only the reader API, in about a second for all
+frames. Use it to check a change to `sources/main.c` quickly; the views still
+need one of the other platforms.
 
 ## Adding a frame or refreshing expected results
 

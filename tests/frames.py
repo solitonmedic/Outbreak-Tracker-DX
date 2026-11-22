@@ -15,6 +15,8 @@ Safety: serves synthetic or trimmed memory only, on a socket in a temporary
   folder, so the real PCSX2 is never contacted.
 annotate/run_main: on GitHub Actions (GITHUB_ACTIONS=true) a failure is also
   printed as one "::error" annotation, shown on the run's summary page.
+READER_API_SCRIPT: the headless reader API dump shared by the Decky runner and
+  run_frames.py --platform windows-api.
 Check: exercised by tests/run_frames.py and tests/decky_frames.py.
 """
 import json
@@ -29,6 +31,20 @@ from pathlib import Path
 
 MAGIC = b"OTFRAME1"
 EE_RAM = 32 * 1024 * 1024
+
+# The reader API without any UI: 40 warm-up updates, then every getter in
+# tests/automation/frames_dump.lua, written to stdout as JSON. Run it with
+# "luajit -e" from a folder holding bin/luaoutbreaktracker.so,
+# frames_dump.lua and frames_json.lua (shared Lua files may sit in shared/).
+READER_API_SCRIPT = r'''
+package.path = "?.lua;shared/?.lua;" .. package.path
+package.cpath = "bin/?.so;" .. package.cpath
+local tracker = require "luaoutbreaktracker"
+local Dump, Json = require "frames_dump", require "frames_json"
+assert(tracker.init(), "reader init failed")
+for i = 1, 40 do tracker.updateLobby(); tracker.updateRoom(); tracker.update() end
+io.write(Json.encode(Dump.api(tracker)))
+'''
 
 
 def write_frame(path, ranges):
@@ -178,17 +194,23 @@ def compared(result):
     return {key: value for key, value in result.items() if key != "meta"}
 
 
-def check_facts(entry, actual):
+def check_facts(entry, actual, api_only=False):
     """entry: {"facts": {dotted.path: value}, "texts": [substring, ...]}.
     Every listed path must hold its value, and every listed text must appear in
-    the drawn text of at least one view (for example a puzzle answer)."""
+    the drawn text of at least one view (for example a puzzle answer).
+    api_only: the result has no views (a headless reader run), so only the
+    facts about the reader API ("api." paths) are checked."""
     a = flatten(actual)
     problems = []
     for key, value in (entry.get("facts") or {}).items():
+        if api_only and not key.startswith("api."):
+            continue
         if key not in a:
             problems.append("fact %s: expected %r, missing" % (key, value))
         elif not same(value, a[key]):
             problems.append("fact %s: expected %r, got %r" % (key, value, a[key]))
+    if api_only:
+        return problems
     drawn = [t for view in actual.get("views") or [] for t in view.get("texts") or []]
     for text in entry.get("texts") or []:
         if not any(text in t for t in drawn):

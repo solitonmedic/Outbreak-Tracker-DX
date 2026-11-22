@@ -23,6 +23,9 @@ Platforms (--platform):
                   reader (--app); family pine
   windows-layout  on a Mac or Linux: the Windows arrangement with the test reader
                   built from main.c as C (--test-reader); family windows
+  windows-api     on a Mac or Linux, headless: the test reader (--test-reader)
+                  under plain LuaJIT, compared on the reader API only (no views,
+                  no LÖVE window); family windows
 Inputs: --fixtures DIR (frames/*.otf, expected/<family>/*.json, facts.json) or
   --bundle FILE.gpg with the passphrase in TRACKER_TEST_KEY; --synthetic uses
   two generated frames instead (blank, synthetic U.S. File 1).
@@ -64,7 +67,9 @@ REPO = HERE.parent
 sys.path.insert(0, str(HERE))
 import frames  # noqa: E402
 
-FAMILY = {"mac": "pine", "linux": "pine", "linux-layout": "pine", "windows": "windows", "windows-layout": "windows"}
+FAMILY = {"mac": "pine", "linux": "pine", "linux-layout": "pine", "windows": "windows", "windows-layout": "windows",
+          "windows-api": "windows"}
+API_ONLY = {"windows-api"}  # headless platforms that check the reader API without the UI
 AUTOMATION = ["main.lua", "frames_dump.lua", "frames_json.lua"]
 
 
@@ -213,8 +218,28 @@ def arrange(args, work):
 
 # ---------------------------------------------------------------- running --
 
+def run_reader_api(args, frame_path, work):
+    """windows-api: the test reader under plain LuaJIT; returns ({"api": ...} or None, problems)."""
+    folder = work / "reader"
+    (folder / "bin").mkdir(parents=True)
+    shutil.copy2(args.test_reader, folder / "bin" / "luaoutbreaktracker.so")
+    for name in ("frames_dump.lua", "frames_json.lua"):
+        shutil.copy2(HERE / "automation" / name, folder / name)
+    env = dict(os.environ, TRACKER_FRAME=str(frame_path))
+    try:
+        dump = subprocess.run(["luajit", "-e", frames.READER_API_SCRIPT], cwd=folder, env=env, capture_output=True,
+                              text=True, encoding="utf-8", errors="replace", timeout=args.timeout)
+    except subprocess.TimeoutExpired:
+        return None, ["timed out after %d s" % args.timeout]
+    if dump.returncode != 0:
+        return None, ["reader API dump failed: " + dump.stderr[-600:]]
+    return {"api": json.loads(dump.stdout)}, []
+
+
 def run_frame(args, name, frame_path, work):
     """Run one frame; return (result dict or None, problems list)."""
+    if args.platform in API_ONLY:
+        return run_reader_api(args, frame_path, work)
     command, game = arrange(args, work)
     runtime = work / "s"
     runtime.mkdir()
@@ -298,6 +323,12 @@ def main():
     if not args.platform:
         parser.error("--platform is required")
     family = FAMILY[args.platform]
+    if args.platform in API_ONLY:
+        if not args.test_reader:
+            parser.error("--platform %s needs --test-reader" % args.platform)
+        if args.write_expected or args.launch_check or args.shots:
+            # Its results hold no views, so they must never replace an expected result.
+            parser.error("--platform %s only compares; it cannot write expected results, shots or launch" % args.platform)
     with tempfile.TemporaryDirectory(prefix="ot-frames-") as temporary:
         temporary = Path(temporary)
         if args.bundle:
@@ -326,13 +357,18 @@ def main():
             if result is not None and (result.get("api") or {}).get("game", {}).get("currentFile") in (1, 2):
                 loaded.append(name)
             if result is not None:
-                problems += frames.check_facts(facts.get(name, {}), result)
+                api_only = args.platform in API_ONLY
+                problems += frames.check_facts(facts.get(name, {}), result, api_only=api_only)
                 expected_path = fixtures / "expected" / family / (name + ".json")
                 if args.write_expected:
                     expected_path.parent.mkdir(parents=True, exist_ok=True)
                     expected_path.write_text(json.dumps(result, indent=1, sort_keys=True) + "\n", encoding="utf-8")
                 elif expected_path.exists() and not args.no_expected:
-                    problems += frames.compare(frames.compared(frames.load_json(expected_path)), frames.compared(result))
+                    expected = frames.load_json(expected_path)
+                    if api_only:
+                        problems += frames.compare({"api": expected["api"]}, result)
+                    else:
+                        problems += frames.compare(frames.compared(expected), frames.compared(result))
                 elif not args.no_expected:
                     problems.append("no expected result for family %s" % family)
             shutil.rmtree(work, ignore_errors=True)
