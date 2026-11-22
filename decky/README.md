@@ -9,15 +9,29 @@ The drawing bridge also handles ellipse, polygon, rotation and line-width
 commands for the shared SP counter/radar component. Its layout is generated
 from Penpot into `sources/layout.lua`; text uses the password-hint font.
 `sources/SPTracking.lua` draws the counter and player-relative compass from a
-validated reader state; the private Decky facing probe supplies that state.
-The native reader does not yet supply SP state, so this component stays hidden
-in ordinary gameplay until that data interface is implemented.
+validated reader state (the room records of `sources/SPMapReader.h`) and stays
+hidden while that state is unavailable.
+When the radar first shows an SP item after a room change, the page plays
+`assets/sp-found.wav` once; it does not play again until the room changes. The
+reader sends a play count for each sound with every frame and each open page plays
+a new count. Browsers allow sound only after a tap or key press, so tap the page
+once (opening the controls is enough). iOS stops a home-screen app's sound when it
+goes to the background or the screen locks; tap it once again after returning. On
+an iPhone the ring/silent switch also mutes it.
+Use **SP RADAR SOUND: ON/OFF** in the phone controls, or press **M**, to toggle
+the alert. It defaults on each reader session and changes for every connected
+page. Muted sightings are not replayed when sound is enabled again; the radar
+continues working while muted.
 Touch buttons mirror those controls; every connected device shares one view.
 
 The page has no header: the tracker is scaled to fit the visible screen (width and
-height, no scrolling) on a high-resolution canvas. A round button at the bottom
-right opens a sheet of controls grouped as Views, Show, Layout, Players shown and
-Enemy list shows; status text appears on top only when not live. Vertical mode
+height, no scrolling) on a high-resolution canvas. A **CONTROLS** button, placed
+and styled as on the desktop trackers (bottom right, or top right on a map), fades
+in when the pointer moves or the screen is touched and fades out after 3 seconds
+or when the mouse leaves the page. It opens the desktop **TRACKER CONTROLS** menu
+(Views, Show, Sound, Layout, Map, Players shown, Enemy list); tapping the tracker
+outside a map opens it too. Drag to pan a map, pinch or scroll to zoom, and
+double-tap to zoom. Status text appears on top only when not live. Vertical mode
 suits phones; horizontal mode remains available. The reader polls at five updates per second, but only while a device
 has the page open: it starts on the first request and stops 15 seconds after the last,
 so PCSX2 gets no PINE traffic otherwise (the panel then shows the reader as idle). The
@@ -130,3 +144,34 @@ repository code or assets. Original sample actions and root/debug flags were
 replaced with a setup-status panel running with normal plugin privileges.
 
 The [script index](scripts/README.md) explains build and synchronization entrypoints.
+
+## Map views
+
+In phone Controls, choose **Map + compact cards** or **Cards beside map** (keyboard
+**N** or **B**). Select a player to follow them, or use **F**. Drag to pan, pinch or
+scroll to zoom, double-tap to zoom, and switch floors from the floor row. The menu
+button stays visible while using the map. All connected pages share these controls.
+
+Maps for the five main scenarios of Japanese File 1 and File 2 are built into the
+plugin, and the File 1 maps also serve the U.S. release. They load automatically.
+No disc path, import, upload, download, user-cache setup or game file is required.
+
+Fitted floors use Evil Resource artwork with blue walls, yellow doors and room
+tints. Your room is red; other occupied rooms use a lighter blue. Gas rooms
+pulse with a yellow glow. Floors without Evil Resource artwork show their rooms as
+dark shapes with blue outlines, traced from the game's room layout.
+
+The wide layout is 760×740, desktop vertical is 300×740 and the phone layout is
+390×844, following the tracker-style design. Floor rows scroll by swipe or wheel
+when a scenario has additional floors.
+
+Slot colours are P1 red, P2 blue, P3 yellow and P4 green. A chevron marks a usable world
+position and points the way that character faces; a portrait in a ring indicates
+room-only placement, including ambiguous height bands. Select the desired floor
+manually in those rooms; height is not read yet. YOU is the game's own local
+player, and the legend shows each player's in-game name. Tap a card, portrait or
+legend entry to follow that player. Desperate Times gas rooms glow yellow, and
+puzzle hints, medals/passwords and scenario timers remain visible. Enemies in play
+are small white diamonds with their HP percentage, and the items in your current
+room show as tracker item icons. U.S. File 1 uses the same maps as the
+Japanese release; extra File 2 scenarios are not enabled.

@@ -63,6 +63,9 @@ def build(expected):
         raise RuntimeError("Build unexpectedly changed source files")
 
     package = json.loads((plugin / "package.json").read_text())
+    release = (repo / "VERSION").read_text().strip()  # one release number for every platform
+    if package["version"] != release:
+        raise RuntimeError(f"decky/package.json version {package['version']} differs from VERSION {release}")
     metadata = {
         "version": package["version"], "sourceCommit": commit,
         "builtAtUtc": datetime.now(timezone.utc).isoformat(),
@@ -78,7 +81,11 @@ def build(expected):
     for folder in ("dist", "web"):
         entries += [(path, path.relative_to(plugin).as_posix()) for path in sorted((plugin / folder).rglob("*")) if path.is_file()]
     entries += [(path, "shared/" + path.name) for path in sorted((repo / "sources").glob("*.lua"))]
-    entries += [(path, "assets/" + path.relative_to(repo / "assets").as_posix()) for path in sorted((repo / "assets").rglob("*")) if path.is_file()]
+    # The game's own map files (sampled locally, git-ignored) are not shipped:
+    # maps come from sources/MapGeometry.lua and the Evil Resource art.
+    sampled = repo / "assets" / "maps" / "game"
+    entries += [(path, "assets/" + path.relative_to(repo / "assets").as_posix()) for path in sorted((repo / "assets").rglob("*"))
+                if path.is_file() and not path.is_relative_to(sampled)]
     entries += [(plugin / ".artifacts/native/luaoutbreaktracker.so", "bin/luaoutbreaktracker.so"),
                 (plugin / ".artifacts/native/fontmetrics.lua", "fontmetrics.lua"),
                 (plugin / ".artifacts/native/PINE-LICENSE", "PINE-LICENSE")]

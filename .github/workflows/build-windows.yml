@@ -109,6 +109,100 @@ jobs:
             }
           }
 
+      # Tests live on dev only (tests/ is not copied to main), so main skips these.
+      - name: Build the stand-in PCSX2 for the frame tests
+        if: hashFiles('tests/run_frames.py') != ''
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vsInstall = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $devCmd = Join-Path $vsInstall 'Common7/Tools/VsDevCmd.bat'
+          $fake = Join-Path $env:RUNNER_TEMP 'fake'
+          New-Item -ItemType Directory -Force -Path $fake | Out-Null
+          $batch = Join-Path $env:RUNNER_TEMP 'build-fake.cmd'
+          @"
+          @echo off
+          set "WORKSPACE_ROOT=%CD%"
+          call "$devCmd" -arch=x64
+          if errorlevel 1 exit /b 1
+          cd /d "%WORKSPACE_ROOT%"
+          cl /nologo /O2 /Zi tests\fakes\fake_pcsx2.c /Fo"$fake\\" /Fd"$fake\\" /Fe"$fake\pcsx2-qt.exe" /link /DEBUG
+          if errorlevel 1 exit /b 1
+          "@ | Set-Content -Path $batch -Encoding ascii
+          & $batch
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path (Join-Path $fake 'pcsx2-qt.pdb') -PathType Leaf)) { throw 'pcsx2-qt.pdb was not written' }
+
+      - name: Download Mesa software OpenGL for the frame tests
+        if: hashFiles('tests/run_frames.py') != ''
+        shell: pwsh
+        run: |
+          # The runner has no GPU; LÖVE needs OpenGL 2.1. Mesa's llvmpipe is
+          # copied next to the test copies only, never into the distribution.
+          # 26.2.5: the 26.2.6 and 26.2.7 MSVC packages ship without opengl32.dll.
+          # A failure is also reported as an annotation on the run's summary page.
+          try {
+            $archive = Join-Path $env:RUNNER_TEMP 'mesa.7z'
+            Invoke-WebRequest `
+              -Uri 'https://github.com/pal1000/mesa-dist-win/releases/download/26.2.5/mesa3d-26.2.5-release-msvc.7z' `
+              -OutFile $archive
+            $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+            if ($hash -ne '997123ef4ce8896204ab912d5b54f19372c487ff9835bcefafa2fca23b8953c2') {
+              throw "Mesa archive checksum mismatch: $hash ($((Get-Item $archive).Length) bytes)"
+            }
+            $extract = Join-Path $env:RUNNER_TEMP 'mesa-extract'
+            $listing = 7z x $archive "-o$extract" -y 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "7z exited with $LASTEXITCODE`n$($listing | Select-Object -Last 10 | Out-String)" }
+            $mesa = Join-Path $env:RUNNER_TEMP 'mesa'
+            New-Item -ItemType Directory -Force -Path $mesa | Out-Null
+            foreach ($name in @('opengl32.dll', 'libgallium_wgl.dll', 'libglapi.dll')) {
+              $source = Join-Path $extract "x64/$name"
+              if (Test-Path $source -PathType Leaf) { Copy-Item $source $mesa }
+            }
+            if (-not (Test-Path (Join-Path $mesa 'opengl32.dll') -PathType Leaf)) {
+              $found = Get-ChildItem -Path $extract -Recurse -Filter '*.dll' | Select-Object -First 20 |
+                ForEach-Object { $_.FullName.Substring($extract.Length) }
+              throw "Mesa opengl32.dll not found in x64; DLLs found: $($found -join ', ')"
+            }
+            Get-ChildItem $mesa | ForEach-Object { "$($_.Name) $($_.Length) bytes" }
+          } catch {
+            $message = "$($_.Exception.Message)" -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
+            Write-Output "::error title=Mesa software OpenGL::$message"
+            throw
+          }
+
+      - name: Set up Python for the frame tests
+        if: hashFiles('tests/run_frames.py') != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test with gameplay frames
+        if: hashFiles('tests/run_frames.py') != ''
+        shell: bash
+        env:
+          TRACKER_TEST_KEY: ${{ secrets.TRACKER_TEST_KEY }}
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          set -euo pipefail
+          if [ -f tests/fixtures.tar.gz.gpg ]; then
+            source_args="--bundle tests/fixtures.tar.gz.gpg"
+          else
+            echo "No encrypted frames yet: synthetic smoke run only."
+            source_args="--synthetic --no-expected"
+          fi
+          python tests/run_frames.py --platform windows --dist windows/build/stage/distribution \
+            --fake-pcsx2 "$RUNNER_TEMP/fake/pcsx2-qt.exe" --opengl "$RUNNER_TEMP/mesa" \
+            $source_args --launch-check 15 --report "$RUNNER_TEMP/frames-report.json"
+
+      - name: Upload the frame test report
+        if: always() && hashFiles('tests/run_frames.py') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: frame-test-report-Windows
+          path: ${{ runner.temp }}/frames-report.json
+          if-no-files-found: ignore
+
       - name: Upload the Windows distribution
         uses: actions/upload-artifact@v4
         with:

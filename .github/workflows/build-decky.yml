@@ -36,6 +36,24 @@ jobs:
           unzip -p "$archive" outbreak-tracker/build-info.json | grep -q "$GITHUB_SHA"
           sha256sum "$archive"
 
+      # Tests live on dev only (tests/ is not copied to main), so main skips this.
+      - name: Test with gameplay frames
+        if: hashFiles('tests/decky_frames.py') != ''
+        shell: bash
+        env:
+          TRACKER_TEST_KEY: ${{ secrets.TRACKER_TEST_KEY }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y luajit gnupg
+          archive="$(ls decky/.artifacts/outbreak-tracker-*.zip)"
+          if [ -f tests/fixtures.tar.gz.gpg ]; then
+            python3 tests/decky_frames.py --zip "$archive" --bundle tests/fixtures.tar.gz.gpg \
+              --report "$RUNNER_TEMP/frames-report.json"
+          else
+            echo "No encrypted frames yet: synthetic Decky runs need expected results; skipped."
+          fi
+
       - name: Upload the plugin ZIP
         uses: actions/upload-artifact@v4
         with:

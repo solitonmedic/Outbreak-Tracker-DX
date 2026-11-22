@@ -2,10 +2,13 @@
 -- Runtime/location: LuaJIT, plugin reader.lua; shared Lua, fonts and native module.
 -- Inputs: newline-delimited comma-separated whitelisted keys on stdin, live PINE.
 -- Outputs: one JSON drawing frame per input tick on stdout, in memory only.
--- Includes ellipse/polygon/rotation/line-width commands for the shared SP UI.
+-- Includes ellipse/polygon/rotation/line-width commands for the shared SP UI,
+-- and per-file sound play counts ("sounds") for the browser to play.
 -- Safety: native reader performs reads only; no recording, game writes or disk frames.
 -- Run: launched by tracker_service.py from the installed plugin directory.
 -- Check: browser displays original cards; offline synthetic checks use a fake tracker.
+-- Map additions: bundled assets provide the art; map/action/x/y stdin controls
+-- are validated by the service. Scissor commands clip the shared map.
 package.path = "shared/?.lua;" .. package.path
 package.cpath = "bin/?.so;" .. package.cpath
 local metrics = dofile("fontmetrics.lua")
@@ -70,11 +73,11 @@ local function sprite(image, quad, x,y,r,sx,sy,ox,oy,kx,ky, tint)
     emit("image",image.path,quad,{x or 0,y or 0,r or 0,sx or 1,sy or sx or 1,ox or 0,oy or 0,kx or 0,ky or 0},
         {color[1]*c[1],color[2]*c[2],color[3]*c[3],color[4]*c[4]})
 end
-love = {graphics={},window={},audio={},event={}}
+love = {graphics={},window={},audio={},event={},isDecky=true}
 local g=love.graphics
 function g.newFont(path,size) return makefont(path,size) end
 function g.newImageFont(path,characters) return makefont(path,nil,characters) end
-function g.newImage(path) return {path=path} end
+function g.newImage(path) return {path=path,setFilter=function() end} end
 function g.newQuad(x,y,w,h)
     local q={x,y,w,h}
     function q:getViewport() return self[1],self[2],self[3],self[4] end
@@ -111,6 +114,15 @@ function g.pop() emit("pop") end
 function g.translate(x,y) emit("translate",x,y) end
 function g.scale(x,y) emit("scale",x,y or x) end
 function g.rotate(angle) emit("rotate",angle) end
+-- Optional shared-map annotations let browsers animate existing position
+-- samples and preview drag locally without increasing memory polling.
+function g.mapBegin(x,y,w,h,panX,panY,cameraX,cameraY,key) emit("mapBegin",x,y,w,h,panX,panY,cameraX,cameraY,key) end
+function g.mapEnd() emit("mapEnd") end
+function g.actorBegin(id,x,y,continuity) emit("actorBegin",id,x,y,continuity) end
+function g.actorEnd() emit("actorEnd") end
+-- Pulsing alpha (danger/down flashes): the browser animates it at display rate
+-- instead of the 5 Hz frame rate. setPulse() with no rate ends it.
+function g.setPulse(rate,floor) if rate then emit("pulse",rate,floor or 0) else emit("pulse") end end
 function g.getLineWidth() return lineWidth end
 function g.setLineWidth(value) lineWidth=value; emit("lineWidth",value) end
 function g.rectangle(mode,x,y,w,h,rx,ry) emit("rectangle",mode,x,y,w,h,color,rx or 0,ry or rx or 0) end
@@ -121,11 +133,20 @@ function g.polygon(mode,...)
     if type(points[1])=="table" then points=points[1] end
     emit("polygon",mode,points,color)
 end
+function g.setScissor(x,y,w,h)
+    if x then emit("clipPush",x,y,w,h) else emit("clipPop") end
+end
 function love.window.getMode() return width,height,{} end
 function love.window.setMode(w,h) width,height=w,h end
 function love.window.getPosition() return 0,0,1 end
 function love.window.setPosition() end
-function love.audio.newSource() return {play=function() end,stop=function() end,isPlaying=function() return false end,setLooping=function() end} end
+-- Sounds play in the browser: each play() raises that file's count, sent with every frame.
+local soundCounts = {}
+function love.audio.newSource(path)
+    soundCounts[path] = soundCounts[path] or 0
+    return {play=function() soundCounts[path] = soundCounts[path] + 1 end,stop=function() end,
+        isPlaying=function() return false end,setLooping=function() end}
+end
 function love.event.quit() end
 
 local function json(value)
@@ -154,11 +175,15 @@ for input in io.lines() do
     commands={}
     color={1,1,1,1}
     local ok,err=pcall(function()
-        for key in input:gmatch("[^,]+") do love.keypressed(key) end
+        for key in input:gmatch("[^,]+") do
+            local action,x,y=key:match("^map/(%a+)/([%d%.%-]+)/([%d%.%-]+)$")
+            if action then require("MapView").input(action,tonumber(x),tonumber(y))
+            else love.keypressed(key) end
+        end
         love.update(0.2)
         love.draw()
     end)
-    local frame={width=width,height=height,commands=commands,game=GameInfo,
+    local frame={width=width,height=height,commands=commands,game=GameInfo,sounds=soundCounts,
         state=ok and (GameInfo.currentFile and GameInfo.currentFile~=255 and "connected" or "waiting") or "error"}
     if not ok then frame.message=tostring(err); frame.commands={} end
     io.write(json(frame).."\n"); io.flush()

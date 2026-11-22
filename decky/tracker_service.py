@@ -1,9 +1,13 @@
 """Reusable LAN tracker service; Python 3 standard library and native LuaJIT reader.
-Inputs: installed plugin files, read-only PINE, bounded browser keys from the local network.
+Inputs: installed plugin files, bundled sampled map assets, read-only PINE and
+bounded browser keys/map actions from the local network.
+The M key toggles shared SP radar sound; it defaults on for each reader session.
+Check the sound control offline from repo-merged/ with:
+python3 tools-n-shit/tracker-tests/sp/check-sp-sound-frames.py
 Outputs: in-memory drawing frames and HTTP on LAN port 28080; no frame files.
 Safety: no login; serves only clients on private/link-local/loopback/Tailscale addresses, only
 for IP-literal, single-label or .local host names (blocks DNS rebinding), and accepts keys only
-as same-origin JSON POSTs (blocks other websites); static package assets only; no recordings,
+as same-origin JSON POSTs (blocks other websites); static package assets only. No recordings,
 emulator writes, shell commands, filesystem browsing or sudo.
 The reader runs only while a device is watching: it starts on the first frame request and
 stops after IDLE_SECONDS without one, so PCSX2 gets no PINE traffic while nobody looks.
@@ -14,6 +18,7 @@ import argparse
 import ipaddress
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import math
 import mimetypes
 from pathlib import Path
 import queue
@@ -28,7 +33,7 @@ import os
 
 TAILSCALE = ipaddress.ip_network("100.64.0.0/10")
 IDLE_SECONDS = 15
-KEYS = {"f1", "f2", "f3", "f4", "d", "h", "v", "l", "t", "i", "q", "e",
+KEYS = {"home", "f1", "f2", "f3", "f4", "d", "h", "v", "l", "t", "i", "q", "e", "m", "b", "n", "f",
         "1", "2", "3", "4", "a", "kp0", "kp1", "kp2", "kp3", "kp4"}
 
 
@@ -229,7 +234,8 @@ class TrackerService:
                 return self.send_data(target.read_bytes(), mimetypes.guess_type(str(target))[0] or "application/octet-stream")
 
             def do_POST(self):
-                if urlsplit(self.path).path != "/api/key":
+                route = urlsplit(self.path).path
+                if route not in {"/api/key", "/api/map"}:
                     return self.json({"error": "Not found"}, 404)
                 if not self.allowed():
                     return self.json({"error": "Only devices on the local network may connect"}, 403)
@@ -239,14 +245,22 @@ class TrackerService:
                     return self.json({"error": "Controls must come from the tracker page"}, 403)
                 try:
                     length = int(self.headers.get("Content-Length", "0"))
-                    if not 0 < length <= 128:
+                    if not 0 < length <= 256:
                         raise ValueError()
-                    key = json.loads(self.rfile.read(length))["key"]
-                    if not isinstance(key, str) or key not in KEYS:
-                        raise ValueError()
+                    data = json.loads(self.rfile.read(length))
+                    if route == "/api/map":
+                        action, x, y = data["action"], data["x"], data["y"]
+                        if action not in {"hover", "down", "move", "up", "in", "out", "fit"} or any(
+                                type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 10000 for v in (x, y)):
+                            raise ValueError()
+                        key = f"map/{action}/{x:.2f}/{y:.2f}"
+                    else:
+                        key = data["key"]
+                        if not isinstance(key, str) or key not in KEYS:
+                            raise ValueError()
                     service.keys.put_nowait(key)
                     service.touch()
-                except (ValueError, KeyError, TypeError, queue.Full):
+                except (ValueError, KeyError, TypeError, AttributeError, queue.Full):
                     return self.json({"error": "Invalid control or control queue full"}, 400)
                 return self.json({"ok": True})
 
