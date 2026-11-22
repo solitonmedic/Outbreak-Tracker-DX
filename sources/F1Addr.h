@@ -320,13 +320,13 @@ const int F1_ItemRandom2 = 0x23BBA1;
 const int F1_PuzzleRandom = 0x23BBA0;// puzzle set
 const int F1_Cleared = 0x48BF60;//
 /*pass 6D6570
-事件零下48BF60
+浜嬩欢闆朵笅48BF60
 b7f 48AD93:0x00=off 0x01=on
 b5f 48AD91:0x40=off 0x50=on
 b4f 48AD92:0x00=off 0x40=on
-零下pass 48AC17 A375=0x20 J126=0x40 C582=0x80
+闆朵笅pass 48AC17 A375=0x20 J126=0x40 C582=0x80
 48AC13 0634 0-1f 80-9f 4509 20-3f a0 bf 9741 40-7f c0-ff
-狱炎谜题 1=0x20 2=0x40 3=0x80 4=0x100
+鐙辩値璋滈 1=0x20 2=0x40 3=0x80 4=0x100
 48AC1B 02
 48ADCE
     :0 44 110
