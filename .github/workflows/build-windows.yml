@@ -139,14 +139,15 @@ jobs:
         run: |
           # The runner has no GPU; LÖVE needs OpenGL 2.1. Mesa's llvmpipe is
           # copied next to the test copies only, never into the distribution.
+          # 26.2.5: the 26.2.6 and 26.2.7 MSVC packages ship without opengl32.dll.
           # A failure is also reported as an annotation on the run's summary page.
           try {
             $archive = Join-Path $env:RUNNER_TEMP 'mesa.7z'
             Invoke-WebRequest `
-              -Uri 'https://github.com/pal1000/mesa-dist-win/releases/download/26.2.6/mesa3d-26.2.6-release-msvc.7z' `
+              -Uri 'https://github.com/pal1000/mesa-dist-win/releases/download/26.2.5/mesa3d-26.2.5-release-msvc.7z' `
               -OutFile $archive
             $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
-            if ($hash -ne 'b2e00615feaba45942343c265cc8c5f576142ca682c1ac6661922d4b72492877') {
+            if ($hash -ne '997123ef4ce8896204ab912d5b54f19372c487ff9835bcefafa2fca23b8953c2') {
               throw "Mesa archive checksum mismatch: $hash ($((Get-Item $archive).Length) bytes)"
             }
             $extract = Join-Path $env:RUNNER_TEMP 'mesa-extract'
