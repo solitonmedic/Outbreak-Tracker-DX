@@ -26,43 +26,48 @@
 
 #define EE_RAM_SIZE (32u * 1024u * 1024u)
 
-__declspec(dllexport) unsigned char *EEmem = NULL;
+__declspec(dllexport) unsigned char* EEmem = NULL;
 
-static uint32_t u32(const unsigned char *p)
+static uint32_t u32(const unsigned char* p)
 {
-	return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
+    return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
-	unsigned char header[8], record[8];
-	unsigned char *region;
-	FILE *frame;
-	if (argc < 2) {
-		fprintf(stderr, "usage: pcsx2-qt.exe FRAME.otf\n");
-		return 2;
-	}
-	region = (unsigned char *)VirtualAlloc(NULL, 3 * EE_RAM_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	if (!region) {
-		fprintf(stderr, "cannot allocate the emulated memory\n");
-		return 3;
-	}
-	EEmem = region + EE_RAM_SIZE;
-	frame = fopen(argv[1], "rb");
-	if (!frame || fread(header, 1, 8, frame) != 8 || memcmp(header, "OTFRAME1", 8) != 0) {
-		fprintf(stderr, "cannot read the frame file\n");
-		return 4;
-	}
-	while (fread(record, 1, 8, frame) == 8) {
-		uint32_t address = u32(record), length = u32(record + 4);
-		if ((uint64_t)address + length > EE_RAM_SIZE || fread(EEmem + address, 1, length, frame) != length) {
-			fprintf(stderr, "damaged frame file\n");
-			return 5;
-		}
-	}
-	fclose(frame);
-	printf("ready\n");
-	fflush(stdout);
-	for (;;)
-		Sleep(1000);
+    unsigned char header[8], record[8];
+    unsigned char* region;
+    FILE* frame;
+    if (argc < 2)
+    {
+        fprintf(stderr, "usage: pcsx2-qt.exe FRAME.otf\n");
+        return 2;
+    }
+    region = (unsigned char*)VirtualAlloc(NULL, 3 * EE_RAM_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (!region)
+    {
+        fprintf(stderr, "cannot allocate the emulated memory\n");
+        return 3;
+    }
+    EEmem = region + EE_RAM_SIZE;
+    frame = fopen(argv[1], "rb");
+    if (!frame || fread(header, 1, 8, frame) != 8 || memcmp(header, "OTFRAME1", 8) != 0)
+    {
+        fprintf(stderr, "cannot read the frame file\n");
+        return 4;
+    }
+    while (fread(record, 1, 8, frame) == 8)
+    {
+        uint32_t address = u32(record), length = u32(record + 4);
+        if ((uint64_t)address + length > EE_RAM_SIZE || fread(EEmem + address, 1, length, frame) != length)
+        {
+            fprintf(stderr, "damaged frame file\n");
+            return 5;
+        }
+    }
+    fclose(frame);
+    printf("ready\n");
+    fflush(stdout);
+    for (;;)
+        Sleep(1000);
 }

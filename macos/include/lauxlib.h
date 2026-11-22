@@ -1,6 +1,7 @@
 #pragma once
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 #include_next <lauxlib.h>
 #ifdef __cplusplus

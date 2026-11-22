@@ -13,12 +13,12 @@ const int F2_LocalSlot = 0x4912BD; // u8 0-based local player slot (frames + 5)
 const int F2_RoomPriorty = 0x007d7a90;
 
 const int F2_PositionX = 0x38;
-const int F2_VoiceID = 0xDC4; // u32 voice packet ID; supported code evidence
+const int F2_VoiceID = 0xDC4;    // u32 voice packet ID; supported code evidence
 const int F2_VoiceTicks = 0xDCC; // s16 voice duration countdown
 const int F2_PositionY = 0x40;
 const int F2_PositionHeight = 0x3C; // float vertical coordinate; F2 Addresses row 39
-const int F2_ForwardX = 0x70; // facing: map-X component of the forward axis
-const int F2_ForwardY = 0x50; // facing: map-Y component of the forward axis
+const int F2_ForwardX = 0x70;       // facing: map-X component of the forward axis
+const int F2_ForwardY = 0x50;       // facing: map-Y component of the forward axis
 const int F2_RoomIDOffset = 0x1E2;
 const int F2_CharacterEnabled = 0;
 const int F2_CharacterInGame = 1;
@@ -37,8 +37,8 @@ const int F2_PowerOffset = 0xBDC;
 const int F2_InventoryOffset = 0xC94;
 const int F2_EquippedItemOffset = 0xC8C;
 const int F2_BleedTimeOffset = 0xC6A;
-const int F2_AntiVirusTimeOffset = 0xBCA;//anti-virus time
-const int F2_HerbTimeOffset = 0xBCE;//herb time
+const int F2_AntiVirusTimeOffset = 0xBCA; //anti-virus time
+const int F2_HerbTimeOffset = 0xBCE;      //herb time
 
 const int F2_PickupStructSize = 60;
 const int F2_ItemRoomIDOffset = 1;
@@ -46,7 +46,7 @@ const int F2_ItemPositionXOffset = 8;  // float X (map X)
 const int F2_ItemPositionYOffset = 16; // float Z (map Y)
 const int F2_PickupCountOffset = 36;
 const int F2_PickupOffset = 40;
-const int F2_PresentOffset = 32;//28 38
+const int F2_PresentOffset = 32; //28 38
 const int F2_MixOffset = 27;
 const int F2_IDOffset = 6;
 const int F2_NumberOffset = 4;
@@ -55,38 +55,38 @@ int F2_GetCharAddress(int characterID)
 {
     switch (characterID)
     {
-        case 0:
-            return F2_P1Start;
-        case 1:
-            return F2_P2Start;
-        case 2:
-            return F2_P3Start;
-        case 3:
-            return F2_P4Start;
-        default:
-            return -1;
+    case 0:
+        return F2_P1Start;
+    case 1:
+        return F2_P2Start;
+    case 2:
+        return F2_P3Start;
+    case 3:
+        return F2_P4Start;
+    default:
+        return -1;
     }
 }
 
-const int F2_RoomItem = 0x24AF48;//room item pointer 0x24AF48 387CB0
+const int F2_RoomItem = 0x24AF48; //room item pointer 0x24AF48 387CB0
 int F2_GetItemAddress(int characterID)
 {
     switch (characterID)
     {
-        case 0:
-            return 0x3BA200;
-        case 1:
-            return 0x3B9B40;
-        case 2:
-            return 0x3B9B40;
-        case 3:
-            return 0x3B9B40;
-        default:
-            return -1;
+    case 0:
+        return 0x3BA200;
+    case 1:
+        return 0x3B9B40;
+    case 2:
+        return 0x3B9B40;
+    case 3:
+        return 0x3B9B40;
+    default:
+        return -1;
     }
 }
 
-const int F2_Pointer = 0x388314;//enemy HP
+const int F2_Pointer = 0x388314; //enemy HP
 const int F2_EHPOffset = 0x540;
 const int F2_EMaxHPOffset = 0x542;
 const int F2_E1Start = 0x4245D0;
@@ -105,39 +105,39 @@ const int F2_EnemyEnabled = 0;
 const int F2_EnemyInGame = 1;
 const int F2_EnemyNameIDOffset = 3;
 const int F2_EnemyTypeOffset = 0xBD2;
-const int F2_EnemyStatusOffset = 0x32;//8,32,cb0,1F3
-const int F2_EnemyListOffset = 0x760630;//760712;
+const int F2_EnemyStatusOffset = 0x32;   //8,32,cb0,1F3
+const int F2_EnemyListOffset = 0x760630; //760712;
 
 int F2_GetEnemyAddress(int enemyID)
 {
     switch (enemyID)
     {
-        case 0:
-            return F2_E12Start;
-        case 1:
-            return F2_E11Start;
-        case 2:
-            return F2_E10Start;
-        case 3:
-            return F2_E9Start;
-        case 4:
-            return F2_E8Start;
-        case 5:
-            return F2_E7Start;
-        case 6:
-            return F2_E6Start;
-        case 7:
-            return F2_E5Start;
-        case 8:
-            return F2_E4Start;
-        case 9:
-            return F2_E3Start;
-        case 10:
-            return F2_E2Start;
-        case 11:
-            return F2_E1Start;
-        default:
-            return -1;
+    case 0:
+        return F2_E12Start;
+    case 1:
+        return F2_E11Start;
+    case 2:
+        return F2_E10Start;
+    case 3:
+        return F2_E9Start;
+    case 4:
+        return F2_E8Start;
+    case 5:
+        return F2_E7Start;
+    case 6:
+        return F2_E6Start;
+    case 7:
+        return F2_E5Start;
+    case 8:
+        return F2_E4Start;
+    case 9:
+        return F2_E3Start;
+    case 10:
+        return F2_E2Start;
+    case 11:
+        return F2_E1Start;
+    default:
+        return -1;
     }
 }
 
@@ -145,56 +145,56 @@ int F2_GetEnemy2Address(int enemyID)
 {
     switch (enemyID)
     {
-        case 0:
-            return F2_E1Start;
-        case 1:
-            return F2_E2Start;
-        case 2:
-            return F2_E3Start;
-        case 3:
-            return F2_E4Start;
-        case 4:
-            return F2_E5Start;
-        case 5:
-            return F2_E6Start;
-        default:
-            return -1;
+    case 0:
+        return F2_E1Start;
+    case 1:
+        return F2_E2Start;
+    case 2:
+        return F2_E3Start;
+    case 3:
+        return F2_E4Start;
+    case 4:
+        return F2_E5Start;
+    case 5:
+        return F2_E6Start;
+    default:
+        return -1;
     }
 }
 
-const int F2_Coin = 0x491188;//wild things
-const int F2_KilledZombie = 0x491268;//47ca64,49010c,491268,desperate times
+const int F2_Coin = 0x491188;         //wild things
+const int F2_KilledZombie = 0x491268; //47ca64,49010c,491268,desperate times
 //const int F2_MaxZombie = 0x2179464a;
 const int F2_DTStart = 0x490f6c;
-const int F2_PlayerNum =  0x24AFCC;
-const int F2_HostStatus =  0x62DDF0;
-const int F2_HostPlayer =  0x6411E6;//number of players
-const int F2_HostMaxPlayer =  0x5FF77A;//number of players
-const int F2_HostScenarioID =  0x62DDF6;
-const int F2_HostTime =  0x62E768;
+const int F2_PlayerNum = 0x24AFCC;
+const int F2_HostStatus = 0x62DDF0;
+const int F2_HostPlayer = 0x6411E6;    //number of players
+const int F2_HostMaxPlayer = 0x5FF77A; //number of players
+const int F2_HostScenarioID = 0x62DDF6;
+const int F2_HostTime = 0x62E768;
 const int F2_HostDifficulty = 0x6020CA;
-const int F2_DoorHP = 0x477722;//4776E0
-const int F2_DoorFlag = 0x49021C;//lock flag
+const int F2_DoorHP = 0x477722;   //4776E0
+const int F2_DoorFlag = 0x49021C; //lock flag
 
-const int F2_Door1HP = 0x477762;//4777A2 后巷门
-const int F2_Door2HP = 0x477720;//477760 餐厅后门
-const int F2_Door3HP = 0x477724;//餐厅厨房S
-const int F2_Door4HP = 0x477726;//餐厅厨房W
-const int F2_Door5HP = 0x4777E4;//477820 园内南>东门
-const int F2_Door6HP = 0x4777E0;//477864 园内南>北门
-const int F2_Door7HP = 0x477824;//477860 园内东>北门
-const int F2_Door8HP = 0x4779E2;//477A66 大象舞台
-const int F2_Door9HP = 0x4778AE;//477B64 异界 东侧
-const int F2_Door10HP = 0x4777A4;//4778A0 异界 西侧
-const int F2_Door11HP = 0x4778AC;//4779A0 休息室右
-const int F2_Door12HP = 0x4778AA;//4779A2 休息室左
-const int F2_Door13HP = 0x477B26;//477BE0 记忆203房
-const int F2_Door14HP = 0x477724;//4777E0 大厅>1楼大堂
-const int F2_Door15HP = 0x477824;//477920 办公室>1楼东侧
-const int F2_Door16HP = 0x4777E4;//477BE0 1楼大堂>U走廊
-const int F2_Door17HP = 0x4779A0;//4779E0 停尸房
-const int F2_Door18HP = 0x477A62;//477AA0 狗屋
-const int F2_Door19HP = 0x477B00;//eotr hole hp
+const int F2_Door1HP = 0x477762;  //4777A2 后巷门
+const int F2_Door2HP = 0x477720;  //477760 餐厅后门
+const int F2_Door3HP = 0x477724;  //餐厅厨房S
+const int F2_Door4HP = 0x477726;  //餐厅厨房W
+const int F2_Door5HP = 0x4777E4;  //477820 园内南>东门
+const int F2_Door6HP = 0x4777E0;  //477864 园内南>北门
+const int F2_Door7HP = 0x477824;  //477860 园内东>北门
+const int F2_Door8HP = 0x4779E2;  //477A66 大象舞台
+const int F2_Door9HP = 0x4778AE;  //477B64 异界 东侧
+const int F2_Door10HP = 0x4777A4; //4778A0 异界 西侧
+const int F2_Door11HP = 0x4778AC; //4779A0 休息室右
+const int F2_Door12HP = 0x4778AA; //4779A2 休息室左
+const int F2_Door13HP = 0x477B26; //477BE0 记忆203房
+const int F2_Door14HP = 0x477724; //4777E0 大厅>1楼大堂
+const int F2_Door15HP = 0x477824; //477920 办公室>1楼东侧
+const int F2_Door16HP = 0x4777E4; //477BE0 1楼大堂>U走廊
+const int F2_Door17HP = 0x4779A0; //4779E0 停尸房
+const int F2_Door18HP = 0x477A62; //477AA0 狗屋
+const int F2_Door19HP = 0x477B00; //eotr hole hp
 
 // Per-room interaction table (Japanese File 2). Same record layout as File 1
 // (box corners at +0x00..+0x1C, last player struct at +0x34, lock counter set
@@ -208,72 +208,112 @@ int F2_GetDoorHP(int doorID)
 {
     switch (doorID)
     {
-        case 0:return F2_Door1HP;
-        case 1:return F2_Door2HP;
-        case 2:return F2_Door3HP;
-        case 3:return F2_Door4HP;
-        case 4:return F2_Door5HP;
-        case 5:return F2_Door6HP;
-        case 6:return F2_Door7HP;
-        case 7:return F2_Door8HP;
-        case 8:return F2_Door9HP;
-        case 9:return F2_Door10HP;
-        case 10:return F2_Door11HP;
-        case 11:return F2_Door12HP;
-        case 12:return F2_Door13HP;
-        case 13:return F2_Door14HP;
-        case 14:return F2_Door15HP;
-        case 15:return F2_Door16HP;
-        case 16:return F2_Door17HP;
-        case 17:return F2_Door18HP;
-        case 18:return F2_Door19HP;
-        default:return -1;
+    case 0:
+        return F2_Door1HP;
+    case 1:
+        return F2_Door2HP;
+    case 2:
+        return F2_Door3HP;
+    case 3:
+        return F2_Door4HP;
+    case 4:
+        return F2_Door5HP;
+    case 5:
+        return F2_Door6HP;
+    case 6:
+        return F2_Door7HP;
+    case 7:
+        return F2_Door8HP;
+    case 8:
+        return F2_Door9HP;
+    case 9:
+        return F2_Door10HP;
+    case 10:
+        return F2_Door11HP;
+    case 11:
+        return F2_Door12HP;
+    case 12:
+        return F2_Door13HP;
+    case 13:
+        return F2_Door14HP;
+    case 14:
+        return F2_Door15HP;
+    case 15:
+        return F2_Door16HP;
+    case 16:
+        return F2_Door17HP;
+    case 17:
+        return F2_Door18HP;
+    case 18:
+        return F2_Door19HP;
+    default:
+        return -1;
     }
 }
-const int F2_Door1Flag = 0x490234;//490228/490234 后巷门
-const int F2_Door2Flag = 0x490228;//49021C/490228 餐厅后门
-const int F2_Door3Flag = 0x49021C;//餐厅厨房S
-const int F2_Door4Flag = 0x49021C;//餐厅厨房W
-const int F2_Door5Flag = 0x490240;//490240/49024C 园内南>东门
-const int F2_Door6Flag = 0x490240;//490240/490258 园内南>北门
-const int F2_Door7Flag = 0x490258;//49024C/490258 园内东>北门
-const int F2_Door8Flag = 0x4902B8;//4902A0/4902B8 大象舞台
-const int F2_Door9Flag = 0x4902E8;//490264/4902E8 异界 东侧
-const int F2_Door10Flag = 0x490234;//490234/490264 异界 西侧
-const int F2_Door11Flag = 0x490294;//490264/490294 休息室右
-const int F2_Door12Flag = 0x490294;//490264/490294 休息室左
-const int F2_Door13Flag = 0x490300;//490300 4902DC 记忆203房
-const int F2_Door14Flag = 0x49021C;//49021C/490240 大厅>1楼大堂
-const int F2_Door15Flag = 0x49027C;//49024C/49027C 办公室>1楼东侧
-const int F2_Door16Flag = 0x490300;//490240/490300 1楼大堂>U走廊
-const int F2_Door17Flag = 0x490294;//490294/4902A0 停尸房
-const int F2_Door18Flag = 0x4902C4;//4902B8/4902C4 狗屋
-const int F2_Door19Flag = 0x48FFF4;//eotr hole hp
+const int F2_Door1Flag = 0x490234;  //490228/490234 后巷门
+const int F2_Door2Flag = 0x490228;  //49021C/490228 餐厅后门
+const int F2_Door3Flag = 0x49021C;  //餐厅厨房S
+const int F2_Door4Flag = 0x49021C;  //餐厅厨房W
+const int F2_Door5Flag = 0x490240;  //490240/49024C 园内南>东门
+const int F2_Door6Flag = 0x490240;  //490240/490258 园内南>北门
+const int F2_Door7Flag = 0x490258;  //49024C/490258 园内东>北门
+const int F2_Door8Flag = 0x4902B8;  //4902A0/4902B8 大象舞台
+const int F2_Door9Flag = 0x4902E8;  //490264/4902E8 异界 东侧
+const int F2_Door10Flag = 0x490234; //490234/490264 异界 西侧
+const int F2_Door11Flag = 0x490294; //490264/490294 休息室右
+const int F2_Door12Flag = 0x490294; //490264/490294 休息室左
+const int F2_Door13Flag = 0x490300; //490300 4902DC 记忆203房
+const int F2_Door14Flag = 0x49021C; //49021C/490240 大厅>1楼大堂
+const int F2_Door15Flag = 0x49027C; //49024C/49027C 办公室>1楼东侧
+const int F2_Door16Flag = 0x490300; //490240/490300 1楼大堂>U走廊
+const int F2_Door17Flag = 0x490294; //490294/4902A0 停尸房
+const int F2_Door18Flag = 0x4902C4; //4902B8/4902C4 狗屋
+const int F2_Door19Flag = 0x48FFF4; //eotr hole hp
 
 int F2_GetDoorFlag(int doorID)
 {
     switch (doorID)
     {
-        case 0:return F2_Door1Flag;
-        case 1:return F2_Door2Flag;
-        case 2:return F2_Door3Flag;
-        case 3:return F2_Door4Flag;
-        case 4:return F2_Door5Flag;
-        case 5:return F2_Door6Flag;
-        case 6:return F2_Door7Flag;
-        case 7:return F2_Door8Flag;
-        case 8:return F2_Door9Flag;
-        case 9:return F2_Door10Flag;
-        case 10:return F2_Door11Flag;
-        case 11:return F2_Door12Flag;
-        case 12:return F2_Door13Flag;
-        case 13:return F2_Door14Flag;
-        case 14:return F2_Door15Flag;
-        case 15:return F2_Door16Flag;
-        case 16:return F2_Door17Flag;
-        case 17:return F2_Door18Flag;
-        case 18:return F2_Door19Flag;
-        default:return -1;
+    case 0:
+        return F2_Door1Flag;
+    case 1:
+        return F2_Door2Flag;
+    case 2:
+        return F2_Door3Flag;
+    case 3:
+        return F2_Door4Flag;
+    case 4:
+        return F2_Door5Flag;
+    case 5:
+        return F2_Door6Flag;
+    case 6:
+        return F2_Door7Flag;
+    case 7:
+        return F2_Door8Flag;
+    case 8:
+        return F2_Door9Flag;
+    case 9:
+        return F2_Door10Flag;
+    case 10:
+        return F2_Door11Flag;
+    case 11:
+        return F2_Door12Flag;
+    case 12:
+        return F2_Door13Flag;
+    case 13:
+        return F2_Door14Flag;
+    case 14:
+        return F2_Door15Flag;
+    case 15:
+        return F2_Door16Flag;
+    case 16:
+        return F2_Door17Flag;
+    case 17:
+        return F2_Door18Flag;
+    case 18:
+        return F2_Door19Flag;
+    default:
+        return -1;
     }
 }
 
@@ -284,7 +324,7 @@ int F2_GetDoorFlag(int doorID)
 死守 5个门
 突破 1个洞
 wt door 0x477762 0x4777A2 flag 490234 first locked door 3BC2C0
-49021C 餐厅S FLAG>=4 and flag<8 lock;unlock: >=8 and <= 0x0C 
+49021C 餐厅S FLAG>=4 and flag<8 lock;unlock: >=8 and <= 0x0C
 49021C 餐厅W FLAG>=8 lock unlock: <8 and
 490234 后巷门FLAG 02=lock 00=unlock
 490228 餐厅后门FLAG 03=lock 02=unlock
@@ -297,7 +337,7 @@ wt door 0x477762 0x4777A2 flag 490234 first locked door 3BC2C0
 477B00 hole hp
 48FFF5 (490035) flag 20=broke, 00= block
 //dt unlock door 3BC0E4 door flag 49021C
-//p1power +BDC 47c90c 
+//p1power +BDC 47c90c
 //num of player in game 24AFCC 49135f
 //slot character 630D40 6310E8 631490 631838
 //slot npc 630D42 1
@@ -319,16 +359,16 @@ int F2_GetSlotCharAddress(int characterID)
 {
     switch (characterID)
     {
-        case 0:
-            return F2_SlotP1Start;
-        case 1:
-            return F2_SlotP2Start;
-        case 2:
-            return F2_SlotP3Start;
-        case 3:
-            return F2_SlotP4Start;
-        default:
-            return -1;
+    case 0:
+        return F2_SlotP1Start;
+    case 1:
+        return F2_SlotP2Start;
+    case 2:
+        return F2_SlotP3Start;
+    case 3:
+        return F2_SlotP4Start;
+    default:
+        return -1;
     }
 }
 const int F2_SlotPlayer = 0x2;
@@ -336,7 +376,7 @@ const int F2_SlotMaxPlayer = 0x4;
 const int F2_SlotStatus = 0xE;
 const int F2_SlotPass = 0xF;
 const int F2_SlotScenarioID = 0x14;
-const int F2_SlotVersion = 0x16;//0x11=dvd, 0x12=hdd
+const int F2_SlotVersion = 0x16; //0x11=dvd, 0x12=hdd
 const int F2_SlotTitle = 0x18;
 const int F2_Slot1 = 0x628DA0;
 const int F2_Slot2 = 0x628EFC;
@@ -363,76 +403,76 @@ int F2_GetLobbyAddress(int slotNum)
 {
     switch (slotNum)
     {
-        case 0:
-            return F2_Slot1;
-        case 1:
-            return F2_Slot2;
-        case 2:
-            return F2_Slot3;
-        case 3:
-            return F2_Slot4;
-        case 4:
-            return F2_Slot5;
-        case 5:
-            return F2_Slot6;
-        case 6:
-            return F2_Slot7;
-        case 7:
-            return F2_Slot8;
-        case 8:
-            return F2_Slot9;
-        case 9:
-            return F2_Slot10;
-        case 10:
-            return F2_Slot11;
-        case 11:
-            return F2_Slot12;
-        case 12:
-            return F2_Slot13;
-        case 13:
-            return F2_Slot14;
-        case 14:
-            return F2_Slot15;
-        case 15:
-            return F2_Slot16;
-        case 16:
-            return F2_Slot17;
-        case 17:
-            return F2_Slot18;
-        case 18:
-            return F2_Slot19;
-        case 19:
-            return F2_Slot20;
-        default:
-            return -1;
+    case 0:
+        return F2_Slot1;
+    case 1:
+        return F2_Slot2;
+    case 2:
+        return F2_Slot3;
+    case 3:
+        return F2_Slot4;
+    case 4:
+        return F2_Slot5;
+    case 5:
+        return F2_Slot6;
+    case 6:
+        return F2_Slot7;
+    case 7:
+        return F2_Slot8;
+    case 8:
+        return F2_Slot9;
+    case 9:
+        return F2_Slot10;
+    case 10:
+        return F2_Slot11;
+    case 11:
+        return F2_Slot12;
+    case 12:
+        return F2_Slot13;
+    case 13:
+        return F2_Slot14;
+    case 14:
+        return F2_Slot15;
+    case 15:
+        return F2_Slot16;
+    case 16:
+        return F2_Slot17;
+    case 17:
+        return F2_Slot18;
+    case 18:
+        return F2_Slot19;
+    case 19:
+        return F2_Slot20;
+    default:
+        return -1;
     }
 }
 
 // u32 Elimination countdown, 30 ticks per second: 30:00 limit minus the clock
 // (= 54000 - 0x4912B8 in Elimination 1 and 2 runs, 2026-11-20); 0 outside Elimination.
 const int F2_EliminationTime = 0x491230;
-const int F2_WTTime = 0x491248;//咆哮
-const int F2_PassWT = 0x48FE7B;//咆哮
-const int F2_PassDT1 = 0x490070;//死守
-const int F2_PassDT2 = 0x490072;//死守
-const int F2_PassDT3 = 0x48FE70;//死守 adlib 48FE70
-const int F2_PassUB1 = 0x490073;//异界
-const int F2_PassUB2 = 0x490075;//异界
-const int F2_PassUB3 = 0x48FE76;//异界 adlib 48FE76
-const int F2_EscapeTime = 0x491256;//异界
-const int F2_FBTime = 0x491254;//记忆
-const int F2_Pass4 = 0x491268;//突破
+const int F2_WTTime = 0x491248;     //咆哮
+const int F2_PassWT = 0x48FE7B;     //咆哮
+const int F2_PassDT1 = 0x490070;    //死守
+const int F2_PassDT2 = 0x490072;    //死守
+const int F2_PassDT3 = 0x48FE70;    //死守 adlib 48FE70
+const int F2_PassUB1 = 0x490073;    //异界
+const int F2_PassUB2 = 0x490075;    //异界
+const int F2_PassUB3 = 0x48FE76;    //异界 adlib 48FE76
+const int F2_EscapeTime = 0x491256; //异界
+const int F2_FBTime = 0x491254;     //记忆
+const int F2_Pass4 = 0x491268;      //突破
 const int F2_Difficulty = 0x49135A;
-const int F2_DTGasRandom = 0x24ADB0;//24ADB0(offline) 491338(online)
+const int F2_DTGasRandom = 0x24ADB0; //24ADB0(offline) 491338(online)
 const int F2_DTGasFlag = 0x48FFFC;
 const int F2_DTGasTime = 0x491278;
 const int F2_DTFightTime = 0x49126C;
 const int F2_DTFightTime2 = 0x49124E;
-const int F2_DTGarageTime = 0x491270;//48FE71 switch
-const int F2_ItemRandom = 0x24AD30;//
-const int F2_ItemRandom2 = 0x24ADB1;//DE C2
-const int F2_PuzzleRandom = 0x24ADB0;// puzzle set
-const int F2_Cleared = 0x4912A0;//4912A0 4912C9
+const int F2_DTGarageTime = 0x491270; //48FE71 switch
+const int F2_ItemRandom = 0x24AD30;   //
+const int F2_ItemRandom2 = 0x24ADB1;  //DE C2
+const int F2_PuzzleRandom = 0x24ADB0; // puzzle set
+const int F2_Cleared = 0x4912A0;      //4912A0 4912C9
 /*clear 4912A0
 24AD31 item set in next game
 112334
@@ -731,7 +771,7 @@ FF 4
  online 8D=vh set1 online 8e= vh set2
 offline 93=easy 8b=normal 7c= hard 73=vh
 //491353 01
-//(item?) 49135E 2a =set 1 2b= set2 
+//(item?) 49135E 2a =set 1 2b= set2
 //49136F 01
 //493982 02
 //490071 		39DJ LV4U EXP2 E67C 6SR2 Q898 44V7 K3G6 SW4D FM54 5TF3 4NZH B37B LYNX 9AAA YTY7

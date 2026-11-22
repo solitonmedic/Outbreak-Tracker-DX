@@ -8,7 +8,8 @@
 //
 // The Hive password pin of the Python recorder is not included.
 
-extern "C" {
+extern "C"
+{
 #include <lua.h>
 #include <lauxlib.h>
 }
@@ -40,7 +41,8 @@ extern "C" {
 
 namespace fs = std::filesystem;
 
-namespace {
+namespace
+{
 
 constexpr std::uint32_t kEERamSize = 32 * 1024 * 1024;
 // pine.h allows fewer than 50,000 commands and 450,000 reply bytes per batch.
@@ -52,108 +54,194 @@ const int kFile1Scenarios[] = {1, 2, 28, 35, 41};
 // ---------------------------------------------------------------------------
 // Minimal ordered JSON value, enough for the manifest and sidecars.
 
-class Json {
-public:
-    enum class Type { Null, Bool, Int, Real, String, Array, Object };
+class Json
+{
+  public:
+    enum class Type
+    {
+        Null,
+        Bool,
+        Int,
+        Real,
+        String,
+        Array,
+        Object
+    };
 
     Json() = default;
-    Json(std::nullptr_t) {}
-    Json(bool value) : type_(Type::Bool), bool_(value) {}
-    Json(int value) : type_(Type::Int), int_(value) {}
-    Json(long long value) : type_(Type::Int), int_(value) {}
-    Json(std::uint32_t value) : type_(Type::Int), int_(value) {}
-    Json(double value) : type_(Type::Real), real_(value) {}
-    Json(const char* value) : type_(Type::String), string_(value) {}
-    Json(std::string value) : type_(Type::String), string_(std::move(value)) {}
+    Json(std::nullptr_t)
+    {
+    }
+    Json(bool value) : type_(Type::Bool), bool_(value)
+    {
+    }
+    Json(int value) : type_(Type::Int), int_(value)
+    {
+    }
+    Json(long long value) : type_(Type::Int), int_(value)
+    {
+    }
+    Json(std::uint32_t value) : type_(Type::Int), int_(value)
+    {
+    }
+    Json(double value) : type_(Type::Real), real_(value)
+    {
+    }
+    Json(const char* value) : type_(Type::String), string_(value)
+    {
+    }
+    Json(std::string value) : type_(Type::String), string_(std::move(value))
+    {
+    }
 
-    static Json array() { Json json; json.type_ = Type::Array; return json; }
-    static Json object() { Json json; json.type_ = Type::Object; return json; }
+    static Json array()
+    {
+        Json json;
+        json.type_ = Type::Array;
+        return json;
+    }
+    static Json object()
+    {
+        Json json;
+        json.type_ = Type::Object;
+        return json;
+    }
 
-    Json& operator[](const std::string& key) {
-        if (type_ != Type::Object) *this = object();
+    Json& operator[](const std::string& key)
+    {
+        if (type_ != Type::Object)
+            *this = object();
         for (auto& entry : members_)
-            if (entry.first == key) return entry.second;
+            if (entry.first == key)
+                return entry.second;
         members_.emplace_back(key, Json());
         return members_.back().second;
     }
 
-    void push(Json value) {
-        if (type_ != Type::Array) *this = array();
+    void push(Json value)
+    {
+        if (type_ != Type::Array)
+            *this = array();
         items_.push_back(std::move(value));
     }
 
-    std::size_t size() const { return type_ == Type::Array ? items_.size() : members_.size(); }
+    std::size_t size() const
+    {
+        return type_ == Type::Array ? items_.size() : members_.size();
+    }
 
-    std::string dump() const {
+    std::string dump() const
+    {
         std::string out;
         write(out, 0);
         out += "\n";
         return out;
     }
 
-private:
-    static void indent(std::string& out, int depth) { out.append(static_cast<std::size_t>(depth) * 2, ' '); }
+  private:
+    static void indent(std::string& out, int depth)
+    {
+        out.append(static_cast<std::size_t>(depth) * 2, ' ');
+    }
 
-    static void writeString(std::string& out, const std::string& text) {
+    static void writeString(std::string& out, const std::string& text)
+    {
         out += '"';
-        for (unsigned char c : text) {
-            switch (c) {
-                case '"': out += "\\\""; break;
-                case '\\': out += "\\\\"; break;
-                case '\n': out += "\\n"; break;
-                case '\r': out += "\\r"; break;
-                case '\t': out += "\\t"; break;
-                default:
-                    if (c < 0x20) {
-                        char escaped[8];
-                        std::snprintf(escaped, sizeof(escaped), "\\u%04x", c);
-                        out += escaped;
-                    } else {
-                        out += static_cast<char>(c);
-                    }
+        for (unsigned char c : text)
+        {
+            switch (c)
+            {
+            case '"':
+                out += "\\\"";
+                break;
+            case '\\':
+                out += "\\\\";
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            default:
+                if (c < 0x20)
+                {
+                    char escaped[8];
+                    std::snprintf(escaped, sizeof(escaped), "\\u%04x", c);
+                    out += escaped;
+                }
+                else
+                {
+                    out += static_cast<char>(c);
+                }
             }
         }
         out += '"';
     }
 
-    void write(std::string& out, int depth) const {
+    void write(std::string& out, int depth) const
+    {
         char number[64];
-        switch (type_) {
-            case Type::Null: out += "null"; break;
-            case Type::Bool: out += bool_ ? "true" : "false"; break;
-            case Type::Int: out += std::to_string(int_); break;
-            case Type::Real: {
-                std::snprintf(number, sizeof(number), "%.3f", real_);
-                std::string text = number;
-                while (text.size() > 1 && text.back() == '0' && text[text.size() - 2] != '.') text.pop_back();
-                out += text;
+        switch (type_)
+        {
+        case Type::Null:
+            out += "null";
+            break;
+        case Type::Bool:
+            out += bool_ ? "true" : "false";
+            break;
+        case Type::Int:
+            out += std::to_string(int_);
+            break;
+        case Type::Real:
+        {
+            std::snprintf(number, sizeof(number), "%.3f", real_);
+            std::string text = number;
+            while (text.size() > 1 && text.back() == '0' && text[text.size() - 2] != '.')
+                text.pop_back();
+            out += text;
+            break;
+        }
+        case Type::String:
+            writeString(out, string_);
+            break;
+        case Type::Array:
+            if (items_.empty())
+            {
+                out += "[]";
                 break;
             }
-            case Type::String: writeString(out, string_); break;
-            case Type::Array:
-                if (items_.empty()) { out += "[]"; break; }
-                out += "[\n";
-                for (std::size_t i = 0; i < items_.size(); ++i) {
-                    indent(out, depth + 1);
-                    items_[i].write(out, depth + 1);
-                    out += i + 1 < items_.size() ? ",\n" : "\n";
-                }
-                indent(out, depth);
-                out += "]";
+            out += "[\n";
+            for (std::size_t i = 0; i < items_.size(); ++i)
+            {
+                indent(out, depth + 1);
+                items_[i].write(out, depth + 1);
+                out += i + 1 < items_.size() ? ",\n" : "\n";
+            }
+            indent(out, depth);
+            out += "]";
+            break;
+        case Type::Object:
+            if (members_.empty())
+            {
+                out += "{}";
                 break;
-            case Type::Object:
-                if (members_.empty()) { out += "{}"; break; }
-                out += "{\n";
-                for (std::size_t i = 0; i < members_.size(); ++i) {
-                    indent(out, depth + 1);
-                    writeString(out, members_[i].first);
-                    out += ": ";
-                    members_[i].second.write(out, depth + 1);
-                    out += i + 1 < members_.size() ? ",\n" : "\n";
-                }
-                indent(out, depth);
-                out += "}";
-                break;
+            }
+            out += "{\n";
+            for (std::size_t i = 0; i < members_.size(); ++i)
+            {
+                indent(out, depth + 1);
+                writeString(out, members_[i].first);
+                out += ": ";
+                members_[i].second.write(out, depth + 1);
+                out += i + 1 < members_.size() ? ",\n" : "\n";
+            }
+            indent(out, depth);
+            out += "}";
+            break;
         }
     }
 
@@ -169,7 +257,8 @@ private:
 // ---------------------------------------------------------------------------
 // Helpers
 
-std::string utcNow() {
+std::string utcNow()
+{
     const auto now = std::chrono::system_clock::now();
     const std::time_t seconds = std::chrono::system_clock::to_time_t(now);
     const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
@@ -182,50 +271,71 @@ std::string utcNow() {
     return result;
 }
 
-double rounded(double seconds) { return std::round(seconds * 1000.0) / 1000.0; }
+double rounded(double seconds)
+{
+    return std::round(seconds * 1000.0) / 1000.0;
+}
 
 // Same rule as capture-pine-ee.py's safe_label().
-std::string safeLabel(const std::string& label) {
+std::string safeLabel(const std::string& label)
+{
     std::string cleaned;
     bool lastWasDash = false;
-    for (unsigned char c : label) {
-        if (std::isalnum(c) || c == '.' || c == '_' || c == '-') {
+    for (unsigned char c : label)
+    {
+        if (std::isalnum(c) || c == '.' || c == '_' || c == '-')
+        {
             cleaned += static_cast<char>(c);
             lastWasDash = false;
-        } else if (!lastWasDash) {
+        }
+        else if (!lastWasDash)
+        {
             cleaned += '-';
             lastWasDash = true;
         }
     }
     const auto first = cleaned.find_first_not_of("-._");
     const auto last = cleaned.find_last_not_of("-._");
-    if (first == std::string::npos) return "";
+    if (first == std::string::npos)
+        return "";
     return cleaned.substr(first, last - first + 1);
 }
 
-std::string lower(std::string text) {
-    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+std::string lower(std::string text)
+{
+    std::transform(text.begin(), text.end(), text.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return text;
 }
 
-void writeFileAtomically(const fs::path& path, const std::string& text) {
+void writeFileAtomically(const fs::path& path, const std::string& text)
+{
     const fs::path temporary = path.string() + ".tmp";
     {
         std::ofstream out(temporary, std::ios::binary | std::ios::trunc);
-        if (!out) throw std::runtime_error("Could not write " + temporary.string());
+        if (!out)
+            throw std::runtime_error("Could not write " + temporary.string());
         out << text;
-        if (!out) throw std::runtime_error("Could not write " + temporary.string());
+        if (!out)
+            throw std::runtime_error("Could not write " + temporary.string());
     }
     fs::rename(temporary, path);
 }
 
-struct Release {
+struct Release
+{
     std::string title, gameId, gameVersion, gameCrc;
-    bool operator==(const Release& other) const {
-        return title == other.title && gameId == other.gameId && gameVersion == other.gameVersion && gameCrc == other.gameCrc;
+    bool operator==(const Release& other) const
+    {
+        return title == other.title && gameId == other.gameId && gameVersion == other.gameVersion &&
+               gameCrc == other.gameCrc;
     }
-    bool operator!=(const Release& other) const { return !(*this == other); }
-    Json toJson() const {
+    bool operator!=(const Release& other) const
+    {
+        return !(*this == other);
+    }
+    Json toJson() const
+    {
         Json json = Json::object();
         json["title"] = title;
         json["game_id"] = gameId;
@@ -236,7 +346,8 @@ struct Release {
 };
 
 // Exact-build File 1 maps, as in tools-n-shit/file1_run_monitor.py.
-struct File1Profile {
+struct File1Profile
+{
     const char* gameId;
     const char* gameVersion;
     const char* gameCrc;
@@ -250,14 +361,17 @@ const File1Profile kProfiles[] = {
     {"SLPM-65428", "1.04", "32088394", 0x0048BF78, 0x003065AA, 0x00476DD0, 0x0048AC13, false},
 };
 
-const File1Profile* profileFor(const Release& release) {
+const File1Profile* profileFor(const Release& release)
+{
     for (const auto& profile : kProfiles)
-        if (release.gameId == profile.gameId && release.gameVersion == profile.gameVersion && lower(release.gameCrc) == profile.gameCrc)
+        if (release.gameId == profile.gameId && release.gameVersion == profile.gameVersion &&
+            lower(release.gameCrc) == profile.gameCrc)
             return &profile;
     return nullptr;
 }
 
-Json usPuzzlePolicy() {
+Json usPuzzlePolicy()
+{
     Json policy = Json::object();
     policy["basis"] = "user confirms community update changes some Hive puzzles";
     policy["update_context"] = "Ver2.162 research context; disc metadata alone does not identify the update";
@@ -272,13 +386,15 @@ Json usPuzzlePolicy() {
 // PINE access. Every exchange holds mac_pine_mutex so the reader and the
 // recorder never interleave on the shared connection.
 
-std::string takePineString(char* text) {
+std::string takePineString(char* text)
+{
     std::string result = text ? text : "";
     delete[] text;
     return result;
 }
 
-Release readRelease() {
+Release readRelease()
+{
     std::lock_guard<std::mutex> lock(mac_pine_mutex);
     Release release;
     release.title = takePineString(mac_pine.GetGameTitle());
@@ -288,14 +404,16 @@ Release readRelease() {
     return release;
 }
 
-struct Observation {
+struct Observation
+{
     std::uint32_t frames = 0;
     std::uint16_t scenario = 0, scenarioAfter = 0, room = 0;
     std::uint8_t enabled = 0, pass1 = 0;
 };
 
-Observation readObservation(const File1Profile& profile) {
-    const std::uint32_t player = profile.player;  // player slot 1
+Observation readObservation(const File1Profile& profile)
+{
+    const std::uint32_t player = profile.player; // player slot 1
     std::lock_guard<std::mutex> lock(mac_pine_mutex);
     mac_pine.InitializeBatch();
     mac_pine.Read<std::uint32_t, true>(profile.frames);
@@ -317,10 +435,13 @@ Observation readObservation(const File1Profile& profile) {
 }
 
 // Reads the whole EE RAM in batches. Returns false if stopping was requested.
-bool readEERam(std::vector<std::uint8_t>& memory, const std::atomic<bool>& stopRequested) {
+bool readEERam(std::vector<std::uint8_t>& memory, const std::atomic<bool>& stopRequested)
+{
     memory.resize(kEERamSize);
-    for (std::uint32_t start = 0; start < kEERamSize; start += kReadsPerBatch * 8) {
-        if (stopRequested) return false;
+    for (std::uint32_t start = 0; start < kEERamSize; start += kReadsPerBatch * 8)
+    {
+        if (stopRequested)
+            return false;
         const std::uint32_t count = std::min(kReadsPerBatch, (kEERamSize - start) / 8);
         {
             std::lock_guard<std::mutex> lock(mac_pine_mutex);
@@ -329,7 +450,8 @@ bool readEERam(std::vector<std::uint8_t>& memory, const std::atomic<bool>& stopR
                 mac_pine.Read<std::uint64_t, true>(start + i * 8);
             auto batch = mac_pine.FinalizeBatch();
             mac_pine.SendCommand(batch);
-            for (std::uint32_t i = 0; i < count; ++i) {
+            for (std::uint32_t i = 0; i < count; ++i)
+            {
                 const std::uint64_t value = mac_pine.GetReply<PINE::PCSX2::MsgRead64>(batch, static_cast<int>(i));
                 std::memcpy(&memory[start + i * 8], &value, sizeof(value));
             }
@@ -340,10 +462,11 @@ bool readEERam(std::vector<std::uint8_t>& memory, const std::atomic<bool>& stopR
     return true;
 }
 
-template <typename T>
-T valueAt(const std::vector<std::uint8_t>& memory, std::uint32_t address) {
+template <typename T> T valueAt(const std::vector<std::uint8_t>& memory, std::uint32_t address)
+{
     T value{};
-    if (address + sizeof(T) <= memory.size()) std::memcpy(&value, &memory[address], sizeof(T));
+    if (address + sizeof(T) <= memory.size())
+        std::memcpy(&value, &memory[address], sizeof(T));
     return value;
 }
 
@@ -351,31 +474,40 @@ T valueAt(const std::vector<std::uint8_t>& memory, std::uint32_t address) {
 // Room readiness, ported from RoomMonitor in tools-n-shit/file1_run_monitor.py:
 // a room counts as loaded after two matching polls with an advancing clock.
 
-class RoomMonitor {
-public:
-    std::vector<Json> update(const Observation& current) {
+class RoomMonitor
+{
+  public:
+    std::vector<Json> update(const Observation& current)
+    {
         std::vector<Json> events;
         const bool hadPrevious = hasPrevious_;
         const Observation previous = previous_;
         previous_ = current;
         hasPrevious_ = true;
-        const bool knownScenario = std::find(std::begin(kFile1Scenarios), std::end(kFile1Scenarios), current.scenario) != std::end(kFile1Scenarios);
-        if (current.scenario != current.scenarioAfter || !knownScenario || current.frames == 0) {
+        const bool knownScenario = std::find(std::begin(kFile1Scenarios), std::end(kFile1Scenarios),
+                                             current.scenario) != std::end(kFile1Scenarios);
+        if (current.scenario != current.scenarioAfter || !knownScenario || current.frames == 0)
+        {
             hasPrevious_ = false;
             hasLastRoom_ = false;
             return events;
         }
-        if (hadPrevious && (current.scenario != previous.scenario || current.frames < previous.frames)) {
+        if (hadPrevious && (current.scenario != previous.scenario || current.frames < previous.frames))
+        {
             hasLastRoom_ = false;
             return events;
         }
-        if (current.enabled != 1 || current.room == 0 || current.room >= 128) {
+        if (current.enabled != 1 || current.room == 0 || current.room >= 128)
+        {
             hasPrevious_ = false;
             return events;
         }
-        const bool ready = hadPrevious && previous.enabled == 1 && current.room == previous.room && current.frames > previous.frames;
-        if (!ready) return events;
-        if (!hasLastRoom_ || lastScenario_ != current.scenario || lastRoom_ != current.room) {
+        const bool ready =
+            hadPrevious && previous.enabled == 1 && current.room == previous.room && current.frames > previous.frames;
+        if (!ready)
+            return events;
+        if (!hasLastRoom_ || lastScenario_ != current.scenario || lastRoom_ != current.room)
+        {
             Json event = Json::object();
             event["kind"] = "room_loaded";
             event["scenario_id"] = static_cast<int>(current.scenario);
@@ -391,7 +523,7 @@ public:
         return events;
     }
 
-private:
+  private:
     Observation previous_;
     bool hasPrevious_ = false;
     bool hasLastRoom_ = false;
@@ -401,26 +533,35 @@ private:
 // ---------------------------------------------------------------------------
 // Recorder
 
-struct Marker {
+struct Marker
+{
     std::string capturedAt;
     std::chrono::steady_clock::time_point typedAt;
     std::string note;
 };
 
-class Recorder {
-public:
-    ~Recorder() { stop(); }
+class Recorder
+{
+  public:
+    ~Recorder()
+    {
+        stop();
+    }
 
     // Returns an empty string on success, otherwise the reason it could not start.
-    std::string start(const std::string& requestedLabel, const std::string& outputDir, double interval, double pollInterval) {
+    std::string start(const std::string& requestedLabel, const std::string& outputDir, double interval,
+                      double pollInterval)
+    {
         stop();
         const std::string label = safeLabel(requestedLabel);
-        if (label.empty()) return "Label must contain at least one letter or number";
+        if (label.empty())
+            return "Label must contain at least one letter or number";
         if (!(interval > 0) || !(pollInterval > 0) || !std::isfinite(interval) || !std::isfinite(pollInterval))
             return "Capture and poll intervals must be finite and greater than zero";
         const fs::path runDir = fs::path(outputDir) / label;
         std::error_code error;
-        if (fs::exists(runDir, error)) return "Run folder already exists: " + runDir.string();
+        if (fs::exists(runDir, error))
+            return "Run folder already exists: " + runDir.string();
 
         label_ = label;
         runDir_ = runDir;
@@ -442,52 +583,70 @@ public:
         return "";
     }
 
-    void stop() {
+    void stop()
+    {
         stopRequested_ = true;
         wake_.notify_all();
-        if (worker_.joinable()) worker_.join();
+        if (worker_.joinable())
+            worker_.join();
     }
 
-    void mark(const std::string& note) {
+    void mark(const std::string& note)
+    {
         std::lock_guard<std::mutex> lock(markerMutex_);
-        if (!worker_.joinable()) return;
+        if (!worker_.joinable())
+            return;
         pendingMarkers_.push_back({utcNow(), std::chrono::steady_clock::now(), note});
         wake_.notify_all();
     }
 
-    void pushStatus(lua_State* L) {
+    void pushStatus(lua_State* L)
+    {
         std::lock_guard<std::mutex> lock(statusMutex_);
         lua_newtable(L);
-        lua_pushstring(L, state_.c_str()); lua_setfield(L, -2, "state");
-        lua_pushstring(L, label_.c_str()); lua_setfield(L, -2, "label");
-        lua_pushstring(L, runDir_.string().c_str()); lua_setfield(L, -2, "folder");
-        lua_pushinteger(L, checkpointCount_); lua_setfield(L, -2, "checkpoints");
-        lua_pushstring(L, message_.c_str()); lua_setfield(L, -2, "message");
+        lua_pushstring(L, state_.c_str());
+        lua_setfield(L, -2, "state");
+        lua_pushstring(L, label_.c_str());
+        lua_setfield(L, -2, "label");
+        lua_pushstring(L, runDir_.string().c_str());
+        lua_setfield(L, -2, "folder");
+        lua_pushinteger(L, checkpointCount_);
+        lua_setfield(L, -2, "checkpoints");
+        lua_pushstring(L, message_.c_str());
+        lua_setfield(L, -2, "message");
     }
 
-private:
-    double elapsedSeconds() const {
+  private:
+    double elapsedSeconds() const
+    {
         return std::chrono::duration<double>(std::chrono::steady_clock::now() - startedClock_).count();
     }
 
-    void setStatus(const std::string& state, const std::string& message) {
+    void setStatus(const std::string& state, const std::string& message)
+    {
         std::lock_guard<std::mutex> lock(statusMutex_);
         state_ = state;
         message_ = message;
         checkpointCount_ = static_cast<int>(manifest_["checkpoints"].size());
     }
 
-    void writeManifest() { writeFileAtomically(runDir_ / "manifest.json", manifest_.dump()); }
+    void writeManifest()
+    {
+        writeFileAtomically(runDir_ / "manifest.json", manifest_.dump());
+    }
 
     // Waits until the deadline or until stop/marker activity wakes the thread.
-    void waitUntil(std::chrono::steady_clock::time_point deadline) {
+    void waitUntil(std::chrono::steady_clock::time_point deadline)
+    {
         std::unique_lock<std::mutex> lock(markerMutex_);
         wake_.wait_until(lock, deadline, [this] { return stopRequested_.load() || !pendingMarkers_.empty(); });
     }
 
-    void createRun() {
+    void createRun()
+    {
         fs::create_directories(runDir_.parent_path());
-        if (!fs::create_directory(runDir_)) throw std::runtime_error("Run folder already exists: " + runDir_.string());
+        if (!fs::create_directory(runDir_))
+            throw std::runtime_error("Run folder already exists: " + runDir_.string());
         manifest_ = Json::object();
         manifest_["label"] = label_;
         manifest_["started_at_utc"] = startedAt_;
@@ -513,14 +672,16 @@ private:
     }
 
     // Moves typed markers into the manifest; returns their sequence numbers.
-    std::vector<int> saveMarkers() {
+    std::vector<int> saveMarkers()
+    {
         std::vector<Marker> markers;
         {
             std::lock_guard<std::mutex> lock(markerMutex_);
             markers.swap(pendingMarkers_);
         }
         std::vector<int> sequences;
-        for (const auto& marker : markers) {
+        for (const auto& marker : markers)
+        {
             const int sequence = static_cast<int>(manifest_["markers"].size()) + 1;
             const double elapsed = rounded(std::chrono::duration<double>(marker.typedAt - startedClock_).count());
             Json entry = Json::object();
@@ -530,22 +691,27 @@ private:
             entry["note"] = marker.note;
             manifest_["markers"].push(entry);
             sequences.push_back(sequence);
-            std::cout << "Recorder: marked +" << elapsed << "s: " << (marker.note.empty() ? "(no note)" : marker.note) << std::endl;
+            std::cout << "Recorder: marked +" << elapsed << "s: " << (marker.note.empty() ? "(no note)" : marker.note)
+                      << std::endl;
         }
-        if (!sequences.empty()) writeManifest();
+        if (!sequences.empty())
+            writeManifest();
         return sequences;
     }
 
     // Saves one checkpoint. Returns false if stopping interrupted the read.
-    bool saveCheckpoint(int sequence, const std::vector<std::string>& reasons,
-                        const std::vector<int>& eventSequences, const std::vector<int>& markerSequences) {
+    bool saveCheckpoint(int sequence, const std::vector<std::string>& reasons, const std::vector<int>& eventSequences,
+                        const std::vector<int>& markerSequences)
+    {
         const auto checkpointStarted = std::chrono::steady_clock::now();
         const double elapsed = std::chrono::duration<double>(checkpointStarted - startedClock_).count();
         const std::string capturedAt = utcNow();
         const Release observed = readRelease();
         if (observed != release_)
-            throw std::runtime_error("PCSX2 release metadata changed during the run; recording stopped to avoid mixing builds");
-        if (!readEERam(memory_, stopRequested_)) return false;
+            throw std::runtime_error(
+                "PCSX2 release metadata changed during the run; recording stopped to avoid mixing builds");
+        if (!readEERam(memory_, stopRequested_))
+            return false;
         const auto checkpointFinished = std::chrono::steady_clock::now();
 
         char number[8];
@@ -559,18 +725,22 @@ private:
             throw std::runtime_error("Capture already exists: " + memoryPath.string());
 
         gzFile gz = gzopen(partialPath.c_str(), "wb1");
-        if (!gz) throw std::runtime_error("Could not create " + partialPath.string());
+        if (!gz)
+            throw std::runtime_error("Could not create " + partialPath.string());
         std::size_t written = 0;
-        while (written < memory_.size()) {
+        while (written < memory_.size())
+        {
             const unsigned chunk = static_cast<unsigned>(std::min<std::size_t>(1024 * 1024, memory_.size() - written));
-            if (gzwrite(gz, memory_.data() + written, chunk) != static_cast<int>(chunk)) {
+            if (gzwrite(gz, memory_.data() + written, chunk) != static_cast<int>(chunk))
+            {
                 gzclose(gz);
                 fs::remove(partialPath);
                 throw std::runtime_error("Could not compress " + memoryPath.string());
             }
             written += chunk;
         }
-        if (gzclose(gz) != Z_OK) {
+        if (gzclose(gz) != Z_OK)
+        {
             fs::remove(partialPath);
             throw std::runtime_error("Could not finish " + memoryPath.string());
         }
@@ -593,7 +763,8 @@ private:
 
         // A few typed values from the saved image, not a second live sample.
         Json file1State;
-        if (const File1Profile* profile = profileFor(release_)) {
+        if (const File1Profile* profile = profileFor(release_))
+        {
             file1State = Json::object();
             file1State["frames"] = valueAt<std::uint32_t>(memory_, profile->frames);
             file1State["scenario_id"] = static_cast<int>(valueAt<std::uint16_t>(memory_, profile->scenario));
@@ -606,17 +777,21 @@ private:
         entry["sequence"] = sequence;
         entry["captured_at_utc"] = capturedAt;
         entry["elapsed_seconds"] = rounded(elapsed);
-        entry["capture_duration_seconds"] = rounded(std::chrono::duration<double>(checkpointFinished - checkpointStarted).count());
+        entry["capture_duration_seconds"] =
+            rounded(std::chrono::duration<double>(checkpointFinished - checkpointStarted).count());
         entry["memory_file"] = memoryPath.filename().string();
         entry["metadata_file"] = metadataPath.filename().string();
         Json reasonList = Json::array();
-        for (const auto& reason : reasons) reasonList.push(reason);
+        for (const auto& reason : reasons)
+            reasonList.push(reason);
         entry["reasons"] = reasonList;
         Json events = Json::array();
-        for (int value : eventSequences) events.push(value);
+        for (int value : eventSequences)
+            events.push(value);
         entry["event_sequences"] = events;
         Json markers = Json::array();
-        for (int value : markerSequences) markers.push(value);
+        for (int value : markerSequences)
+            markers.push(value);
         entry["marker_sequences"] = markers;
         entry["file1_state"] = file1State;
         entry["hive_password_lookup"] = Json();
@@ -624,71 +799,91 @@ private:
         writeManifest();
 
         std::string reasonText;
-        for (const auto& reason : reasons) reasonText += (reasonText.empty() ? "" : ", ") + reason;
+        for (const auto& reason : reasons)
+            reasonText += (reasonText.empty() ? "" : ", ") + reason;
         std::printf("Recorder: saved checkpoint %d at +%.1fs (%.1fs read, %s): %s\n", sequence, elapsed,
-                    std::chrono::duration<double>(checkpointFinished - checkpointStarted).count(),
-                    reasonText.c_str(), memoryPath.filename().c_str());
+                    std::chrono::duration<double>(checkpointFinished - checkpointStarted).count(), reasonText.c_str(),
+                    memoryPath.filename().c_str());
         std::fflush(stdout);
         return true;
     }
 
     // Waits for a game to be loaded, then fixes the release for the whole run.
-    bool waitForRelease() {
-        while (!stopRequested_) {
-            try {
+    bool waitForRelease()
+    {
+        while (!stopRequested_)
+        {
+            try
+            {
                 Release release = readRelease();
-                if (!release.gameId.empty()) {
+                if (!release.gameId.empty())
+                {
                     release_ = release;
                     return true;
                 }
-            } catch (...) {
+            }
+            catch (...)
+            {
                 // PCSX2 is not running, PINE is off, or no game is loaded yet.
             }
             waitUntil(std::chrono::steady_clock::now() + std::chrono::seconds(2));
             std::lock_guard<std::mutex> lock(markerMutex_);
-            pendingMarkers_.clear();  // there is no run folder to hold them yet
+            pendingMarkers_.clear(); // there is no run folder to hold them yet
         }
         return false;
     }
 
-    void run() {
-        if (!waitForRelease()) {
+    void run()
+    {
+        if (!waitForRelease())
+        {
             setStatus("stopped", "stopped before a game was loaded");
             return;
         }
         int sequence = 0;
-        try {
+        try
+        {
             startedClock_ = std::chrono::steady_clock::now();
             startedAt_ = utcNow();
             createRun();
             manifest_["release"] = release_.toJson();
             const File1Profile* profile = profileFor(release_);
-            if (profile && profile->usPuzzlePolicy) manifest_["monitor"]["puzzle_policy"] = usPuzzlePolicy();
-            if (!profile) std::cout << "Recorder: no exact-build room profile; periodic and marker checkpoints remain active." << std::endl;
+            if (profile && profile->usPuzzlePolicy)
+                manifest_["monitor"]["puzzle_policy"] = usPuzzlePolicy();
+            if (!profile)
+                std::cout << "Recorder: no exact-build room profile; periodic and marker checkpoints remain active."
+                          << std::endl;
             writeManifest();
             setStatus("recording", "");
 
             RoomMonitor monitor;
-            const auto interval = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(interval_));
-            const auto pollInterval = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(pollInterval_));
+            const auto interval = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                std::chrono::duration<double>(interval_));
+            const auto pollInterval = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                std::chrono::duration<double>(pollInterval_));
             auto nextPeriodic = startedClock_;
             auto nextPoll = startedClock_;
             std::vector<std::string> reasons;
             std::vector<int> eventSequences, markerSequences;
 
-            while (!stopRequested_) {
+            while (!stopRequested_)
+            {
                 const auto saved = saveMarkers();
-                if (!saved.empty()) {
+                if (!saved.empty())
+                {
                     reasons.push_back("marker");
                     markerSequences.insert(markerSequences.end(), saved.begin(), saved.end());
                 }
                 auto now = std::chrono::steady_clock::now();
-                if (profile && now >= nextPoll) {
+                if (profile && now >= nextPoll)
+                {
                     if (readRelease() != release_)
-                        throw std::runtime_error("PCSX2 release metadata changed; recording stopped to avoid mixing builds");
+                        throw std::runtime_error(
+                            "PCSX2 release metadata changed; recording stopped to avoid mixing builds");
                     const Observation observation = readObservation(*profile);
                     nextPoll = std::chrono::steady_clock::now() + pollInterval;
-                    for (Json event : monitor.update(observation)) {
+                    for (Json event : monitor.update(observation))
+                    {
                         const int eventSequence = static_cast<int>(manifest_["events"].size()) + 1;
                         Json entry = Json::object();
                         entry["sequence"] = eventSequence;
@@ -703,21 +898,24 @@ private:
                         manifest_["events"].push(entry);
                         eventSequences.push_back(eventSequence);
                         reasons.push_back("room_loaded");
-                        std::cout << "Recorder: room loaded (sampled): scenario " << observation.scenario
-                                  << ", room " << observation.room << std::endl;
+                        std::cout << "Recorder: room loaded (sampled): scenario " << observation.scenario << ", room "
+                                  << observation.room << std::endl;
                         writeManifest();
                     }
                 }
                 now = std::chrono::steady_clock::now();
-                if (now >= nextPeriodic) {
+                if (now >= nextPeriodic)
+                {
                     reasons.push_back("interval");
                     // Keep the periodic cadence independent of event-triggered captures.
                     const auto missed = (now - nextPeriodic) / interval;
                     nextPeriodic += (missed + 1) * interval;
                 }
-                if (reasons.empty()) {
+                if (reasons.empty())
+                {
                     auto deadline = nextPeriodic;
-                    if (profile) deadline = std::min(deadline, nextPoll);
+                    if (profile)
+                        deadline = std::min(deadline, nextPoll);
                     waitUntil(deadline);
                     continue;
                 }
@@ -725,7 +923,8 @@ private:
                 for (const auto& reason : reasons)
                     if (std::find(uniqueReasons.begin(), uniqueReasons.end(), reason) == uniqueReasons.end())
                         uniqueReasons.push_back(reason);
-                if (!saveCheckpoint(sequence + 1, uniqueReasons, eventSequences, markerSequences)) break;
+                if (!saveCheckpoint(sequence + 1, uniqueReasons, eventSequences, markerSequences))
+                    break;
                 ++sequence;
                 setStatus("recording", "");
                 reasons.clear();
@@ -738,17 +937,24 @@ private:
             writeManifest();
             setStatus("stopped", "");
             std::cout << "Recorder: stopped. Manifest: " << (runDir_ / "manifest.json").string() << std::endl;
-        } catch (const std::exception& error) {
+        }
+        catch (const std::exception& error)
+        {
             finishWithError(error.what());
-        } catch (...) {
+        }
+        catch (...)
+        {
             finishWithError("PINE request failed (PCSX2 closed or the game was unloaded)");
         }
     }
 
-    void finishWithError(const std::string& message) {
+    void finishWithError(const std::string& message)
+    {
         std::cerr << "Recorder: " << message << std::endl;
-        try {
-            if (fs::exists(runDir_ / "manifest.json")) {
+        try
+        {
+            if (fs::exists(runDir_ / "manifest.json"))
+            {
                 saveMarkers();
                 manifest_["status"] = "error";
                 manifest_["error"] = message;
@@ -756,8 +962,11 @@ private:
                 writeManifest();
             }
             for (const auto& entry : fs::directory_iterator(runDir_))
-                if (entry.path().extension() == ".partial") fs::remove(entry.path());
-        } catch (...) {
+                if (entry.path().extension() == ".partial")
+                    fs::remove(entry.path());
+        }
+        catch (...)
+        {
         }
         setStatus("error", message);
     }
@@ -784,35 +993,44 @@ private:
     int checkpointCount_ = 0;
 };
 
-Recorder& recorder() {
+Recorder& recorder()
+{
     static Recorder instance;
     return instance;
 }
 
 // Lines typed into the terminal that launched the tracker become markers,
 // like the notes typed into record-pine-ee-run.py.
-void startTerminalMarkers() {
+void startTerminalMarkers()
+{
     static bool started = false;
-    if (started || !isatty(STDIN_FILENO)) return;
+    if (started || !isatty(STDIN_FILENO))
+        return;
     started = true;
-    std::thread([] {
-        std::string line;
-        while (std::getline(std::cin, line)) {
-            const auto first = line.find_first_not_of(" \t\r");
-            const auto last = line.find_last_not_of(" \t\r");
-            recorder().mark(first == std::string::npos ? "" : line.substr(first, last - first + 1));
-        }
-    }).detach();
+    std::thread(
+        []
+        {
+            std::string line;
+            while (std::getline(std::cin, line))
+            {
+                const auto first = line.find_first_not_of(" \t\r");
+                const auto last = line.find_last_not_of(" \t\r");
+                recorder().mark(first == std::string::npos ? "" : line.substr(first, last - first + 1));
+            }
+        })
+        .detach();
 }
 
 // recorder.start(label, outputDir [, intervalSeconds [, pollSeconds]]) -> true | nil, message
-int LStart(lua_State* L) {
+int LStart(lua_State* L)
+{
     const std::string label = luaL_checkstring(L, 1);
     const std::string outputDir = luaL_checkstring(L, 2);
     const double interval = luaL_optnumber(L, 3, 10.0);
     const double pollInterval = luaL_optnumber(L, 4, 0.5);
     const std::string error = recorder().start(label, outputDir, interval, pollInterval);
-    if (!error.empty()) {
+    if (!error.empty())
+    {
         lua_pushnil(L);
         lua_pushstring(L, error.c_str());
         return 2;
@@ -822,32 +1040,32 @@ int LStart(lua_State* L) {
     return 1;
 }
 
-int LStop(lua_State*) {
+int LStop(lua_State*)
+{
     recorder().stop();
     return 0;
 }
 
-int LMark(lua_State* L) {
+int LMark(lua_State* L)
+{
     recorder().mark(luaL_optstring(L, 1, ""));
     return 0;
 }
 
-int LStatus(lua_State* L) {
+int LStatus(lua_State* L)
+{
     recorder().pushStatus(L);
     return 1;
 }
 
 const luaL_Reg kRecorderFunctions[] = {
-    {"start", LStart},
-    {"stop", LStop},
-    {"mark", LMark},
-    {"status", LStatus},
-    {nullptr, nullptr},
+    {"start", LStart}, {"stop", LStop}, {"mark", LMark}, {"status", LStatus}, {nullptr, nullptr},
 };
 
-}  // namespace
+} // namespace
 
-extern "C" __attribute__((visibility("default"))) int luaopen_luaoutbreakrecorder(lua_State* L) {
+extern "C" __attribute__((visibility("default"))) int luaopen_luaoutbreakrecorder(lua_State* L)
+{
     lua_newtable(L);
     luaL_register(L, nullptr, kRecorderFunctions);
     return 1;

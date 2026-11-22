@@ -1,6 +1,7 @@
 #pragma once
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 #include_next <lua.h>
 #ifdef __cplusplus
