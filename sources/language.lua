@@ -1,4 +1,13 @@
+-- Purpose: reusable English/Russian tracker labels, including SP sound status.
+-- Location/runtime: sources/language.lua, LuaJIT/LÖVE or Decky.
+-- Inputs: label key and LanguageSwitch; outputs translated text through _l().
+-- Safety: dictionaries only; no PINE, recordings, workbook or file writes.
+-- Run: required by shared main.lua; check from repo-merged/ with
+-- luajit tools-n-shit/tracker-tests/sp/check-sp-sound.lua . (both sound labels).
 local language = {
+    ["M: SP radar sound: %s"] = "M: SP radar sound: %s",
+    ["On"] = "On",
+    ["Off"] = "Off",
     ["Unable to find a PCSX2 process.\n Will try again in "] = "Unable to find a PCSX2 process.\n Will try again in ", -- UI
     ["An Outbreak game is not loaded.\n Will try again in "] = "An Outbreak game is not loaded.\n Will try again in ",
     ["Hotkeys list"] = "Hotkeys list:\n F1: Show/hide help menu.\n F2: Show/hide item list/ F3: Switch room list.\n F4: Show/hide enemy list. F5: No border.\n 1/2/3/4: Change window size.\n I: Show/hide item list in current room.\n T: Show/hide Timers.\n Q: Show/hide Puzzle Solutions.\n E: Switch/hide enemy HP in current room.\n S: Simple window.\n A: Auto size.\n D: Default.\n H/V: Change layout style.\n ESC: Exit.\n\nCredits\n    Program: Fothsid, killme, phoe-nix, madgamer98\n    Port: solitonmedic\n    Thanks: morshi, alyssaprimp\nCode: github.com/madgamer98/OutbreakTracker\nRussian Translation: FAILING FORWARD, Damin72",
@@ -26,7 +35,7 @@ local language = {
     ["Cabin"] = "Cabin",
     ["Doctor Station"] = "Doctor Station",
     ["Drainage Area"] = "Drainage Area",
-    ["Drawings Room"] = "Drawings Room",
+    ["Drawing Room"] = "Drawing Room",
     ["Experiment Room"] = "Experiment Room",
     ["Experimentation Chamber"] = "Experimentation Chamber",
     ["Footbridge"] = "Footbridge",
@@ -534,6 +543,21 @@ local language = {
 }
 
 local language_ru = {
+    -- Elimination room names from the disc tables (2026-11-20), same rooms as before.
+    ["B7F south passway"] = "Южный коридор, П7",
+    ["B6F security center"] = "Комната охраны, П6",
+    ["B7F experiment room"] = "Лаборатория, П7",
+    ["Stairs between 1F and 2F"] = "Бар Джека - лестницы",
+    ["B5F passway of area B"] = "Коридор в зону B, П5",
+    ["Owner's room"] = "Кабинет владельца",
+    ["J's BAR"] = "Бар Джека",
+    ["B6F east passway"] = "Восточный коридор, П6",
+    ["Underground tunnel"] = "Подземный туннель",
+    ["Main shaft"] = "Главная шахта",
+    ["1F of the apartment"] = "Жилое здание, 1Э",
+    ["M: SP radar sound: %s"] = "M: Звук SP-радара: %s",
+    ["On"] = "Вкл.",
+    ["Off"] = "Выкл.",
     ["Unable to find a PCSX2 process.\n Will try again in "] = "PCSX2 не запущен.\n Повторный поиск через ", -- UI
     ["An Outbreak game is not loaded.\n Will try again in "] = "Игра Biohazard Outbreak не запущена.\n Повторный поиск через ",
     ["Hotkeys list"] = "Горячие клавиши:\n F1: показать/скрыть меню.\n F2: показать/скрыть предметы/ F3: сменить список комнат.\n F4: показать/скрыть врагов. F5: без рамок.\n 1/2/3/4: сменить размер окна.\n I: показать/скрыть предметы в комнате.\n T: Показать/скрыть таймеры.\n Q: Показать/скрыть решение загадок.\n E: Показать/скрыть здоровье врагов в комнате.\n S: обычное окно.\n A: авто размер.\n D: по умолчанию.\n H/V: сменить раскладку.\n ESC: выйти.\n\nАвторы\n    Программа: Fothsid, killme, phoe-nix, madgamer98\n    Port: solitonmedic\n    Спасибо: morshi, alyssaprimp\nКод: github.com/madgamer98/OutbreakTracker\n Перевод на русский: FAILING FORWARD, Damin72",
@@ -561,7 +585,7 @@ local language_ru = {
     ["Cabin"] = "Cabin",
     ["Doctor Station"] = "Doctor Station",
     ["Drainage Area"] = "Drainage Area",
-    ["Drawings Room"] = "Drawings Room",
+    ["Drawing Room"] = "Drawing Room",
     ["Experiment Room"] = "Experiment Room",
     ["Experimentation Chamber"] = "Experimentation Chamber",
     ["Footbridge"] = "Надземный переход",

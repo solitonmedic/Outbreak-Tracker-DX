@@ -3,21 +3,9 @@ set -eu
 
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 love_bin="${LOVE_BIN:-/Applications/love.app/Contents/MacOS/love}"
-
-# --debug runs the recording reader built in macos/terminal-build-debug-arm64
-# (cmake -DOUTBREAK_DEBUG_RECORDER=ON); lines typed here become run markers.
-debug=0
-case "${1:-}" in
-  "") ;;
-  --debug) debug=1 ;;
-  *) echo "Usage: $0 [--debug]" >&2; exit 2 ;;
-esac
-if [ "$debug" = 1 ]; then
-  build_dir="$root_dir/macos/terminal-build-debug-arm64"
-else
-  build_dir="$root_dir/macos/terminal-build-arm64"
-fi
+build_dir="$root_dir/macos/terminal-build-arm64"
 module="$build_dir/luaoutbreaktracker.so"
+[ $# -eq 0 ] || { echo "Usage: $0" >&2; exit 2; }
 
 [ -x "$love_bin" ] || { echo "LÖVE not found: $love_bin" >&2; exit 1; }
 [ -f "$module" ] || {
@@ -32,13 +20,11 @@ trap cleanup EXIT INT TERM
 cp "$root_dir"/sources/*.lua "$game_dir/"
 chmod -R u+w "$game_dir"
 cp "$root_dir/sources/main.lua" "$game_dir/main_base.lua"
-if [ "$debug" = 1 ]; then
-  cp "$root_dir/macos/overrides/main.lua" "$game_dir/main_mac.lua"
-  cp "$root_dir/macos/overrides/debug.lua" "$game_dir/main.lua"
-else
-  cp "$root_dir/macos/overrides/main.lua" "$game_dir/main.lua"
-fi
+cp "$root_dir/macos/overrides/main.lua" "$game_dir/main.lua"
 cp -R "$root_dir/assets" "$game_dir/assets"
+# The game's own map files (sampled locally, git-ignored) are not shipped: maps
+# come from sources/MapGeometry.lua and the Evil Resource art.
+rm -rf "${game_dir:?}/assets/maps/game"
 cp "$module" "$game_dir/luaoutbreaktracker.so"
 
 exec "$love_bin" "$game_dir"

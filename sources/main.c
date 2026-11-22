@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <tlhelp32.h>
 #include <string.h>
+#include <stdlib.h>
 #include <DbgHelp.h>
 
 #include <lua.h>
@@ -27,6 +28,7 @@ Door Doors[MAX_DOOR];
 Enemy2 Enemies2[80];
 
 long long int BasePointer;
+#include "SPMapReader.h"
 
 int GetProcessID(char* processname)
 {
@@ -394,6 +396,18 @@ unsigned short GetScenarioID()
 	return buffer;
 }
 
+// The game's own local-player slot (0-based), one byte after the clock. The
+// first active player record is not the local player in online rooms.
+unsigned char GetLocalSlot()
+{
+	unsigned char buffer;
+	if (info.CurrentFile == 1)
+	    ReadF1(F1_LocalSlot, &buffer, 1);
+	else
+	    ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_LocalSlot, &buffer, 1, NULL);
+	return buffer;
+}
+
 unsigned int GetFrames()
 {
 	unsigned int buffer;
@@ -421,6 +435,14 @@ unsigned short GetWTTime()
 	unsigned short buffer;
 	int bytesRead = 0;
 	    ReadLegacyF2(F2_WTTime, &buffer, 2);
+	return buffer;
+}
+
+unsigned int GetEliminationTime()
+{
+	unsigned int buffer = 0;
+	if (info.CurrentFile == 2)
+	    ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_EliminationTime, &buffer, 4, NULL);
 	return buffer;
 }
 
@@ -734,13 +756,15 @@ void UpdatePickups()
 {
     for (int i=0; i < 255; i++)
     {
-        unsigned char numberBuffer;
-        unsigned short typeBuffer;
-        unsigned short countBuffer;
-        unsigned short pickBuffer;
-        unsigned int presentBuffer;
-        unsigned char mixBuffer;
-        unsigned char roomidBuffer;
+        /* Zero when neither File 1 nor File 2 is loaded (nothing is read). */
+        unsigned char numberBuffer = 0;
+        unsigned short typeBuffer = 0;
+        unsigned short countBuffer = 0;
+        unsigned short pickBuffer = 0;
+        unsigned int presentBuffer = 0;
+        unsigned char mixBuffer = 0;
+        unsigned char roomidBuffer = 0;
+        float positionXBuffer = 0, positionYBuffer = 0;
         int bytesRead = 0;
         if (info.CurrentFile == 1)
         {
@@ -751,6 +775,8 @@ void UpdatePickups()
             ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_PresentOffset, &presentBuffer, 4);
             ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_MixOffset, &mixBuffer, 1);
             ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_ItemRoomIDOffset, &roomidBuffer, 1);
+            ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_ItemPositionXOffset, &positionXBuffer, 4);
+            ReadF1(F1_PickupSpaceStart + (F1_PickupStructSize * i) + F1_ItemPositionYOffset, &positionYBuffer, 4);
         }
         else if (info.CurrentFile == 2)
         {
@@ -761,6 +787,8 @@ void UpdatePickups()
             ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_PresentOffset, &presentBuffer, 4, NULL);
             ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_MixOffset, &mixBuffer, 1, NULL);
             ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_ItemRoomIDOffset, &roomidBuffer, 1, NULL);
+            ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_ItemPositionXOffset, &positionXBuffer, 4, NULL);
+            ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_PickupSpaceStart + (F2_PickupStructSize * i) + F2_ItemPositionYOffset, &positionYBuffer, 4, NULL);
         }
         Items[i].Number = numberBuffer;
         Items[i].ID = i+1;
@@ -770,15 +798,20 @@ void UpdatePickups()
         Items[i].Present = presentBuffer;
         Items[i].Mix = mixBuffer;
         Items[i].RoomID = roomidBuffer;
+        Items[i].PositionX = positionXBuffer;
+        Items[i].PositionY = positionYBuffer;
     }
 }
 
 unsigned short GetDoorHP(int doorID)
 {
-  unsigned short buffer;
+  /* File 1 has 10 doors: the others have no address (-1) and read as 0. */
+  unsigned short buffer = 0;
   int bytesRead = 0;
   if (info.CurrentFile == 1)
-      ReadF1(F1_GetDoorHP(doorID), &buffer, 2);
+  {
+      if (F1_GetDoorHP(doorID) >= 0) ReadF1(F1_GetDoorHP(doorID), &buffer, 2);
+  }
   else
       ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetDoorHP(doorID), &buffer, 2, NULL);
   return buffer;
@@ -786,10 +819,13 @@ unsigned short GetDoorHP(int doorID)
 
 unsigned short GetDoorFlag(int doorID)
 {
-  unsigned short buffer;
+  /* File 1 has 10 doors: the others have no address (-1) and read as 0. */
+  unsigned short buffer = 0;
   int bytesRead = 0;
   if (info.CurrentFile == 1)
-      ReadF1(F1_GetDoorFlag(doorID), &buffer, 2);
+  {
+      if (F1_GetDoorFlag(doorID) >= 0) ReadF1(F1_GetDoorFlag(doorID), &buffer, 2);
+  }
   else
       ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetDoorFlag(doorID), &buffer, 2, NULL);
   return buffer;
@@ -950,7 +986,7 @@ unsigned short GetBleedTime(int characterID)
 
 unsigned short GetAntiVirusGTime(int characterID)
 {
-  unsigned short buffer;
+  unsigned short buffer = 0; /* File 2 has no mapped anti-virus G timer */
   int bytesRead = 0;
   if (info.CurrentFile == 1)
       ReadF1(F1_GetCharAddress(characterID) + F1_AntiVirusGTimeOffset, &buffer, 2);
@@ -1019,6 +1055,19 @@ double GetPositionX(int characterID)
       ReadF1(F1_GetCharAddress(characterID) + F1_PositionX, &buffer, 4);
   else
       ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetCharAddress(characterID) + F2_PositionX, &buffer, 4, NULL);
+  return (double)buffer;
+}
+
+// Facing: the player transform's forward axis in map coordinates is
+// (+0x70, +0x50). It matched the walking direction (median 6 degrees) in a
+// Japanese File 2 run and SP prompt reach in a U.S. File 1 run.
+double GetForward(int characterID, int f1Offset, int f2Offset)
+{
+  float buffer;
+  if (info.CurrentFile == 1)
+      ReadF1(F1_GetCharAddress(characterID) + f1Offset, &buffer, 4);
+  else
+      ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetCharAddress(characterID) + f2Offset, &buffer, 4, NULL);
   return (double)buffer;
 }
 
@@ -1204,6 +1253,8 @@ void GetRoomItemF1()
 				RItems->RItem[i].Pick = 0;
 				RItems->RItem[i].Present = 0;
 				RItems->RItem[i].Mix = 0;
+				RItems->RItem[i].PositionX = 0;
+				RItems->RItem[i].PositionY = 0;
 				for (int j=0; j < 1; j++)
 				{
 					if (*(ptr+j) != 0x00)
@@ -1213,6 +1264,8 @@ void GetRoomItemF1()
 						RItems->RItem[i].Pick = Items[*(ptr+j)-1].Pick;
 						RItems->RItem[i].Present = Items[*(ptr+j)-1].Present;
 						RItems->RItem[i].Mix = Items[*(ptr+j)-1].Mix;
+						RItems->RItem[i].PositionX = Items[*(ptr+j)-1].PositionX;
+						RItems->RItem[i].PositionY = Items[*(ptr+j)-1].PositionY;
 					}
 				}
 			}
@@ -1254,6 +1307,8 @@ void GetRoomItemF2()
 				RItems->RItem[i].Pick = 0;
 				RItems->RItem[i].Present = 0;
 				RItems->RItem[i].Mix = 0;
+				RItems->RItem[i].PositionX = 0;
+				RItems->RItem[i].PositionY = 0;
 				for (int j=0; j < 1; j++)
 				{
 					if (*(ptr+j) != 0x00)
@@ -1263,6 +1318,8 @@ void GetRoomItemF2()
 						RItems->RItem[i].Pick = Items[*(ptr+j)-1].Pick;
 						RItems->RItem[i].Present = Items[*(ptr+j)-1].Present;
 						RItems->RItem[i].Mix = Items[*(ptr+j)-1].Mix;
+						RItems->RItem[i].PositionX = Items[*(ptr+j)-1].PositionX;
+						RItems->RItem[i].PositionY = Items[*(ptr+j)-1].PositionY;
 					}
 				}
 			}
@@ -1313,6 +1370,39 @@ unsigned short GetEnemyMaxHealth(int enemyID)
   return buffer;
 }
 
+// Enemy slots share the player block layout: float X at +0x38, float map Y
+// (the game's Z) at +0x40 and the room ID at +0x1E2. Only enabled, in-game
+// slots hold a live position; the others keep stale values.
+double GetEnemyPositionX(int enemyID)
+{
+  float buffer;
+  if (info.CurrentFile == 1)
+      ReadF1(F1_GetEnemyAddress(enemyID) + F1_PositionX, &buffer, 4);
+  else
+      ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetEnemyAddress(enemyID) + F2_PositionX, &buffer, 4, NULL);
+  return (double)buffer;
+}
+
+double GetEnemyPositionY(int enemyID)
+{
+  float buffer;
+  if (info.CurrentFile == 1)
+      ReadF1(F1_GetEnemyAddress(enemyID) + F1_PositionY, &buffer, 4);
+  else
+      ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetEnemyAddress(enemyID) + F2_PositionY, &buffer, 4, NULL);
+  return (double)buffer;
+}
+
+unsigned char GetEnemyRoomID(int enemyID)
+{
+  unsigned char buffer;
+  if (info.CurrentFile == 1)
+      ReadF1(F1_GetEnemyAddress(enemyID) + F1_RoomIDOffset, &buffer, 1);
+  else
+      ReadProcessMemory(ProcessHandle, (char *)BasePointer+F2_GetEnemyAddress(enemyID) + F2_RoomIDOffset, &buffer, 1, NULL);
+  return buffer;
+}
+
 char GetEnemyEnabled(int enemyID)
 {
     char buffer;
@@ -1339,14 +1429,15 @@ void UpdateEnemyList()
 {
     for (int i=0; i < 80; i++)
     {
-        unsigned char number;
-        unsigned char flag;
-        unsigned char type;
-        unsigned char name;
-        unsigned char room;
-        unsigned short hp;
-        unsigned short maxhp;
-        unsigned char status;
+        /* Zero when neither File 1 nor File 2 is loaded (nothing is read). */
+        unsigned char number = 0;
+        unsigned char flag = 0;
+        unsigned char type = 0;
+        unsigned char name = 0;
+        unsigned char room = 0;
+        unsigned short hp = 0;
+        unsigned short maxhp = 0;
+        unsigned char status = 0;
         int bytesRead = 0;
         if (info.CurrentFile == 1)
         {
@@ -1506,9 +1597,11 @@ static int LUpdate (lua_State* L)
 	info.HostDifficulty = GetHostDifficulty();
 	info.ScenarioID = GetScenarioID();
 	info.FrameCounter = GetFrames();
+	info.LocalSlot = GetLocalSlot();
 	info.Cleared = GetCleared();
 	info.PlayerNum = GetPlayerNum();
 	info.WTTime = GetWTTime();
+	info.EliminationTime = GetEliminationTime();
 	info.EscapeTime = GetEscapeTime();
 	info.FightTime = GetFightTime();
 	info.FightTime2 = GetFightTime2();
@@ -1561,6 +1654,16 @@ static int LUpdate (lua_State* L)
 		Players[i].Power = GetPower(i);
 		Players[i].PositionX = GetPositionX(i);
 		Players[i].PositionY = GetPositionY(i);
+        Players[i].PositionHeight = GetForward(i, F1_PositionHeight, F2_PositionHeight);
+        if (info.CurrentFile == 1) {
+            ReadF1(F1_GetCharAddress(i)+F1_VoiceID,&Players[i].VoiceID,4);
+            ReadF1(F1_GetCharAddress(i)+F1_VoiceTicks,&Players[i].VoiceTicks,2);
+        } else {
+            ReadProcessMemory(ProcessHandle,(char*)BasePointer+F2_GetCharAddress(i)+F2_VoiceID,&Players[i].VoiceID,4,NULL);
+            ReadProcessMemory(ProcessHandle,(char*)BasePointer+F2_GetCharAddress(i)+F2_VoiceTicks,&Players[i].VoiceTicks,2,NULL);
+        }
+		Players[i].ForwardX = GetForward(i, F1_ForwardX, F2_ForwardX);
+		Players[i].ForwardY = GetForward(i, F1_ForwardY, F2_ForwardY);
 		Players[i].RoomID = GetRoomID(i);
 		Players[i].SpecialItem = GetSpecialItem(i);
 		Players[i].EquippedItem = GetEquippedItem(i);
@@ -1596,6 +1699,9 @@ static int LUpdate (lua_State* L)
 		Enemies[i].MaxHP = GetEnemyMaxHealth(i);
 		Enemies[i].EnemyType = GetEnemyType(i);
 		Enemies[i].NameID = GetEnemyNameID(i);
+		Enemies[i].PositionX = GetEnemyPositionX(i);
+		Enemies[i].PositionY = GetEnemyPositionY(i);
+		Enemies[i].RoomID = GetEnemyRoomID(i);
 	}
 
 	for (int i=0; i < MAX_ENEMY; i++)// for plant boss
@@ -1792,6 +1898,12 @@ static int LGetPlayer (lua_State* L)
 			lua_pushnumber(L, Players[i].Virus);
 		lua_rawset(L, -3);
 
+        {
+            const char* baseline = Players[i].NameID < 8 ? GetCharacterPower(Players[i].NameID) : GetNPCPower(Players[i].NameID);
+            lua_pushstring(L, "basePower");
+            lua_pushnumber(L, baseline ? atof(baseline) / 100.0 : 1.0);
+            lua_rawset(L, -3);
+        }
 		lua_pushstring(L, "power");
 			lua_pushnumber(L, Players[i].Power);
 		lua_rawset(L, -3);
@@ -1814,6 +1926,25 @@ static int LGetPlayer (lua_State* L)
 
 		lua_pushstring(L, "positionY");
 			lua_pushnumber(L, Players[i].PositionY);
+		lua_rawset(L, -3);
+
+        lua_pushstring(L, "voiceId");lua_pushnumber(L,Players[i].VoiceID);lua_rawset(L,-3);
+        lua_pushstring(L, "voiceTicks");lua_pushnumber(L,Players[i].VoiceTicks);lua_rawset(L,-3);
+        if (info.CurrentFile == 1 || info.CurrentFile == 2) {
+            lua_pushstring(L, "heightAvailable");
+            lua_pushboolean(L, true);
+            lua_rawset(L, -3);
+            lua_pushstring(L, "height");
+            lua_pushnumber(L, Players[i].PositionHeight);
+            lua_rawset(L, -3);
+        }
+
+		lua_pushstring(L, "forwardX");
+			lua_pushnumber(L, Players[i].ForwardX);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "forwardY");
+			lua_pushnumber(L, Players[i].ForwardY);
 		lua_rawset(L, -3);
 
 		lua_pushstring(L, "roomID");
@@ -2013,6 +2144,18 @@ static int LGetEnemy (lua_State* L)
 			//lua_pushstring(L, zombiename);
 		lua_rawset(L, -3);
 
+		lua_pushstring(L, "positionX");
+			lua_pushnumber(L, Enemies[i].PositionX);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "positionY");
+			lua_pushnumber(L, Enemies[i].PositionY);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "roomID");
+			lua_pushnumber(L, (double)Enemies[i].RoomID);
+		lua_rawset(L, -3);
+
 		lua_pushstring(L, "name");
 			if (name == NULL)
 				lua_pushstring(L, zombiename);
@@ -2110,6 +2253,19 @@ static int LGetItem2(lua_State* L)
 	return 1;
 }
 
+/* Reusable map export from the already-refreshed Items array; no extra PINE
+   reads. Shared Lua remembers observations and selects scenario objects.
+   Run tracker.getMapItems(); check reader/check-reader.sh and map checks. */
+static int LGetMapItems(lua_State* L)
+{
+    lua_newtable(L);
+    for (int i = 0; i < 255; ++i) {
+        lua_pushnumber(L, i + 1);
+        CreateItemTable(Items[i]);
+    }
+    return 1;
+}
+
 static int LGetDoor(lua_State* L)
 {
 	double doorID = lua_tonumber(L, 1);
@@ -2171,11 +2327,17 @@ static int LGetGameInfo (lua_State* L)
 		lua_pushstring(L, "frames");
 			lua_pushnumber(L, (double)info.FrameCounter);
 		lua_rawset(L, -3);
+		lua_pushstring(L, "localSlot");
+			lua_pushnumber(L, (double)info.LocalSlot);
+		lua_rawset(L, -3);
 		lua_pushstring(L, "cleared");
 			lua_pushnumber(L, (double)info.Cleared);
 		lua_rawset(L, -3);
 		lua_pushstring(L, "wttime");
 			lua_pushnumber(L, (double)info.WTTime);
+		lua_rawset(L, -3);
+		lua_pushstring(L, "eliminationtime");
+			lua_pushnumber(L, (double)info.EliminationTime);
 		lua_rawset(L, -3);
 		lua_pushstring(L, "escapetime");
 			lua_pushnumber(L, (double)info.EscapeTime);
@@ -2296,6 +2458,207 @@ static int LGetRoomMaster(lua_State* L)
 	return 1;
 }
 
+/* Alyssa's lock-pick progress: Japanese and U.S. File 1, Japanese File 2.
+   The caller passes the hint spot it already matched and whether the lock is
+   a door (counter at +0x64), a container (+0x60) or not known (nil: either).
+   Several interaction records can lie near a spot (room zones, items, both
+   sides of a door), so the lock's record is the one near the spot that was
+   last used by this player and holds an active counter (1..200). Its address
+   and counter offset are remembered and re-checked on every call, because a
+   room change rebuilds the table. Until an attempt starts, the records whose
+   box is near the spot are remembered from one table read and only those are
+   re-read on each call, so the bar appears on the first call after a pick
+   starts. Returns the signed counter (<= 0 once the lock opens), or nil when
+   the release has no table or no record matches. */
+typedef struct
+{
+	int Corner[8];
+	unsigned int Actor;
+	short Door;
+	short Container;
+} LockRecord;
+
+static void ParseLockRecord(const unsigned char* bytes, LockRecord* record)
+{
+	memcpy(record->Corner, bytes, sizeof(record->Corner));
+	memcpy(&record->Actor, bytes + F1_InteractActorOffset, sizeof(record->Actor));
+	memcpy(&record->Door, bytes + F1_DoorLockCounterOffset, sizeof(record->Door));
+	memcpy(&record->Container, bytes + F1_ContainerLockCounterOffset, sizeof(record->Container));
+}
+
+/* Distance from the spot to the bounding box of the record's four corner
+   points, or -1 if they do not form an area. File 1 lists the corners as
+   x0,y0 x0,y1 x1,y1 x1,y0; File 2 as x0,y0 x1,y0 x1,y1 x0,y1, and its areas
+   need not be exact rectangles (a corner can be a unit off). */
+static double LockBoxDistance(const LockRecord* record, double x, double y)
+{
+	const int* c = record->Corner;
+	double minX = c[0], maxX = c[0], minY = c[1], maxY = c[1];
+	for (int i = 0; i < 8; i += 2)
+	{
+		if (c[i] < -100000 || c[i] > 100000 || c[i + 1] < -100000 || c[i + 1] > 100000)
+			return -1;
+		if (c[i] < minX) minX = c[i];
+		if (c[i] > maxX) maxX = c[i];
+		if (c[i + 1] < minY) minY = c[i + 1];
+		if (c[i + 1] > maxY) maxY = c[i + 1];
+	}
+	if (maxX - minX < 1 || maxY - minY < 1 || maxX - minX > 20000 || maxY - minY > 20000)
+		return -1;
+	double dx = x < minX ? minX - x : (x > maxX ? x - maxX : 0);
+	double dy = y < minY ? minY - y : (y > maxY ? y - maxY : 0);
+	return dx > dy ? dx : dy;
+}
+
+/* Table address, record size, slot count and player struct address for the loaded release. */
+static int LockTableForRelease(int playerIndex, int* table, int* stride, int* slots, unsigned int* actor)
+{
+	if (info.CurrentFile == 1)
+	{
+		*table = F1_InteractTable;
+		*stride = F1_InteractStride;
+		*slots = F1_InteractSlots;
+		*actor = (unsigned int)F1_GetCharAddress(playerIndex);
+		if (F1_Release == F1_RELEASE_US)
+		{
+			*table = F1_US_Translate(F1_InteractTable, F1_InteractSlots * F1_InteractStride);
+			*actor = (unsigned int)F1_US_Translate((int)*actor, 4);
+		}
+		return *table != 0 && *actor != 0;
+	}
+	if (info.CurrentFile == 2)
+	{
+		*table = F2_InteractTable;
+		*stride = F2_InteractStride;
+		*slots = F2_InteractSlots;
+		*actor = (unsigned int)F2_GetCharAddress(playerIndex);
+		return 1;
+	}
+	return 0;
+}
+
+/* Counter at the chosen offset (0 door, 1 container); for "either" (-1) the
+   first offset whose value is an active counter, else the door offset. */
+static int LockCounterOffset(const LockRecord* record, int kind)
+{
+	if (kind >= 0)
+		return kind;
+	if (record->Door >= 1 && record->Door <= 200)
+		return 0;
+	if (record->Container >= 1 && record->Container <= 200)
+		return 1;
+	return 0;
+}
+
+static int LGetLockCounter(lua_State* L)
+{
+	enum { MaxCandidates = 16 };
+	static int cachedRecord = -1;
+	static int cachedOffset = 0;
+	static int candidates[MaxCandidates];
+	static int candidateCount = -1; /* -1: the spot's records have not been listed yet */
+	static int listedTable = 0;
+	static double listedX = 0, listedY = 0;
+	static unsigned int emptyCooldown = 0;
+	static unsigned char table[0xC4 * 64]; /* largest stride x slots */
+	const double hintRange = 250.0; /* same square the pick hints use */
+	int playerIndex = (int)lua_tonumber(L, 1) - 1;
+	double spotX = lua_tonumber(L, 2);
+	double spotY = lua_tonumber(L, 3);
+	int kind = lua_isnoneornil(L, 4) ? -1 : (lua_toboolean(L, 4) ? 1 : 0);
+	int tableAddress, stride, slots;
+	unsigned int actor;
+	unsigned char bytes[0xC4];
+	LockRecord record;
+	double distance;
+
+	if (playerIndex < 0 || playerIndex > 3 || !LockTableForRelease(playerIndex, &tableAddress, &stride, &slots, &actor) ||
+		(SIZE_T)stride * slots > sizeof(table))
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+
+	/* An active attempt found earlier: one record read per call. */
+	if (cachedRecord >= 0)
+	{
+		ReadProcessMemory(ProcessHandle, (char *)BasePointer+cachedRecord, bytes, sizeof(bytes), NULL);
+		ParseLockRecord(bytes, &record);
+		distance = LockBoxDistance(&record, spotX, spotY);
+		if (distance >= 0 && distance <= hintRange && record.Actor == actor && (kind < 0 || kind == cachedOffset))
+		{
+			lua_pushnumber(L, cachedOffset ? record.Container : record.Door);
+			return 1;
+		}
+		cachedRecord = -1;
+	}
+
+	/* List the records near this spot from one table read (again after a
+	   different spot, release or room). */
+	if (candidateCount < 0 || listedTable != tableAddress || listedX != spotX || listedY != spotY)
+	{
+		if (emptyCooldown > 0 && listedTable == tableAddress && listedX == spotX && listedY == spotY)
+		{
+			emptyCooldown--;
+			lua_pushnil(L);
+			return 1;
+		}
+		ReadProcessMemory(ProcessHandle, (char *)BasePointer+tableAddress, table, (SIZE_T)stride * slots, NULL);
+		candidateCount = 0;
+		for (int slot = 0; slot < slots && candidateCount < MaxCandidates; slot++)
+		{
+			ParseLockRecord(table + slot * stride, &record);
+			distance = LockBoxDistance(&record, spotX, spotY);
+			if (distance >= 0 && distance <= hintRange)
+				candidates[candidateCount++] = tableAddress + slot * stride;
+		}
+		listedTable = tableAddress;
+		listedX = spotX;
+		listedY = spotY;
+		if (candidateCount == 0)
+		{
+			/* Nothing near the spot yet (for example while the room loads). */
+			candidateCount = -1;
+			emptyCooldown = 5;
+			lua_pushnil(L);
+			return 1;
+		}
+	}
+
+	/* Re-read only the listed records and take the nearest active one. */
+	double best = hintRange;
+	short counter = 0;
+	for (int i = 0; i < candidateCount; i++)
+	{
+		ReadProcessMemory(ProcessHandle, (char *)BasePointer+candidates[i], bytes, sizeof(bytes), NULL);
+		ParseLockRecord(bytes, &record);
+		distance = LockBoxDistance(&record, spotX, spotY);
+		if (distance < 0 || distance > hintRange)
+		{
+			/* The room rebuilt its table: list the records again next call. */
+			candidateCount = -1;
+			cachedRecord = -1;
+			lua_pushnil(L);
+			return 1;
+		}
+		int offset = LockCounterOffset(&record, kind);
+		short value = offset ? record.Container : record.Door;
+		if (distance > best || record.Actor != actor || value < 1 || value > 200)
+			continue;
+		best = distance;
+		cachedRecord = candidates[i];
+		cachedOffset = offset;
+		counter = value;
+	}
+	if (cachedRecord < 0)
+	{
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushnumber(L, counter);
+	return 1;
+}
+
 static const struct luaL_Reg library_functions [] = {
 	{"init", LInit},
 	{"updateLobby", LUpdateLobby},
@@ -2308,7 +2671,10 @@ static const struct luaL_Reg library_functions [] = {
 	{"getEnemyList", LgetEnemyList},
 	{"getItem", LGetItem},
 	{"getItem2", LGetItem2},
+	{"getMapItems", LGetMapItems},
+    {"getSPMapState", LGetSPMapState},
 	{"getDoor", LGetDoor},
+	{"getLockCounter", LGetLockCounter},
 	{"getRoomMaster", LGetRoomMaster},
 	{"getGameInfo", LGetGameInfo},
 	{NULL, NULL}

@@ -9,10 +9,16 @@ const int F2_DeadInventoryStart = 0x491146;
 const int F2_VirusMaxStart = 0x728500;
 const int F2_ScenarioIDAddr = 0x3137BA;
 const int F2_FrameCounter = 0x4912B8;
+const int F2_LocalSlot = 0x4912BD; // u8 0-based local player slot (frames + 5)
 const int F2_RoomPriorty = 0x007d7a90;
 
 const int F2_PositionX = 0x38;
+const int F2_VoiceID = 0xDC4; // u32 voice packet ID; supported code evidence
+const int F2_VoiceTicks = 0xDCC; // s16 voice duration countdown
 const int F2_PositionY = 0x40;
+const int F2_PositionHeight = 0x3C; // float vertical coordinate; F2 Addresses row 39
+const int F2_ForwardX = 0x70; // facing: map-X component of the forward axis
+const int F2_ForwardY = 0x50; // facing: map-Y component of the forward axis
 const int F2_RoomIDOffset = 0x1E2;
 const int F2_CharacterEnabled = 0;
 const int F2_CharacterInGame = 1;
@@ -36,6 +42,8 @@ const int F2_HerbTimeOffset = 0xBCE;//herb time
 
 const int F2_PickupStructSize = 60;
 const int F2_ItemRoomIDOffset = 1;
+const int F2_ItemPositionXOffset = 8;  // float X (map X)
+const int F2_ItemPositionYOffset = 16; // float Z (map Y)
 const int F2_PickupCountOffset = 36;
 const int F2_PickupOffset = 40;
 const int F2_PresentOffset = 32;//28 38
@@ -187,6 +195,14 @@ const int F2_Door16HP = 0x4777E4;//477BE0 1Â¥´óÌÃ>U×ßÀÈ
 const int F2_Door17HP = 0x4779A0;//4779E0 Í£Ê¬·¿
 const int F2_Door18HP = 0x477A62;//477AA0 ¹·Îİ
 const int F2_Door19HP = 0x477B00;//eotr hole hp
+
+// Per-room interaction table (Japanese File 2). Same record layout as File 1
+// (box corners at +0x00..+0x1C, last player struct at +0x34, lock counter set
+// to 200 per pick attempt) with 0xC0-byte records. The disc code keeps the
+// door counter at +0x64 and the container counter at +0x60.
+const int F2_InteractTable = 0x3BA100;
+const int F2_InteractStride = 0xC0;
+const int F2_InteractSlots = 64;
 
 int F2_GetDoorHP(int doorID)
 {
@@ -392,6 +408,9 @@ int F2_GetLobbyAddress(int slotNum)
     }
 }
 
+// u32 Elimination countdown, 30 ticks per second: 30:00 limit minus the clock
+// (= 54000 - 0x4912B8 in Elimination 1 and 2 runs, 2026-11-20); 0 outside Elimination.
+const int F2_EliminationTime = 0x491230;
 const int F2_WTTime = 0x491248;//ÅØÏø
 const int F2_PassWT = 0x48FE7B;//ÅØÏø
 const int F2_PassDT1 = 0x490070;//ËÀÊØ

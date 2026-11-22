@@ -4,17 +4,73 @@
 // Safety: no emulator access or saved game data; nothing is stored in the browser.
 // Run: open the private phone link in Decky. Check: cards and controls update.
 // SP vector commands: ellipse, polygon, rotation and line width from shared Lua.
+// Sounds: frame.sounds counts plays per file; a rise plays it once (after the first tap).
+// M toggles SP radar sound in the shared UI; frame.game.spsoundenabled updates
+// the On/Off button (default On). Check: offline check-sp-sound-frames.py.
+// Map input: pointer drag, pinch, wheel, double-tap zoom; bounded shared map actions.
+// Map artwork loads from the bundled assets; there is no disc selection or import.
+// CONTROLS: the desktop menu's design, groups and labels (sources/TrackerMenu.lua),
+// placed over the canvas where the desktop draws it. It fades in on pointer
+// activity (mouse movement, a touch, the wheel) and fades out when the mouse
+// leaves the page or after 3 s without activity; hidden, it lets taps through.
 "use strict";
 const canvas = document.querySelector("#tracker"), ctx = canvas.getContext("2d");
 const message = document.querySelector("#message");
 const images = new Map(), imageFonts = new Map(), tinted = new Map();
+const sounds = new Map(), soundCounts = new Map();
+let audio = null, soundBaseline = false;
+let mapActive=false, mapMode=0, frameWidth=300, frameHeight=740;
+let latestFrame=null, presentedFrame=null, painting=false, animationStarted=false, lastFrameAt=0;
+let mapDescriptor=null, panPreview=null, cameraMotion=null;
+const actorMotion=new Map();
+function actorPoint(track,now) {
+  const t=Math.max(0,Math.min(1,(now-track.at)/track.duration));
+  return {x:track.fromX+(track.x-track.fromX)*t,y:track.fromY+(track.y-track.fromY)*t};
+}
+function prepareMotion(frame) {
+  const now=performance.now(), duration=Math.max(80,Math.min(250,now-lastFrameAt||200));lastFrameAt=now;
+  const seen=new Set();mapDescriptor=null;
+  for(const c of frame.commands) {
+    if(c[0]==="mapBegin") {
+      mapDescriptor={x:c[1],y:c[2],w:c[3],h:c[4],panX:c[5],panY:c[6],cameraX:c[7]||0,cameraY:c[8]||0,key:c[9]};
+      const x=mapDescriptor.cameraX,y=mapDescriptor.cameraY;
+      const from=cameraMotion?.continuity===c[9]?actorPoint(cameraMotion,now):{x,y};
+      cameraMotion={x,y,fromX:from.x,fromY:from.y,at:now,duration,continuity:c[9]};
+    }
+    if(c[0]!=="actorBegin")continue;
+    const [,id,sx,sy,continuity]=c,old=actorMotion.get(id);seen.add(id);
+    const x=sx-(mapDescriptor?.cameraX||0),y=sy-(mapDescriptor?.cameraY||0);
+    const key=continuity+":"+mapDescriptor?.key;
+    const from=old&&old.continuity===key?actorPoint(old,now):{x,y};
+    const near=Math.hypot(from.x-x,from.y-y)<Math.max(frame.width,frame.height)/2;
+    actorMotion.set(id,{x,y,fromX:near?from.x:x,fromY:near?from.y:y,at:now,duration,continuity:key});
+  }
+  for(const id of actorMotion.keys())if(!seen.has(id))actorMotion.delete(id);
+  if(!mapDescriptor)cameraMotion=null;
+  if(panPreview?.releasedAt&&mapDescriptor&&Math.hypot(panPreview.x-mapDescriptor.panX,panPreview.y-mapDescriptor.panY)<1)panPreview=null;
+}
+async function animate(now) {
+  if(latestFrame&&!painting&&(mapActive||latestFrame.pulsing||latestFrame!==presentedFrame)) {
+    painting=true;
+    const frame=latestFrame;
+    try{await render(frame,now);presentedFrame=frame;}catch(error){message.textContent=error.message;}
+    finally{painting=false;}
+  }
+  requestAnimationFrame(animate);
+}
+const soundStats = {played:0, missed:0};
+// Title, columns and [key, label] per group, as in sources/TrackerMenu.lua.
 const groups = [
-  ["Views", false, [["f1","Help"],["f2","Item views"],["f3","Next room"],["l","Language"]]],
-  ["Show", false, [["i","Room items"],["t","Timers"],["q","Puzzle hints"],["e","Enemy HP"],["f4","Enemy list"]]],
-  ["Layout", false, [["v","Vertical"],["h","Horizontal"],["d","Default size"],["a","Auto size"]]],
-  ["Players shown", true, [["1","1"],["2","2"],["3","3"],["4","4"]]],
-  ["Enemy list shows", true, [["kp0","All"],["kp1","P1"],["kp2","P2"],["kp3","P3"],["kp4","P4"]]],
+  ["VIEWS", 2, [["home","MAIN TRACKER"],["f1","HELP"],["f2","ITEM VIEWS"],["f3","NEXT ROOM"],["l","LANGUAGE"]]],
+  ["SHOW", 2, [["i","ROOM ITEMS"],["t","TIMERS"],["q","PUZZLE HINTS"],["e","ENEMY HP"],["f4","ENEMY LIST"]]],
+  ["SOUND", 2, [["m","SP RADAR SOUND: ON"]]],
+  ["LAYOUT", 2, [["v","VERTICAL"],["h","HORIZONTAL"],["d","DEFAULT SIZE"],["a","AUTO SIZE"]]],
+  ["MAP", 2, [["n","MAP + CARDS"],["b","CARDS BESIDE MAP"],["f","FOLLOW PLAYER"]]],
+  ["PLAYERS SHOWN", 4, [["1","1"],["2","2"],["3","3"],["4","4"]]],
+  ["ENEMY LIST", 5, [["kp0","ALL"],["kp1","P1"],["kp2","P2"],["kp3","P3"],["kp4","P4"]]],
 ];
+// Toggles keep the menu open; every other control closes it, as on the desktop.
+const keepOpen = new Set(["m","t","q","e"]);
 const controls = groups.flatMap(([, , keys]) => keys);
 async function sendKey(key) {
   try {
@@ -23,37 +79,99 @@ async function sendKey(key) {
   } catch(error) { message.textContent=error.message; }
 }
 const controlsRoot = document.querySelector("#controls");
-for(const [title,segmented,keys] of groups) {
+let spSoundButton = null;
+for(const [title,columns,keys] of groups) {
   const group=document.createElement("div"), heading=document.createElement("h3"), row=document.createElement("div");
-  group.className="group"; heading.textContent=title; row.className=segmented?"row segmented":"row";
+  group.className="group"; heading.textContent=title; row.className="row cols"+columns;
   for(const [key,label] of keys) {
     const button=document.createElement("button"); button.type="button"; button.textContent=label; button.title=key.toUpperCase();
-    button.addEventListener("click",()=>sendKey(key)); row.append(button);
+    if(key==="m") { spSoundButton=button; button.setAttribute("aria-pressed","true"); }
+    button.addEventListener("click",()=>{void sendKey(key);if(!keepOpen.has(key))setSheet(false);}); row.append(button);
   }
   group.append(heading,row); controlsRoot.append(group);
+}
+function updateSoundControl(enabled) {
+  const on=enabled!==false;
+  spSoundButton.textContent="SP RADAR SOUND: "+(on?"ON":"OFF");
+  spSoundButton.setAttribute("aria-pressed",String(on));
 }
 const sheet = document.querySelector("#sheet"), menu = document.querySelector("#menu");
 function setSheet(open) { sheet.hidden=!open; menu.setAttribute("aria-expanded",String(open)); }
 menu.addEventListener("click",()=>setSheet(true));
-document.querySelector("main").addEventListener("click",()=>setSheet(true));
-setTimeout(()=>menu.classList.add("idle"),4000);
+document.querySelector("main").addEventListener("click",()=>{if(!mapActive)setSheet(true);});
+let menuTimer=0;
+function showMenu() {
+  menu.classList.add("shown"); clearTimeout(menuTimer);
+  menuTimer=setTimeout(()=>menu.classList.remove("shown"),3000);
+}
+function hideMenu() { clearTimeout(menuTimer); menu.classList.remove("shown"); }
+for(const type of ["pointermove","pointerdown","wheel"])addEventListener(type,showMenu,{passive:true});
+addEventListener("mouseout",event=>{if(!event.relatedTarget)hideMenu();});
+// The button sits where the desktop draws it: 78x18 tracker pixels, 5 from the
+// right, at the bottom (5 from the top while a map is shown). --u is one
+// tracker pixel on screen; the open menu uses --mu, at least 1.25 px.
+function placeMenu(width,height,scale) {
+  const box=canvas.getBoundingClientRect(), root=document.documentElement.style;
+  root.setProperty("--u",scale+"px");root.setProperty("--mu",Math.max(scale,1.25)+"px");
+  menu.style.left=(box.left+(width-83)*scale)+"px";
+  menu.style.top=(box.top+(mapActive?5:height-23)*scale)+"px";
+}
 document.querySelector("#close").addEventListener("click",()=>setSheet(false));
 document.querySelector("#backdrop").addEventListener("click",()=>setSheet(false));
 addEventListener("keydown",event=>{
+  if(event.target?.closest?.("input,textarea,select,[contenteditable='true']"))return;
   const key=event.code.startsWith("Numpad") ? "kp"+event.code.slice(6) : event.key.toLowerCase();
   if(key==="escape"&&!sheet.hidden){setSheet(false);return;}
   if(controls.some(([allowed])=>allowed===key)&&!event.ctrlKey&&!event.metaKey&&!event.altKey) {
     event.preventDefault(); if(!event.repeat) void sendKey(key);
   }
 });
+// Browsers start audio only after a tap or key press. iOS also stops it when a
+// home-screen app goes to the background ("interrupted"), so each tap resumes it
+// until it runs and plays one silent sample, which iOS needs to start output.
+function unlockAudio() {
+  const Context=window.AudioContext||window.webkitAudioContext;
+  if(!audio&&Context)audio=new Context();
+  if(!audio||audio.state==="running")return;
+  audio.resume().catch(()=>{});
+  const silent=audio.createBufferSource();
+  silent.buffer=audio.createBuffer(1,1,22050);silent.connect(audio.destination);silent.start(0);
+}
+for(const type of ["pointerup","touchend","keydown"])addEventListener(type,unlockAudio,{passive:true});
+// Returning to the app: try to resume without a tap (iOS may still need one).
+addEventListener("visibilitychange",()=>{if(!document.hidden&&audio&&audio.state!=="running")audio.resume().catch(()=>{});});
+function sound(path) {
+  if(!sounds.has(path)) sounds.set(path,fetch("/"+path).then(response=>{
+    if(!response.ok)throw new Error("Unable to load tracker sound");
+    return response.arrayBuffer();
+  }).then(data=>new Promise((resolve,reject)=>audio.decodeAudioData(data,resolve,reject))));
+  return sounds.get(path);
+}
+// The first frame only records the counts, so opening the page plays nothing.
+// A lower count means the reader restarted; it is recorded, not played.
+async function playSounds(counts) {
+  for(const [path,count] of Object.entries(counts||{})) {
+    const seen=soundCounts.has(path)?soundCounts.get(path):soundBaseline?0:count;
+    soundCounts.set(path,count);
+    if(count<=seen)continue;
+    if(!audio||audio.state!=="running"){soundStats.missed+=count-seen;continue;}
+    const source=audio.createBufferSource();
+    source.buffer=await sound(path);source.connect(audio.destination);source.start();
+    soundStats.played++;
+  }
+  soundBaseline=true;
+}
 async function image(path) {
   if(!images.has(path)) images.set(path,new Promise((resolve,reject)=>{
     const img=new Image(); img.onload=()=>resolve(img); img.onerror=()=>reject(new Error("Unable to load tracker artwork")); img.src="/"+path;
   }));
   return images.get(path);
 }
+// Alpha factor from a "pulse" command: raised-cosine wave between floor and 1.
+let pulseFactor=1;
+function pulseAt(rate,floor,now){return floor+(1-floor)*(.5-.5*Math.cos(2*Math.PI*rate*now/1000));}
 function color(value) {
-  const [r,g,b,a=1]=value; ctx.fillStyle=ctx.strokeStyle="rgb("+(r*255)+" "+(g*255)+" "+(b*255)+")"; ctx.globalAlpha=a;
+  const [r,g,b,a=1]=value; ctx.fillStyle=ctx.strokeStyle="rgb("+(r*255)+" "+(g*255)+" "+(b*255)+")"; ctx.globalAlpha=a*pulseFactor;
 }
 function transform(values) {
   const [x,y,r,sx,sy,ox,oy,kx,ky]=values;
@@ -139,9 +257,9 @@ function updateInsets() {
   const top=immersive?36:0, bottom=immersive?12:0;
   document.documentElement.style.setProperty("--reserve-top",top+"px");
   document.documentElement.style.setProperty("--reserve-bottom",bottom+"px");
-  diagnostics.textContent="Page "+innerWidth+"x"+innerHeight+", screen "+screen.width+"x"+screen.height+", margins "+top+"/"+bottom+" px";
+  if(diagnostics)diagnostics.textContent="Page "+innerWidth+"x"+innerHeight+", screen "+screen.width+"x"+screen.height+", margins "+top+"/"+bottom+" px";
 }
-async function render(frame) {
+async function render(frame,now=performance.now()) {
   updateInsets();
   await Promise.all(frame.commands.filter(c=>c[0]==="image").map(c=>image(c[1])));
   const w=frame.width||300,h=frame.height||740;
@@ -154,17 +272,33 @@ async function render(frame) {
   const ratio=(devicePixelRatio||1)*cssWidth/w;
   if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}
   canvas.style.width=cssWidth+"px";canvas.style.height=cssHeight+"px";
+  placeMenu(w,h,cssWidth/w);
   ctx.setTransform(ratio,0,0,ratio,0,0);ctx.globalAlpha=1;ctx.fillStyle="#000";ctx.fillRect(0,0,w,h);
   ctx.lineWidth=1;
-  let depth=0;
+  let depth=0;pulseFactor=1;
   for(const command of frame.commands) {
     const [op,...a]=command;
-    if(op==="push"){ctx.save();depth++;}
+    if(op==="pulse")pulseFactor=a.length?pulseAt(a[0],a[1],now):1;
+    else if(op==="push"){ctx.save();depth++;}
     else if(op==="pop"){if(depth){ctx.restore();depth--;}}
     else if(op==="translate")ctx.translate(...a);
+    else if(op==="mapBegin"){
+      ctx.save();
+      if(panPreview?.releasedAt&&now-panPreview.releasedAt>1500)panPreview=null;
+      if(cameraMotion){const p=actorPoint(cameraMotion,now);ctx.translate(p.x-(a[6]||0),p.y-(a[7]||0));}
+      if(panPreview?.moved)ctx.translate(panPreview.x-a[4],panPreview.y-a[5]);
+    }
+    else if(op==="mapEnd")ctx.restore();
+    else if(op==="actorBegin"){
+      ctx.save();const track=actorMotion.get(a[0]);
+      if(track){const p=actorPoint(track,now);ctx.translate(p.x-(a[1]-(mapDescriptor?.cameraX||0)),p.y-(a[2]-(mapDescriptor?.cameraY||0)));}
+    }
+    else if(op==="actorEnd")ctx.restore();
     else if(op==="scale")ctx.scale(...a);
     else if(op==="rotate")ctx.rotate(a[0]);
     else if(op==="lineWidth")ctx.lineWidth=a[0];
+    else if(op==="clipPush"){ctx.save();depth++;ctx.beginPath();ctx.rect(...a);ctx.clip();}
+    else if(op==="clipPop"){if(depth){ctx.restore();depth--;}}
     else if(op==="image")drawTinted(await image(a[0]),a[1],a[2],a[3],a[0]);
     else if(op==="text")await drawText(...a);
     else if(op==="rectangle"){color(a[5]);ctx.beginPath();ctx.roundRect(a[1],a[2],a[3],a[4],Math.max(0,Math.min(a[6],Math.abs(a[3])/2,Math.abs(a[4])/2)));a[0]==="fill"?ctx.fill():ctx.stroke();}
@@ -182,8 +316,80 @@ async function poll() {
     const response=await fetch("/api/frame",{signal:AbortSignal.timeout(5000)});
     if(!response.ok)throw new Error(response.status===403?"This device is not on the Deck's local network.":"Tracker service unavailable");
     const frame=await response.json();
-    message.textContent=frame.state==="connected"?"":frame.message||(frame.state==="waiting"?"Waiting for game":frame.state);canvas.classList.toggle("stale",frame.state!=="connected");await render(frame);
+    mapMode=frame.game?.mapview?.mode||0;mapActive=mapMode>0;
+    frameWidth=frame.width||300;frameHeight=frame.height||740;
+    canvas.style.touchAction=mapActive?"none":"auto";
+    updateSoundControl(frame.game?.spsoundenabled);
+    message.textContent=frame.state==="connected"?"":frame.message||(frame.state==="waiting"?"Waiting for game":frame.state);canvas.classList.toggle("stale",frame.state!=="connected");
+    frame.pulsing=frame.commands.some(c=>c[0]==="pulse");
+    prepareMotion(frame);latestFrame=frame;
+    if(!animationStarted){animationStarted=true;requestAnimationFrame(animate);}
+    playSounds(frame.sounds).catch(error=>{sounds.clear();soundStats.error=error.message||String(error);});
   }catch(error){message.textContent=error.message;canvas.classList.add("stale");}
   setTimeout(poll,200);
 }
 Promise.all([document.fonts.load("18px TrackerBold"),document.fonts.load("11px TrackerNarrow")]).then(poll).catch(error=>{message.textContent=error.message;});
+
+// Local pointer positions are converted to the shared Lua view's logical pixels.
+const pointers=new Map();let pinchDistance=0, lastMove=0,lastTap=0, gestureMoved=false;
+let lastHover=0;
+let mapActions=Promise.resolve();
+function mapPoint(event) {
+  const r=canvas.getBoundingClientRect();
+  return {x:(event.clientX-r.left)*frameWidth/r.width,y:(event.clientY-r.top)*frameHeight/r.height};
+}
+function mapAction(action,point) {
+  mapActions=mapActions.then(async()=>{
+    const response=await fetch("/api/map",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action,...point}),signal:AbortSignal.timeout(5000)});
+    if(!response.ok)throw new Error("Map control unavailable");
+  }).catch(error=>{message.textContent=error.message;});
+  return mapActions;
+}
+canvas.addEventListener("pointerdown",event=>{
+  if(!mapActive)return;
+  event.preventDefault();canvas.setPointerCapture(event.pointerId);
+  const point=mapPoint(event);pointers.set(event.pointerId,point);
+  if(pointers.size===1){
+    gestureMoved=false;
+    const m=mapDescriptor;
+    panPreview=m&&point.x>=m.x&&point.x<m.x+m.w&&point.y>=m.y&&point.y<m.y+m.h?{start:point,anchorX:m.panX,anchorY:m.panY,x:m.panX,y:m.panY,moved:false}:null;
+    void mapAction("down",point);
+  }else {panPreview=null;gestureMoved=true;void mapAction("up",point);pinchDistance=0;}
+});
+canvas.addEventListener("pointermove",event=>{
+  if(!mapActive)return;
+  if(!pointers.has(event.pointerId)){
+    if(performance.now()-lastHover>100){lastHover=performance.now();void mapAction("hover",mapPoint(event));}
+    return;
+  }
+  const point=mapPoint(event);pointers.set(event.pointerId,point);
+  if(panPreview&&pointers.size===1){
+    const dx=point.x-panPreview.start.x,dy=point.y-panPreview.start.y;
+    panPreview.moved=panPreview.moved||Math.hypot(dx,dy)>3;
+    panPreview.x=panPreview.anchorX+dx;panPreview.y=panPreview.anchorY+dy;
+  }
+  gestureMoved=true;
+  if(pointers.size===2){
+    const [a,b]=[...pointers.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinchDistance&&Math.abs(Math.log(distance/pinchDistance))>.14){
+      void mapAction(distance>pinchDistance?"in":"out",{x:(a.x+b.x)/2,y:(a.y+b.y)/2});pinchDistance=distance;
+    }else if(!pinchDistance)pinchDistance=distance;
+  }else if(performance.now()-lastMove>80){lastMove=performance.now();void mapAction("move",point);}
+});
+function releasePointer(event){
+  if(!pointers.has(event.pointerId))return;
+  const point=mapPoint(event);
+  if(pointers.size===1&&gestureMoved)void mapAction("move",point);
+  pointers.delete(event.pointerId);pinchDistance=0;void mapAction("up",point);
+  if(panPreview)panPreview.releasedAt=performance.now();
+  const now=performance.now();
+  if(!gestureMoved&&now-lastTap<300)void mapAction("in",point);
+  lastTap=gestureMoved?0:now;
+}
+canvas.addEventListener("pointerup",releasePointer);
+canvas.addEventListener("pointercancel",event=>{pointers.delete(event.pointerId);pinchDistance=0;void mapAction("up",mapPoint(event));});
+canvas.addEventListener("wheel",event=>{
+  if(!mapActive)return;
+  event.preventDefault();void mapAction(event.deltaY<0?"in":"out",mapPoint(event));
+},{passive:false});

@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     name: Build universal macOS app
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Check out the project
@@ -42,6 +42,37 @@ jobs:
           test -f "Outbreak Status Tracker.app/Contents/Resources/game/luaoutbreaktracker.so"
           plutil -lint "Outbreak Status Tracker.app/Contents/Info.plist"
           lipo -archs "Outbreak Status Tracker.app/Contents/Resources/game/luaoutbreaktracker.so"
+
+      # Tests live on dev only (tests/ is not copied to main), so main skips this.
+      - name: Set up Python for the frame tests
+        if: hashFiles('tests/run_frames.py') != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test with gameplay frames
+        if: hashFiles('tests/run_frames.py') != ''
+        env:
+          TRACKER_TEST_KEY: ${{ secrets.TRACKER_TEST_KEY }}
+        run: |
+          set -euo pipefail
+          command -v gpg >/dev/null || brew install gnupg
+          if [ -f tests/fixtures.tar.gz.gpg ]; then
+            python tests/run_frames.py --platform mac --app "Outbreak Status Tracker.app" \
+              --bundle tests/fixtures.tar.gz.gpg --launch-check 15 --report "$RUNNER_TEMP/frames-report.json"
+          else
+            echo "No encrypted frames yet: synthetic smoke run only."
+            python tests/run_frames.py --platform mac --app "Outbreak Status Tracker.app" \
+              --synthetic --no-expected --launch-check 15 --report "$RUNNER_TEMP/frames-report.json"
+          fi
+
+      - name: Upload the frame test report
+        if: always() && hashFiles('tests/run_frames.py') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: frame-test-report-macOS
+          path: ${{ runner.temp }}/frames-report.json
+          if-no-files-found: ignore
 
       - name: Upload the app
         run: |

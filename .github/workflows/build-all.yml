@@ -7,15 +7,19 @@ jobs:
   macos:
     name: macOS
     uses: ./.github/workflows/build-macos.yml
+    secrets: inherit  # the frame tests need TRACKER_TEST_KEY
 
   linux:
     name: Linux
     uses: ./.github/workflows/build-linux.yml
+    secrets: inherit  # the frame tests need TRACKER_TEST_KEY
 
   windows:
     name: Windows
     uses: ./.github/workflows/build-windows.yml
+    secrets: inherit  # the frame tests need TRACKER_TEST_KEY
 
   decky:
     name: Decky plugin
     uses: ./.github/workflows/build-decky.yml
+    secrets: inherit  # the frame tests need TRACKER_TEST_KEY

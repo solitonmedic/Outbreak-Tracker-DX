@@ -1,6 +1,6 @@
 # Build Outbreak Status Tracker
 
-Run these commands from the repository root. The source is shared across platforms, but each platform builds its own native reader and package. The GitHub [Build all platforms workflow](https://github.com/solitonmedic/Outbreak-Tracker-DX/actions/workflows/build-all.yml) can build all three, plus the Decky plugin, on their native runners; it starts only when manually dispatched.
+Run these commands from the repository root. The source is shared across platforms, but each platform builds its own native reader and package. The release number of every package (macOS app, Linux AppImage, Windows executable, Decky plugin) comes from the `VERSION` file; the Decky build stops if `decky/package.json` gives a different one. The GitHub [Build all platforms workflow](https://github.com/solitonmedic/Outbreak-Tracker-DX/actions/workflows/build-all.yml) can build all three, plus the Decky plugin, on their native runners; it starts only when manually dispatched.
 
 ## macOS
 
@@ -9,10 +9,9 @@ Install the Xcode Command Line Tools, CMake and LuaJIT, and place LÖVE 11.5 at 
 ```sh
 brew install cmake luajit
 ./macos/build-app.sh
-./macos/build-app.sh --debug
 ```
 
-The first command builds `Outbreak Status Tracker.app`; `--debug` builds a separate `Outbreak Status Tracker Debug.app`. Each is universal for Apple Silicon and Intel. The release build uses `macos/build-arm64/` and `macos/build-x86_64/`; the debug build uses `macos/build-debug-arm64/` and `macos/build-debug-x86_64/`. Set `LOVE_APP` if LÖVE lives elsewhere, or `OUTBREAK_APP_DIR` to choose an output app path.
+This builds `Outbreak Status Tracker.app`, universal for Apple Silicon and Intel, using `macos/build-arm64/` and `macos/build-x86_64/`. Set `LOVE_APP` if LÖVE lives elsewhere, or `OUTBREAK_APP_DIR` to choose an output app path.
 
 For a Terminal run without an app bundle, build the Apple Silicon reader and launch it through LÖVE:
 
@@ -22,21 +21,11 @@ cmake --build macos/terminal-build-arm64 --config Release
 ./macos/run.sh
 ```
 
-For a Terminal debug reader:
-
-```sh
-cmake -S macos -B macos/terminal-build-debug-arm64 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_OSX_ARCHITECTURES=arm64 -DOUTBREAK_DEBUG_RECORDER=ON
-cmake --build macos/terminal-build-debug-arm64 --config RelWithDebInfo
-OUTBREAK_RECORD_AUTOSTART=0 ./macos/run.sh --debug
-```
-
-The debug build records compressed EE-RAM checkpoints. It normally starts recording when the app opens; `OUTBREAK_RECORD_AUTOSTART=0` waits for **F9**. **F9** stops or starts a run, and **F10** adds a marker. Set `OUTBREAK_RECORD_LABEL`, `OUTBREAK_RECORD_DIR` or `OUTBREAK_RECORD_INTERVAL` before launch to choose the first label, parent directory or interval. Terminal input also becomes markers. Runs go to `~/Documents/Outbreak Tracker Recordings/` by default. They can contain game login and network data, so keep them private. See [macOS build notes](macos/README.md) for use details.
-
 ### How the macOS build works
 
 CMake copies the shared `sources/main.c` reader, applies `macos/patch_legacy_source.cmake` to that copy and compiles it as C++17. The macOS `windows.h` shim turns the reader's memory requests into PINE reads over TCP port `28011`. The release-specific File 1 address profile is shared with Windows and Linux.
 
-`build-app.sh` compiles an arm64 and an x86_64 reader, combines them into one native module with `lipo`, and places that module, the shared Lua UI, assets and a copy of LÖVE inside the app bundle. The debug option also compiles `sources/PineRecorder.cpp` with zlib into the native module and loads `macos/overrides/debug.lua`. The normal app does not include the recorder.
+`build-app.sh` compiles an arm64 and an x86_64 reader, combines them into one native module with `lipo`, and places that module, the shared Lua UI, assets and a copy of LÖVE inside the app bundle.
 
 The shared UI loads `assets/ui.png` and `assets/ui-us.png`. After the reader identifies U.S. File 1, it selects the English atlas; Japanese File 1 and File 2 use the original atlas. All platform packages copy both files from `assets/`.
 
@@ -123,4 +112,4 @@ The ZIP holds the native module, the shared Lua, everything in `assets/`, the we
 
 ## Build checks
 
-The manual GitHub workflow builds and verifies the macOS app, Linux AppImage and Windows distribution, then uploads each as an artifact. Its checks establish that the packages were built and contain the expected files. They do not test gameplay. The Decky plugin job, which also runs on its own, checks the TypeScript, the frontend, the reader link, the Python syntax and the ZIP contents. It does not test gameplay either. The ZIP built on the Deck was installed and run there with an iPhone; the workflow's own run is separate. The local reader and recorder offline checks are in the workspace's ignored `tools-n-shit/tracker-tests/` directory; they are not part of a fresh Git clone.
+The manual GitHub workflow builds and verifies the macOS app, Linux AppImage and Windows distribution, then uploads each as an artifact. Its checks establish that the packages were built and contain the expected files. The Decky plugin job, which also runs on its own, checks the TypeScript, the frontend, the reader link, the Python syntax and the ZIP contents. On the `dev` branch, which carries the `tests/` folder, every job also runs its package against recorded gameplay frames and starts the shipped program (see `tests/README.md` there); release branches skip those steps.

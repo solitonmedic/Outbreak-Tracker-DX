@@ -9,10 +9,16 @@ const int F1_DeadInventoryStart = 0x48BDE2;
 const int F1_VirusMaxStart = 0x6E6C70;
 const int F1_ScenarioIDAddr = 0x3065AA;
 const int F1_FrameCounter = 0x48BF78;
+const int F1_LocalSlot = 0x48BF7D; // u8 0-based local player slot (frames + 5)
 const int F1_RoomPriorty = 0x00825810;
 
 const int F1_PositionX = 0x38;
+const int F1_VoiceID = 0xDB4; // u32 voice packet ID; supported code evidence
+const int F1_VoiceTicks = 0xDBC; // s16 voice duration countdown
 const int F1_PositionY = 0x40;
+const int F1_PositionHeight = 0x3C; // float; workbook Addresses row149
+const int F1_ForwardX = 0x70; // facing: map-X component of the forward axis
+const int F1_ForwardY = 0x50; // facing: map-Y component of the forward axis
 const int F1_RoomIDOffset = 0x1E2;
 const int F1_CharacterEnabled = 0;
 const int F1_CharacterInGame = 1;
@@ -37,6 +43,8 @@ const int F1_HerbTimeOffset = 0xBBA;//herb time
 
 const int F1_PickupStructSize = 60;
 const int F1_ItemRoomIDOffset = 1;
+const int F1_ItemPositionXOffset = 8;  // float X (map X)
+const int F1_ItemPositionYOffset = 16; // float Z (map Y)
 const int F1_PickupCountOffset = 36;
 const int F1_PickupOffset = 40;
 const int F1_PresentOffset = 32;
@@ -148,6 +156,18 @@ const int F1_Door7HP = 0x473712;//room 201
 const int F1_Door8HP = 0x4737D2;//room 202
 const int F1_Door9HP = 0x4739B6;//4739B6/473A70 dd t-shaped
 const int F1_Door10HP = 0x473A40;//473A40/473A72 store room
+
+// Per-room interaction table (Japanese File 1). The room rebuilds these
+// records when it loads; slot numbers are not fixed per lock.
+// Record: +0x00..+0x1C area box as four int x/y corners, +0x34 the player
+// struct that last used it, and a signed 16-bit lock counter that each pick
+// attempt sets to 200 and lowers; the lock opens at <= 0.
+const int F1_InteractTable = 0x3B5D84;
+const int F1_InteractStride = 0xC4;
+const int F1_InteractSlots = 64;
+const int F1_InteractActorOffset = 0x34;
+const int F1_DoorLockCounterOffset = 0x64;      // doors
+const int F1_ContainerLockCounterOffset = 0x60; // cabinets, lockers, drawers
 
 int F1_GetDoorHP(int doorID)
 {

@@ -1,4 +1,24 @@
+-- Purpose: shared tracker UI and session controls, including M for SP radar sound
+-- and the lock-pick counter accessor used by the UNLOCK bar on Alyssa's card.
+-- Location/runtime: sources/main.lua; LÖVE 11.5/LuaJIT or the Decky drawing bridge.
+-- Inputs: reader state, packaged assets and keyboard/phone controls.
+-- Outputs: tracker drawing/audio; GameInfo.spsoundenabled reports the sound toggle.
+-- PuzzleHints shares existing learned-clue colors with map hints; values stay here.
+-- B/N add map layouts; mouse callbacks control the bundled map view, and update
+-- deltas drive the Desperate Times gas-room glow without changing game state.
+-- Safety: packaged map assets and reader access are read-only; no disc, cache,
+-- recording, workbook or game writes. Existing UI toggles remain session-only.
+-- Run from repo-merged/: ./macos/run.sh, or the installed Decky reader. Check:
+-- luajit tools-n-shit/tracker-tests/sp/check-sp-sound.lua . (synthetic state only).
 local tracker = require "luaoutbreaktracker"
+local PuzzleHints = require "PuzzleHints"
+
+-- Lets the player cards read Alyssa's lock-pick counter for the hint spot
+-- they matched. Returns nil when the reader has no lock data.
+function ReadLockCounter(playerId, spotX, spotY, isContainer)
+	if tracker.getLockCounter == nil then return nil end
+	return tracker.getLockCounter(playerId, spotX, spotY, isContainer)
+end
 
 require "assets"
 require "helpers"
@@ -12,6 +32,9 @@ require "LobbyCard"
 require "SPlayerCard"
 require "language"
 local SPTracking = require "SPTracking"
+local MapView = require "MapView"
+local Effects = require "PlayerEffects"
+local TrackerMenu = require "TrackerMenu"
 
 local InitResult = false
 local RetryTimer = 0
@@ -23,6 +46,7 @@ local EnemyHPSwitch=1
 local ItemSwitch=1
 local Style=0
 local HelpMenu=0
+local SPSoundEnabled=true
 local PlayerList=1
 local EnemyList=0
 local ItemList=0
@@ -88,6 +112,10 @@ function SPSetLetter()
 	return math.floor(GameInfo.spsetselector / 2) % 2 == 1 and "A" or "B"
 end
 
+local function SPSoundText()
+	return string.format(_l("M: SP radar sound: %s"), _l(SPSoundEnabled and "On" or "Off"))
+end
+
 function love.load(args)
 	LoadAssets()
 	InitResult = tracker.init()
@@ -127,10 +155,12 @@ function love.load(args)
 end
 
 function love.draw()
+	GameInfo.spsoundenabled = SPSoundEnabled
 	wx, wy, display = love.window.getMode()-- get window size
 	love.graphics.scale(wx/scalex, wy/scaley)
 
 	local p = GameInfo.playernum
+	if MapView.mode > 0 then p = 4 end
 	local itemset = GameInfo.itemrandom
 	local r = GameInfo.itemrandom2
 	local puzzleset = GameInfo.puzzlerandom
@@ -152,6 +182,13 @@ function love.draw()
 	local pass6 = GameInfo.pass6
 
 	if InitResult == true and not(GameInfo.currentFile == 255) then
+		-- SP state arrives just before drawing, so the SP found sound is decided here.
+		if s ~= "" and f > 0 then
+			-- Consume muted alerts too, so enabling sound cannot replay an old sighting.
+			if SPTracking.alert(SPTracking.state(GameInfo)) and SPSoundEnabled then SPFoundSound:play() end
+		else
+			SPTracking.reset()
+		end
 		if(pass1 >= 0 and pass1 <= 0x1F or pass1 >= 0x80 and pass1 <= 0x9F) then passbfp="0634"
 		elseif(pass1 >= 0x20 and pass1 <= 0x3F or pass1 >= 0xA0 and pass1 <= 0xBF) then passbfp="4509"
 		elseif(pass1 >= 0x40 and pass1 <= 0x7F or pass1 >= 0xC0 and pass1 <= 0xFF) then passbfp="9741"
@@ -306,6 +343,21 @@ function love.draw()
 		elseif(gr%16 == 14) then passub2="7840"
 		elseif(gr%16 == 15) then passub2="6910"
 		end
+		if MapView.mode > 0 then
+			local hints = {
+				["below freezing point"] = tostring(passbfp).."-"..tostring(pass2bfp),
+				["the hive"] = HiveCodeText(passhive),
+				["hellfire"] = tostring(hfpass).."-"..tostring(hfmap).."-"..tostring(hfpower),
+				["decisions,decisions"] = tostring(ddpass).."-"..tostring(clocktime),
+				["underbelly"] = tostring(passub1).." "..tostring(passub2),
+				["wild things"] = d ~= "easy" and passwt or "",
+				["desperate times"] = passdt,
+				["end of the road"] = tostring(GameInfo.pass4),
+			}
+			MapView.setLetter = SPSetLetter()
+			MapView.hint = PuzzleHintsAvailable(s) and hints[s] or ""
+			if MapView.mode == 2 then MapView.draw(GameInfo, Players, Enemies, Items);TrackerMenu.draw(scalex,scaley,true);return end
+		end
 		if Style==0 then
 			time_x = 0
 			time_y = 145*p
@@ -439,7 +491,11 @@ function love.draw()
 		if not(GameInfo.scenario == "") then
 			if(f>0) then
 				if TimeSwitch==1 then
-					love.graphics.printf(Time2string(GameInfo.frames / 0.03), time_x, time_y, 300, "right")
+					-- Elimination: countdown instead of the clock, red in the last 3:00.
+					local clockText, clockWarning = Effects.clockText(GameInfo)
+					Effects.drawClock(function(dx, dy)
+						love.graphics.printf(clockText, time_x + dx, time_y + dy, 300, "right")
+					end, clockWarning, TrackerPresentationTime or 0)
 				--elseif TimeSwitch==2 then
 				--	love.graphics.printf(RealTime(timer), time_x, time_y, 300, "right")
 				end
@@ -486,7 +542,7 @@ function love.draw()
 						ItemCards[i]:draw(itemcard_x, itemcard_y)
 					end
 				end
-				if PlayerList == 1 then
+				if PlayerList == 1 and MapView.mode ~= 2 then
 					for i=1, 4 do
 						if Players[i].enabled then
 							PlayerCards[i]:draw((i-1)*playercard_x, (i-1)*playercard_y)
@@ -855,7 +911,7 @@ function love.draw()
 			-- The Penpot pilot covers the vertical layout. No sample SP state is
 			-- substituted when the native reader does not provide this interface.
 			if Style == 0 and s ~= "" then
-				SPTracking.draw(GameInfo.spTracking, time_x, time_y, DefaultFont)
+				SPTracking.draw(SPTracking.state(GameInfo), time_x, time_y, DefaultFont)
 			end
 			if (s == "wild things") then
 				if(GameInfo.wttime > 0) and not (GameInfo.wttime == 0xffff) then
@@ -869,11 +925,7 @@ function love.draw()
 				if not (d == "easy") then
 					if(PuzzleSwitch == 1) then
 						love.graphics.setFont(DefaultFont)
-						if (GameInfo.passwt%8 >= 4 and GameInfo.passwt%8 <8) then-- >=4 and <8, >=C and <F
-							love.graphics.setColor( 0, 200/255, 0, 1 )
-						else
-							love.graphics.setColor( 127/255, 127/255, 127/255, 1 )
-						end
+						love.graphics.setColor(unpack(PuzzleHints.color(GameInfo,1)))
 						love.graphics.printf(passwt, passwt_x, passwt_y, 300, "left")
 					end
 				end
@@ -902,11 +954,7 @@ function love.draw()
 				love.graphics.setFont(DefaultFont)
 				if(GameInfo.fighttime == 0) and (GameInfo.fighttime2 == 0xffff) then
 					if(PuzzleSwitch == 1) then
-						if (GameInfo.passdt3%8 >= 4 and GameInfo.passdt3%8 <8) then-- >=4 and <8, >=C and <F						love.graphics.setColor( 0, 200/255, 0, 1 )
-							love.graphics.setColor( 0, 200/255, 0, 1 )
-						else
-							love.graphics.setColor( 127/255, 127/255, 127/255, 1 )
-						end
+						love.graphics.setColor(unpack(PuzzleHints.color(GameInfo,1)))
 						love.graphics.printf(passdt, timeleft_x, timeleft_y, 300, "left")
 					end
 				end
@@ -1070,18 +1118,10 @@ function love.draw()
 				if(GameInfo.escapetime == 0 or GameInfo.escapetime == 0xffff)then
 					if(PuzzleSwitch == 1) then
 						love.graphics.setFont(DefaultFont)
-						if(GameInfo.passub3%64 >=32) then
-							love.graphics.setColor( 0, 200/255, 0, 1 )
-						else
-							love.graphics.setColor( 127/255, 127/255, 127/255, 1 )
-						end
+						love.graphics.setColor(unpack(PuzzleHints.color(GameInfo,1)))
 						love.graphics.printf(passub1, timeleft_x, timeleft_y, 300, "left")
 
-						if(GameInfo.passub3%32 >=16) then
-							love.graphics.setColor( 0, 200/255, 0, 1 )
-						else
-							love.graphics.setColor( 127/255, 127/255, 127/255, 1 )
-						end
+						love.graphics.setColor(unpack(PuzzleHints.color(GameInfo,2)))
 						love.graphics.printf(passub2, timeleft_x+60, timeleft_y, 300, "left")
 					end
 
@@ -1109,7 +1149,8 @@ function love.draw()
 			love.graphics.setFont(VerySmallFont)
 			love.graphics.setColor( 1, 1, 1, 1 )
 			love.graphics.printf(_l("Language list"), 4, 4, 300, "left")
-			love.graphics.printf(_l("Help Menu"), 4, 60, 300, "left")
+			love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
+			love.graphics.printf(_l("Help Menu"), 4, 64, 300, "left")
 		end
 
 	elseif InitResult == false then
@@ -1117,17 +1158,23 @@ function love.draw()
 		love.graphics.printf(_l("Unable to find a PCSX2 process.\n Will try again in ") .. tostring(math.floor(5-RetryTimer + 0.5)) .. ".", errorX, errorY, 300, "center")
 		love.graphics.setFont(VerySmallFont)
 		love.graphics.printf(_l("Language list"), 4, 4, 300, "left")
-		love.graphics.printf(_l("Hotkeys list"), 4, 60, 300, "left")
+		love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
+		love.graphics.printf(_l("Hotkeys list"), 4, 64, 300, "left")
 	elseif InitResult == true and GameInfo.currentFile == 255 then
 		love.graphics.setFont(DefaultFont)
 		love.graphics.printf(_l("An Outbreak game is not loaded.\n Will try again in ") .. tostring(math.floor(5-RetryTimer + 0.5)) .. ".", errorX, errorY, 300, "center")
 		love.graphics.setFont(VerySmallFont)
 		love.graphics.printf(_l("Language list"), 4, 4, 300, "left")
-		love.graphics.printf(_l("Hotkeys list"), 4, 60, 300, "left")
+		love.graphics.printf(SPSoundText(), 4, 46, 292, "left")
+		love.graphics.printf(_l("Hotkeys list"), 4, 64, 300, "left")
 	end
+	MapView.draw(GameInfo, Players, Enemies, Items)
+	TrackerMenu.draw(scalex,scaley,MapView.mode>0)
 end
 
 function love.update(dt)
+	TrackerPresentationTime=(TrackerPresentationTime or 0)+dt
+	TrackerMenu.update(dt)
 	if not InitResult or GameInfo.currentFile == 255 then
 		RetryTimer = RetryTimer + dt
 		if RetryTimer >= 5 then
@@ -1140,6 +1187,14 @@ function love.update(dt)
 		tracker.updateRoom()
 		tracker.update()
 		GameInfo = tracker.getGameInfo()
+        if tracker.getSPMapState and not love.hasSPProvider then
+            local key=tostring(GameInfo.currentFile)..":"..tostring(GameInfo.release)..":"..tostring(GameInfo.scenario)
+            if SPMapKey~=key or (SPMapFrames and GameInfo.frames<SPMapFrames) then SPMapState=nil;SPMapElapsed=.25;SPMapKey=key end
+            SPMapFrames=GameInfo.frames
+            SPMapElapsed=(SPMapElapsed or .25)+dt
+            if SPMapElapsed>=.25 then SPMapElapsed=0;SPMapState=tracker.getSPMapState() end
+            GameInfo.spTracking=SPMapState
+        end
 		SelectUIAtlas(GameInfo.currentFile, GameInfo.release)
 		local p = GameInfo.playernum
 		local itemset = GameInfo.itemrandom
@@ -1177,26 +1232,34 @@ function love.update(dt)
 					SPlayers[i] = tracker.getSlotPlayer(i)
 				end
 			--end
-			if not(s == "") and (f > 0) and ItemSwitch ==1 then
+			-- Keep run-local observations current even when their main-screen widgets are hidden.
+            -- These getters export the arrays the native reader already refreshed.
+			if not(s == "") and (f > 0) then
 				for i=1, 1 do
 					Items[i] = tracker.getItem(i)
 				end
+				if MapView.mode>0 and tracker.getMapItems then GameInfo.mapItems=tracker.getMapItems() end
 			end
-			if not(s == "") and PlayerList ==1 then
+			if not(s == "") then
 				for i=1, 4 do
 					Players[i] = tracker.getPlayer(i)
 				end
 			end
-			if not(s == "") and (f > 0) and EnemyHPSwitch ==1 then
+			-- Map views draw enemy markers, so they need the enemy slots even when
+			-- the enemy HP list is switched off.
+			if not(s == "") and (f > 0) and (EnemyHPSwitch ==1 or MapView.mode > 0) then
 				for i=1, 12 do
 					Enemies[i] = tracker.getEnemy(i)
 				end
 			end
-			if not(s == "") and (f > 0) and EnemyList ==1 then
+			-- Elimination/Showdown map views count enemies left per room from this list.
+			local arenaMap = MapView.mode > 0 and MapView.arena
+			if not(s == "") and (f > 0) and (EnemyList ==1 or arenaMap) then
 				for i=1, 80 do
 					Enemies2[i] = tracker.getEnemyList(i)
 				end
 			end
+			MapView.enemyList = arenaMap and Enemies2 or nil
 			if not(s == "") and (f > 0) and ItemList >0 then
 				for i=1, 255 do
 					Items2[i] = tracker.getItem2(i)
@@ -1214,9 +1277,30 @@ function love.update(dt)
 			end
 		end
 	end
+	require("PlayerEffects").update(GameInfo,Players,TrackerPresentationTime or 0)
+	MapView.update(GameInfo, Players, dt, Items)
 end
 
 function love.keypressed(key)
+	if not love.isDecky and (key=="tab" or (key=="escape" and TrackerMenu.open)) then TrackerMenu.open=not TrackerMenu.open;return end
+	if key=="home" then key="v" end
+	if key == "b" or key == "n" then
+		local mode = key == "b" and 1 or 2
+		if MapView.mode == mode then love.keypressed("v"); return end
+		love.keypressed("v")
+		PlayerList, EnemyList, ItemList = 1, 0, 0
+		ItemSwitch, EnemyHPSwitch, TimeSwitch, doorList = 1, 1, 1, 1
+		MapView.setMode(mode)
+		scalex, scaley = MapView.dimensions()
+		love.window.setMode(scalex, scaley, {resizable=true,vsync=3})
+		return
+	end
+	if key == "f" and MapView.mode > 0 then MapView.follow=true; MapView.reset(); return end
+	if MapView.mode > 0 and (key=="v" or key=="h" or key=="d" or key=="a" or key=="f1" or key=="f2" or key=="f4" or key:match("^[1-4]$")) then
+		MapView.setMode(0)
+		scalex, scaley = 300, 740
+		love.window.setMode(300,740,{resizable=true,vsync=3})
+	end
 	x, y, display = love.window.getPosition()
 	wx, wy, display = love.window.getMode()
 	local p = GameInfo.playernum
@@ -1224,6 +1308,7 @@ function love.keypressed(key)
 	if key == "escape" then
 		love.event.quit()
 	end
+	if key == "m" then SPSoundEnabled = not SPSoundEnabled end
 	--if key == "f5" then
 	--	if doorList==0 then doorList=1 ItemList=0 ItemSwitch=0 PlayerList =0 EnemyHPSwitch=0 TimeSwitch=0
 		--elseif EnemyList==1 then EnemyList=2
@@ -1330,4 +1415,36 @@ function love.keypressed(key)
 			
 		end
 	end
+end
+
+-- Pointer input is expressed in the same logical coordinates on all displays.
+local function mapPoint(x,y)
+	local w,h=love.window.getMode()
+	return x*scalex/w,y*scaley/h
+end
+function love.mousepressed(x,y,button)
+	local mx,my=mapPoint(x,y)
+	local used=TrackerMenu.pointer("down",mx,my,button)
+	TrackerMenu.pointerMoved()
+	if used then return end
+	if button==1 then MapView.input("down",mapPoint(x,y)) end
+end
+-- The CONTROLS button shows only while the pointer is over the window.
+function love.mousefocus(inside)
+	TrackerMenu.pointerFocus(inside)
+end
+function love.mousemoved(x,y)
+	TrackerMenu.pointerMoved()
+	if TrackerMenu.open then return end
+	MapView.input("hover",mapPoint(x,y));MapView.input("move",mapPoint(x,y))
+end
+function love.mousereleased(x,y,button)
+	if TrackerMenu.open then return end
+	if button==1 then MapView.input("up",mapPoint(x,y)) end
+end
+function love.wheelmoved(_,dy)
+	TrackerMenu.pointerMoved()
+	if TrackerMenu.wheel(dy) then return end
+	local x,y=love.mouse.getPosition()
+	if dy~=0 then MapView.input(dy>0 and "in" or "out",mapPoint(x,y)) end
 end
