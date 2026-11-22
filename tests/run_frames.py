@@ -83,7 +83,7 @@ def synthetic(folder):
         "synthetic-us": {"description": "synthetic U.S. File 1 marker", "facts": {"api.game.currentFile": 1, "api.game.release": "us"}},
     }}
     if not (folder / "facts.json").exists():
-        (folder / "facts.json").write_text(json.dumps(facts, indent=1) + "\n")
+        (folder / "facts.json").write_text(json.dumps(facts, indent=1) + "\n", encoding="utf-8")
 
 
 def decrypt(bundle, folder):
@@ -230,13 +230,14 @@ def run_frame(args, name, frame_path, work):
         elif args.platform == "windows-layout":
             env["TRACKER_FRAME"] = str(frame_path)
         elif args.platform == "windows":
-            fake = subprocess.Popen([str(args.fake_pcsx2), str(frame_path)], stdout=subprocess.PIPE, text=True)
+            fake = subprocess.Popen([str(args.fake_pcsx2), str(frame_path)], stdout=subprocess.PIPE, text=True,
+                                    encoding="utf-8", errors="replace")
             ready = fake.stdout.readline().strip()
             if ready != "ready":
                 problems.append("stand-in pcsx2-qt.exe did not start: %r" % ready)
                 return None, problems
         process = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                 text=True, errors="replace", timeout=args.timeout)
+                                 text=True, encoding="utf-8", errors="replace", timeout=args.timeout)
         if process.returncode != 0:
             problems.append("exit status %d" % process.returncode)
     except subprocess.TimeoutExpired:
@@ -248,7 +249,7 @@ def run_frame(args, name, frame_path, work):
         elif fake is not None:
             fake.kill()
             fake.wait()
-    lines = log.read_text(errors="replace").splitlines() if log.exists() else []
+    lines = log.read_text(encoding="utf-8", errors="replace").splitlines() if log.exists() else []
     errors = [i for i, line in enumerate(lines) if line.startswith("ERROR")]
     if errors:
         problems.append("\n    ".join(lines[errors[0]:errors[0] + 20]))
@@ -329,7 +330,7 @@ def main():
                 expected_path = fixtures / "expected" / family / (name + ".json")
                 if args.write_expected:
                     expected_path.parent.mkdir(parents=True, exist_ok=True)
-                    expected_path.write_text(json.dumps(result, indent=1, sort_keys=True) + "\n")
+                    expected_path.write_text(json.dumps(result, indent=1, sort_keys=True) + "\n", encoding="utf-8")
                 elif expected_path.exists() and not args.no_expected:
                     problems += frames.compare(frames.compared(frames.load_json(expected_path)), frames.compared(result))
                 elif not args.no_expected:
@@ -358,7 +359,7 @@ def main():
             else:
                 print("PASS shipped program (%s) ran %d s unchanged" % (args.platform, args.launch_check))
         if args.report:
-            args.report.write_text(json.dumps(report, indent=1) + "\n")
+            args.report.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
         print("%d of %d frames passed on %s" % (len(names) - failed, len(names), args.platform))
         if not names:
             summary.append("no frames were found")
@@ -393,7 +394,8 @@ def launch_check(args, frame_path, work):
     problems = []
     try:
         if args.platform == "windows":
-            fake = subprocess.Popen([str(args.fake_pcsx2), str(frame_path)], stdout=subprocess.PIPE, text=True)
+            fake = subprocess.Popen([str(args.fake_pcsx2), str(frame_path)], stdout=subprocess.PIPE, text=True,
+                                    encoding="utf-8", errors="replace")
             if fake.stdout.readline().strip() != "ready":
                 return ["stand-in pcsx2-qt.exe did not start"]
         else:

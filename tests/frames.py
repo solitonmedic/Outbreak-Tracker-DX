@@ -22,6 +22,7 @@ import math
 import os
 import socket
 import struct
+import sys
 import threading
 import traceback
 from pathlib import Path
@@ -198,7 +199,7 @@ def check_facts(entry, actual):
 def load_json(path):
     def constant(name):
         return {"NaN": math.nan, "Infinity": math.inf, "-Infinity": -math.inf}[name]
-    return json.loads(Path(path).read_text(), parse_constant=constant)
+    return json.loads(Path(path).read_text(encoding="utf-8"), parse_constant=constant)
 
 
 def annotate(title, lines):
@@ -217,7 +218,10 @@ def annotate(title, lines):
 
 def run_main(main, title):
     """Run a test script's main(); a FAIL exit message or an unexpected error
-    is also reported as an annotation (see annotate)."""
+    is also reported as an annotation (see annotate). Output is UTF-8 on every
+    system (Windows consoles default to a legacy code page)."""
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8", errors="replace")
     try:
         main()
     except SystemExit as stop:

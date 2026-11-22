@@ -95,7 +95,7 @@ def run_plugin(plugin, work, timeout, memory=None, env_extra=None):
     problems, result = [], {"views": []}
     try:
         api = subprocess.run(["luajit", "-e", API_SCRIPT], cwd=plugin, env=env, capture_output=True,
-                             text=True, timeout=timeout)
+                             text=True, encoding="utf-8", errors="replace", timeout=timeout)
         if api.returncode != 0:
             problems.append("reader API dump failed: " + api.stderr[-600:])
         else:
@@ -104,7 +104,7 @@ def run_plugin(plugin, work, timeout, memory=None, env_extra=None):
         for step in STEPS:
             lines += [step if step != "main" else ""] + [""] * (PER - 1)
         ui = subprocess.run(["luajit", "reader.lua"], cwd=plugin, env=env, input="\n".join(lines) + "\n",
-                            capture_output=True, text=True, timeout=timeout)
+                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
         outputs = ui.stdout.splitlines()
         if ui.returncode != 0 or len(outputs) != len(lines):
             problems.append("reader.lua stopped after %d of %d frames: %s" % (len(outputs), len(lines), ui.stderr[-600:]))
@@ -186,7 +186,7 @@ def main():
             expected = fixtures / "expected" / "decky" / (name + ".json")
             if args.write_expected:
                 expected.parent.mkdir(parents=True, exist_ok=True)
-                expected.write_text(json.dumps({"views": result["views"]}, indent=1, sort_keys=True) + "\n")
+                expected.write_text(json.dumps({"views": result["views"]}, indent=1, sort_keys=True) + "\n", encoding="utf-8")
             elif expected.exists():
                 problems += frames.compare(frames.load_json(expected), {"views": result["views"]})
             else:
@@ -202,7 +202,7 @@ def main():
             else:
                 print("PASS %s (decky)%s" % (name, " expected written" if args.write_expected else ""))
         if args.report:
-            args.report.write_text(json.dumps(report, indent=1) + "\n")
+            args.report.write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
         print("%d of %d frames passed on decky" % (len(names) - failed, len(names)))
         if not names:
             summary.append("no frames were found")
