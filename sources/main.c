@@ -738,25 +738,6 @@ unsigned char GetDifficulty()
         ReadProcessMemory(ProcessHandle, (char*)BasePointer + F2_Difficulty, &buffer, 1, NULL);
     return buffer;
 }
-/*
-unsigned int GetE1HP()//enemy HP
-{
-	unsigned int Pointer;
-	unsigned short buffer;
-	int bytesRead = 0;
-	if (info.CurrentFile == 1)
-	{
-		ReadProcessMemory(ProcessHandle, (char *)F1_Pointer, &Pointer,4,0);
-	    ReadProcessMemory(ProcessHandle, (char *)Pointer+0x20000000 + F1_EHPOffset, &buffer, 2, NULL);
-	}
-	else
-	{
-		ReadProcessMemory(ProcessHandle, (char *)F2_Pointer, &Pointer,4,0);
-		ReadProcessMemory(ProcessHandle, (char *)Pointer+0x20000000 + F2_EHPOffset, &buffer, 2, NULL);
-	}
-	return buffer;
-}
-*/
 void UpdatePickups()
 {
     for (int i = 0; i < 255; i++)
