@@ -74,6 +74,9 @@ else
   cp "$root_dir/macos/overrides/main.lua" "$game_dir/main.lua"
 fi
 cp -R "$root_dir/assets" "$game_dir/assets"
+# The game's own map files (sampled locally, git-ignored) are not shipped: maps
+# come from sources/MapGeometry.lua and the Evil Resource art.
+rm -rf "${game_dir:?}/assets/maps/game"
 cp "$native_module" "$game_dir/luaoutbreaktracker.so"
 rm -f "$native_module"
 plutil -lint "$app_dir/Contents/Info.plist"

@@ -41,9 +41,12 @@ The shared map views use recoloured PNGs under `er/` on fitted floors, with blue
 walls, yellow doors and transparent room interiors. `sources/MapER.lua` holds
 the generated room-ID crosswalk, room outlines and per-layer conversions from
 the game's map coordinates. Fits use matching room names and room bounds;
-they have been checked offline and still need in-game comparison. Floors without
-a reliable fit retain the bundled game map artwork. The original GIFs and this
-manifest remain the source provenance, including per-map URLs and permission.
+they have been checked offline and still need in-game comparison. The room layout
+itself (rooms, floors, placements and traced room outlines) is in
+`sources/MapGeometry.lua`, exported by a development script from the game's map
+files; no game file is shipped. Floors without a reliable fit draw those outlines
+in the tracker's style. The original GIFs and this manifest remain the source
+provenance, including per-map URLs and permission.
 
 Source location IDs identify Evil Resource locations. Runtime markers continue
 to use the game's room IDs and coordinate data. These assets do not establish

@@ -68,6 +68,12 @@ New-Item -ItemType Directory -Force -Path $gameRoot, $distributionRoot | Out-Nul
 
 Copy-Item (Join-Path $repoRoot 'sources/*.lua') $gameRoot
 Copy-Item (Join-Path $repoRoot 'assets') $gameRoot -Recurse
+# The game's own map files (sampled locally, git-ignored) are not shipped: maps
+# come from sources/MapGeometry.lua and the Evil Resource art.
+$sampledMaps = Join-Path $gameRoot 'assets/maps/game'
+if (Test-Path -LiteralPath $sampledMaps) {
+    Remove-Item -LiteralPath $sampledMaps -Recurse -Force
+}
 Copy-Item (Join-Path $PSScriptRoot 'overrides/language.lua') (Join-Path $gameRoot 'language.lua') -Force
 
 if (-not (Test-Path (Join-Path $gameRoot 'main.lua') -PathType Leaf)) {

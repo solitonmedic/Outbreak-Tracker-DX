@@ -39,6 +39,9 @@ else
   cp "$root_dir/macos/overrides/main.lua" "$game_dir/main.lua"
 fi
 cp -R "$root_dir/assets" "$game_dir/assets"
+# The game's own map files (sampled locally, git-ignored) are not shipped: maps
+# come from sources/MapGeometry.lua and the Evil Resource art.
+rm -rf "${game_dir:?}/assets/maps/game"
 cp "$module" "$game_dir/luaoutbreaktracker.so"
 
 exec "$love_bin" "$game_dir"

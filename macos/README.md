@@ -92,13 +92,15 @@ card view. Drag to pan, scroll to zoom, use Fit to see the floor, and use the fl
 row to select another floor. Clicking a player follows that player. Manual pan
 or floor selection stops follow.
 
-The sampled Japanese File 1 and File 2 map assets are included in the application.
-Maps load automatically for the five main scenarios in each game; there is no disc
-selection, import, download or user-cache setup step.
+Maps for the five main scenarios of Japanese File 1 and File 2 are built into the
+application (the File 1 maps also serve the U.S. release). They load automatically;
+there is no disc selection, import, download or user-cache setup step, and no game
+files are needed.
 
 Fitted floors use Evil Resource artwork with blue walls, yellow doors and room
 tints. Your room is red; other occupied rooms use a lighter blue. Gas rooms
-pulse with a yellow glow. Floors without a reliable fit retain the game's artwork.
+pulse with a yellow glow. Floors without Evil Resource artwork show their rooms as
+dark shapes with blue outlines, traced from the game's room layout.
 
 Players use red, blue, yellow and green by slot; YOU identifies the local gameplay
 record. A dot marks a usable position. A portrait in a ring marks only the room,

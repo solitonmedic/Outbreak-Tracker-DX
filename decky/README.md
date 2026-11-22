@@ -149,14 +149,14 @@ In phone Controls, choose **Map + compact cards** or **Cards beside map** (keybo
 scroll to zoom, double-tap to zoom, and switch floors from the floor row. The menu
 button stays visible while using the map. All connected pages share these controls.
 
-The sampled Japanese File 1 and File 2 map assets are bundled with the plugin.
-They load automatically for the five main scenarios in each game, and the File 1
-maps also serve the U.S. release. No disc path,
-import, upload, download or user-cache setup is required.
+Maps for the five main scenarios of Japanese File 1 and File 2 are built into the
+plugin, and the File 1 maps also serve the U.S. release. They load automatically.
+No disc path, import, upload, download, user-cache setup or game file is required.
 
 Fitted floors use Evil Resource artwork with blue walls, yellow doors and room
 tints. Your room is red; other occupied rooms use a lighter blue. Gas rooms
-pulse with a yellow glow. Floors without a reliable fit retain the game's artwork.
+pulse with a yellow glow. Floors without Evil Resource artwork show their rooms as
+dark shapes with blue outlines, traced from the game's room layout.
 
 The wide layout is 760×740, desktop vertical is 300×740 and the phone layout is
 390×844, following the tracker-style design. Floor rows scroll by swipe or wheel

@@ -24,6 +24,9 @@ cp "$root_dir"/sources/*.lua "$game_dir/"
 cp "$root_dir/sources/main.lua" "$game_dir/main_base.lua"
 cp "$root_dir/linux/overrides/main.lua" "$game_dir/main.lua"
 cp -R "$root_dir/assets" "$game_dir/assets"
+# The game's own map files (sampled locally, git-ignored) are not shipped: maps
+# come from sources/MapGeometry.lua and the Evil Resource art.
+rm -rf "${game_dir:?}/assets/maps/game"
 cp "$module" "$game_dir/luaoutbreaktracker.so"
 cmake -E chdir "$game_dir" cmake -E tar cf "$game_file" --format=zip .
 

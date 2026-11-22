@@ -1,10 +1,14 @@
--- Purpose: reusable reader for the sampled Japanese map assets bundled with the app.
+-- Purpose: reusable map layout for the ten Japanese scenario maps (also used for
+-- U.S. File 1, whose map files hold the same rooms, floors and placements).
 -- Runtime/location: sources/MapData.lua; LuaJIT (desktop LÖVE or Decky).
--- Inputs: packaged assets/maps/game/jpN map data through a read callback.
--- Outputs: validated room/floor tables; performs no filesystem writes.
+-- Inputs: sources/MapGeometry.lua, numbers exported from the game's map files by
+-- tools-n-shit/research/export-map-geometry.py (no game files at run time).
+-- M.parse still reads a map file's bytes; the checks use it to compare.
+-- Outputs: fresh room/floor tables per load; performs no filesystem access.
 -- Safety: no disc, ISO, PINE, recordings, workbook or user-cache access.
--- Run: maps load automatically when opening a supported Japanese scenario.
--- Check from repo root: luajit tools-n-shit/tracker-tests/maps/check-runtime-maps.lua .
+-- Run: maps load automatically when opening a supported scenario.
+-- Check from repo root: luajit tools-n-shit/tracker-tests/maps/check-map-geometry.lua .
+local Geometry = require "MapGeometry"
 local M = {}
 M.scenarios = {
     -- Codes are the game's scenario IDs (structs.h GetScenarioName): 002 holds
@@ -71,16 +75,27 @@ function M.parse(s)
 end
 function M.position(f,x,z) return (x-f.refX)*f.ppu/100,(z-f.refZ)*f.ppu/100 end
 
-function M.load(game,scenario,read)
+-- A fresh copy per load: MapView adjusts floor bounds for full-artwork floors.
+-- Rooms carry their traced outlines (room-local pixels); map.code is the map's
+-- scenario code ("001" ...). The third argument of older callers is ignored.
+function M.load(game,scenario)
     local code
     for _,entry in ipairs(M.scenarios[game] or {}) do
         if entry[2]==scenario then code=entry[1]; break end
     end
     if not code then return nil,"No map is available for this scenario" end
-    local path="assets/maps/game/jp"..game.."/"..code
-    local bytes=read(path..".dat")
-    if not bytes then return nil,"Map artwork is missing from this build" end
-    local map=M.parse(bytes); map.path=path
+    local data=Geometry[game] and Geometry[game][code]
+    if not data then return nil,"Map data is missing from this build" end
+    local map={game=game,code=code,rooms={},floors={}}
+    for i,r in ipairs(data.rooms) do map.rooms[i]={id=r[1],w=r[2],h=r[3],outlines=r[4]} end
+    for i,f in ipairs(data.floors) do
+        local floor={name=f.name,height=f.height,ppu=f.ppu,refX=f.refX,refZ=f.refZ,places={},
+                     minX=f.bounds[1],minY=f.bounds[2],maxX=f.bounds[3],maxY=f.bounds[4]}
+        for k=1,#f.places,3 do
+            floor.places[#floor.places+1]={record=f.places[k],x=f.places[k+1],y=f.places[k+2]}
+        end
+        map.floors[i]=floor
+    end
     return map
 end
 return M
