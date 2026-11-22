@@ -1,0 +1,12 @@
+# Lua checks run by "python3 tests/lint.py" (selene, version pinned in
+# tests/lint/tools.py). The standard library is Lua 5.1 (what LuaJIT runs),
+# LÖVE's love table and the globals the tracker's files share, listed in
+# tracker.yml.
+std = "tests/lint/tracker"
+
+[lints]
+# The original tracker writes "if (a) then"; the parentheses are harmless.
+parenthese_conditions = "allow"
+# Shared globals are declared in tracker.yml; assigning one is how the
+# original modules share state.
+unscoped_variables = "allow"

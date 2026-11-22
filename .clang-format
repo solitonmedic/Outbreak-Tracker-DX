@@ -1,0 +1,28 @@
+# Layout of the C and C++ files, applied by "python3 tests/lint.py --fix"
+# (clang-format, version pinned in tests/lint/tools.py). It follows the
+# original reader: braces on their own lines and conditions split at || and &&,
+# with 4-space indents and 120 columns.
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+BreakBeforeBraces: Allman
+PointerAlignment: Left
+# The platform shims (windows.h and the rest) must stay ahead of the game
+# headers, so includes are never reordered.
+SortIncludes: Never
+IncludeBlocks: Preserve
+# Address tables line up their values.
+AlignConsecutiveMacros: Consecutive
+AlignTrailingComments: true
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+AllowShortCaseLabelsOnASingleLine: false
+# Comments keep the line breaks their authors chose.
+ReflowComments: false
+# CreateEmptyItemTable is a complete statement without a semicolon.
+StatementMacros:
+  - CreateEmptyItemTable

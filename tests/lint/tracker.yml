@@ -1,0 +1,361 @@
+---
+# The globals the tracker's Lua files share, for selene (tests/lint/selene.toml).
+# The original tracker modules keep their state in globals (players, fonts,
+# screen positions) and define their helpers as global functions; they are
+# listed here so that selene reports only names that are not on this list,
+# such as typos and new globals. New code should use locals and require() instead.
+base: lua51
+name: tracker
+globals:
+  love:
+    any: true
+  BossCard:
+    property: full-write
+  DefaultFont:
+    property: full-write
+  DoorCard:
+    property: full-write
+  DoorCards:
+    property: full-write
+  Doors:
+    property: full-write
+  Enemies:
+    property: full-write
+  Enemies2:
+    property: full-write
+  EnemyCard:
+    property: full-write
+  EnemyCard2:
+    property: full-write
+  EnemyCard3:
+    property: full-write
+  EnemyCard4:
+    property: full-write
+  EnemyCards:
+    property: full-write
+  EnemyCards2:
+    property: full-write
+  EnemyCards3:
+    property: full-write
+  EnemyCards4:
+    property: full-write
+  GameInfo:
+    property: full-write
+  GetBossColor:
+    args:
+      - type: "..."
+        required: false
+  GetBossHealthString:
+    args:
+      - type: "..."
+        required: false
+  GetConditionColor:
+    args:
+      - type: "..."
+        required: false
+  GetConditionColor2:
+    args:
+      - type: "..."
+        required: false
+  GetConditionColor3:
+    args:
+      - type: "..."
+        required: false
+  GetConditionName:
+    args:
+      - type: "..."
+        required: false
+  GetConditionName2:
+    args:
+      - type: "..."
+        required: false
+  GetEnemiesHealthString2:
+    args:
+      - type: "..."
+        required: false
+  GetEnemyColor:
+    args:
+      - type: "..."
+        required: false
+  GetEnemyColor2:
+    args:
+      - type: "..."
+        required: false
+  GetEnemyHealthString:
+    args:
+      - type: "..."
+        required: false
+  GetPlayerHealthString:
+    args:
+      - type: "..."
+        required: false
+  GetPlayerString:
+    args:
+      - type: "..."
+        required: false
+  GetRoomName:
+    args:
+      - type: "..."
+        required: false
+  GetScenarioIDString:
+    args:
+      - type: "..."
+        required: false
+  GetSlotString:
+    args:
+      - type: "..."
+        required: false
+  GetSlotsColor:
+    args:
+      - type: "..."
+        required: false
+  GetStatusColor:
+    args:
+      - type: "..."
+        required: false
+  GetVersionString:
+    args:
+      - type: "..."
+        required: false
+  GetVirusState:
+    args:
+      - type: "..."
+        required: false
+  ItemCard:
+    property: full-write
+  ItemCard2:
+    property: full-write
+  ItemCard3:
+    property: full-write
+  ItemCards:
+    property: full-write
+  ItemCards2:
+    property: full-write
+  ItemCards3:
+    property: full-write
+  ItemCountFont:
+    property: full-write
+  ItemIcon:
+    property: full-write
+  ItemIcon2:
+    property: full-write
+  ItemIcon3:
+    property: full-write
+  ItemIcons:
+    property: full-write
+  ItemIcons2:
+    property: full-write
+  Items:
+    property: full-write
+  Items2:
+    property: full-write
+  Label:
+    property: full-write
+  LanguageSwitch:
+    property: full-write
+  LoadAssets:
+    args:
+      - type: "..."
+        required: false
+  LobbyCard:
+    property: full-write
+  LobbyCards:
+    property: full-write
+  MapFonts:
+    property: full-write
+  MapUIAtlas:
+    property: full-write
+  MiniFont:
+    property: full-write
+  PlayerCard:
+    property: full-write
+  PlayerCards:
+    property: full-write
+  PlayerSwitch:
+    property: full-write
+  Players:
+    property: full-write
+  ReadLockCounter:
+    args:
+      - type: "..."
+        required: false
+  RoomMasters:
+    property: full-write
+  RoomNames:
+    property: full-write
+  SPFoundSound:
+    property: full-write
+  SPMapElapsed:
+    property: full-write
+  SPMapFrames:
+    property: full-write
+  SPMapKey:
+    property: full-write
+  SPMapState:
+    property: full-write
+  SPlayerCard:
+    property: full-write
+  SPlayerCards:
+    property: full-write
+  SPlayers:
+    property: full-write
+  SelectUIAtlas:
+    args:
+      - type: "..."
+        required: false
+  Slots:
+    property: full-write
+  SmallFont:
+    property: full-write
+  Time2string:
+    args:
+      - type: "..."
+        required: false
+  Time2string2:
+    args:
+      - type: "..."
+        required: false
+  Time2string3:
+    args:
+      - type: "..."
+        required: false
+  Time2string4:
+    args:
+      - type: "..."
+        required: false
+  Time2string5:
+    args:
+      - type: "..."
+        required: false
+  TimeFont:
+    property: full-write
+  TrackerPresentationTime:
+    property: full-write
+  UIAtlas:
+    property: full-write
+  VerySmallFont:
+    property: full-write
+  VirusFont:
+    property: full-write
+  _l:
+    args:
+      - type: "..."
+        required: false
+  clocktime:
+    property: full-write
+  ddpass:
+    property: full-write
+  display:
+    property: full-write
+  door_x:
+    property: full-write
+  door_y:
+    property: full-write
+  gasroom_x:
+    property: full-write
+  gasroom_y:
+    property: full-write
+  gastime_scale:
+    property: full-write
+  gastime_x:
+    property: full-write
+  gastime_y:
+    property: full-write
+  hfmap:
+    property: full-write
+  hfpass:
+    property: full-write
+  hfpower:
+    property: full-write
+  hostdifficulty_x:
+    property: full-write
+  hostdifficulty_y:
+    property: full-write
+  hostmap_scale:
+    property: full-write
+  hostmap_x:
+    property: full-write
+  hostmap_y:
+    property: full-write
+  hostplayer_x:
+    property: full-write
+  hostplayer_y:
+    property: full-write
+  hosttime_x:
+    property: full-write
+  hosttime_y:
+    property: full-write
+  icon_scale:
+    property: full-write
+  icon_x:
+    property: full-write
+  icon_y:
+    property: full-write
+  itemcard_x:
+    property: full-write
+  itemcard_y:
+    property: full-write
+  itemr_y:
+    property: full-write
+  itemset_x:
+    property: full-write
+  itemset_y:
+    property: full-write
+  lobby_n:
+    property: full-write
+  lobby_x:
+    property: full-write
+  lobby_y:
+    property: full-write
+  oldfont:
+    property: full-write
+  order:
+    property: full-write
+  pass2bfp:
+    property: full-write
+  passbfp:
+    property: full-write
+  passdt:
+    property: full-write
+  passhive:
+    property: full-write
+  passub1:
+    property: full-write
+  passub2:
+    property: full-write
+  passwt:
+    property: full-write
+  passwt_x:
+    property: full-write
+  passwt_y:
+    property: full-write
+  playercard_x:
+    property: full-write
+  playercard_y:
+    property: full-write
+  slotplayer_x:
+    property: full-write
+  slotplayer_y:
+    property: full-write
+  slotplayer_z:
+    property: full-write
+  spset_x:
+    property: full-write
+  spset_y:
+    property: full-write
+  time_x:
+    property: full-write
+  time_y:
+    property: full-write
+  timeleft_x:
+    property: full-write
+  timeleft_y:
+    property: full-write
+  wx:
+    property: full-write
+  wy:
+    property: full-write
+  x:
+    property: full-write
+  y:
+    property: full-write

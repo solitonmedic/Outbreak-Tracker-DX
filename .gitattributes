@@ -1,0 +1,14 @@
+# Every text file is checked out with LF line endings on every system, so the
+# formatters and tests/lint.py see the same bytes on Windows, macOS and Linux.
+* text=auto eol=lf
+
+# Never convert these.
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.otf binary
+*.wav binary
+*.gpg binary
+*.zip binary

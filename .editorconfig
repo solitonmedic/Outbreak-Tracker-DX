@@ -1,0 +1,40 @@
+# Layout rules for every file in this repository. Most editors apply them
+# automatically (some need an EditorConfig plugin), and tests/lint.py checks
+# them on every system. The formatters it runs use the same settings.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json,jsonc,webmanifest,md,toml}]
+indent_size = 2
+
+# Visual Studio writes these files in its own layout, with a byte-order mark.
+[*.{sln,vcxproj,filters}]
+charset = unset
+indent_style = unset
+indent_size = unset
+
+# Generated tables keep the layout of the program that writes them
+# (tests/lint/settings.py lists them and where they come from).
+[sources/{MapGeometry,MapER,MapLayout,layout,icondata,icondata2,uidata}.lua]
+indent_style = unset
+indent_size = unset
+
+# Other projects' files stay exactly as released.
+[windows/Outbreak Tracker/{include,love2d}/**]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset
+
+[decky/LICENSE]
+indent_style = unset
+indent_size = unset

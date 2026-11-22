@@ -1,0 +1,28 @@
+// Checks and layout of the Decky plugin's JavaScript, TypeScript and CSS, run
+// by "python3 tests/lint.py" (Biome, version pinned in tests/lint/tools.py).
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+  "files": {
+    "includes": ["web/**/*.js", "web/**/*.css", "src/**/*.ts", "src/**/*.tsx", "*.js"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 4,
+    "lineWidth": 120,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": { "quoteStyle": "double" }
+  },
+  "css": {
+    "formatter": { "enabled": true },
+    "linter": { "enabled": true }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": { "preset": "recommended" }
+  },
+  // Import sorting would reorder code; keep imports as written.
+  "assist": { "enabled": false }
+}

@@ -29,3 +29,6 @@
 /windows/Outbreak Tracker/lib/
 
 /sources/*.so
+
+# Lint tools downloaded by tests/lint.py --install-tools
+/.lint-tools/

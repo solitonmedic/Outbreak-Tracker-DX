@@ -1,0 +1,8 @@
+# Generated tables: their program writes the layout (see tests/lint/settings.py).
+sources/MapGeometry.lua
+sources/MapER.lua
+sources/MapLayout.lua
+sources/layout.lua
+sources/icondata.lua
+sources/icondata2.lua
+sources/uidata.lua

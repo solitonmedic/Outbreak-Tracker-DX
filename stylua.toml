@@ -1,0 +1,15 @@
+# Layout of the Lua files, applied by "python3 tests/lint.py --fix" (StyLua,
+# version pinned in tests/lint/tools.py). Generated tables are listed in
+# .styluaignore.
+syntax = "LuaJIT"
+column_width = 120
+line_endings = "Unix"
+indent_type = "Spaces"
+indent_width = 4
+quote_style = "AutoPreferDouble"
+call_parentheses = "Always"
+# One statement per line: "if a then b() end" is written as three lines.
+collapse_simple_statement = "Never"
+
+[sort_requires]
+enabled = false

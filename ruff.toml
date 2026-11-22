@@ -1,0 +1,12 @@
+# Python checks and layout, run by "python3 tests/lint.py" (Ruff, version
+# pinned in tests/lint/tools.py). The scripts support Python 3.9 and later.
+line-length = 120
+target-version = "py39"
+
+[lint]
+# pycodestyle errors and warnings, pyflakes, and bugbear's likely bugs.
+select = ["E", "W", "F", "B"]
+
+[format]
+quote-style = "double"
+line-ending = "lf"
