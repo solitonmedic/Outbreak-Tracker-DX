@@ -1,18 +1,5 @@
 # Linux build files
 
-## Development test package
-
-The 2026-11-06 `dev` test package `0.3.1-debug.dev1` is a separate Decky build
-with the experimental SP provider and explicit-start recorder. Its x86_64 native
-module was linked using GCC14.4.0/CMake3.31.8 and the frozen Decky toolchain lock
-in a local Linux container. Normal Linux/AppImage build commands below do not
-enable that private provider. Full preparation/build/check commands and artifact
-hashes are recorded in the workspace build/recorder reference.
-
-This round builds the Decky native module and frontend/ZIP, not a Linux desktop
-AppImage, Windows package or macOS app. Runtime checks use synthetic memory;
-installation and comparison with the live game remain separate verification.
-
 This folder contains the files used to build and test the Linux version of Outbreak Status Tracker.
 
 `patch_legacy_source.cmake` reads `INPUT` and writes a generated C++ reader to
@@ -108,12 +95,8 @@ CONTROLS (or right-click/Tab) for tracker-styled controls; MAIN TRACKER returns 
 the map. The floor strip scrolls when more than five floor groups exist.
 
 Shared `sources/SPMapReader.h` supplies bounded SP room records through the
-existing reader connection (at most4 samples/second, supported profiles and
-loaded-code guards). The private Deck provider replaces that sample and retains
-its radar. Native renderer/reader source was C11/offline-checked on macOS; the
-Linux debug module is built on the Deck. No macOS application, Windows MSVC build
-or AppImage was produced by this presentation pass. These changes need user-run
-in-game comparison; synthetic previews establish layout, not live accuracy.
+existing reader connection (at most 4 samples/second, supported profiles and
+loaded-code guards).
 
 Map9 follow-up: both map layouts also show the SP compass/counter beside the
 clock, labelled YOU because its bearing follows the local player's facing even

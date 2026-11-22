@@ -43,42 +43,6 @@ the loaded code tables are unavailable; leading zeros are preserved.
 In-game room-master crowns use the loaded U.S. authority table. Unavailable or
 changing data suppresses the crown; a gameplay-screen comparison is pending.
 
-## Debug build with run recording
-
-The debug build is for testing and is not a release. It shows the same tracker and also records the run in the format of `record-pine-ee-run.py`: one compressed 32 MiB EE-RAM checkpoint every 10 seconds, extra checkpoints when player 1 settles in a new room or a marker is added, and a `manifest.json` with a JSON sidecar per checkpoint. It only reads memory. The reader detects Japanese and U.S. File 1 automatically. U.S. fields without a mapped address remain unavailable; some host, lobby and puzzle fields still need work.
-
-```sh
-./macos/build-app.sh --debug
-```
-
-This creates `Outbreak Status Tracker Debug.app`. Recording starts when the app opens and ends when it closes; nothing is saved until PCSX2 has a game loaded. In the app:
-
-- **F9** stops the current recording, or starts a new one in a new folder.
-- **F10** adds a marker.
-
-The window title shows the recording state. Runs are saved under `~/Documents/Outbreak Tracker Recordings/<label>/`, by default labelled `tracker-debug-<date>-<time>`. These environment variables change that when the app is started from Terminal:
-
-| Variable | Effect |
-|---|---|
-| `OUTBREAK_RECORD_LABEL` | Label of the first run |
-| `OUTBREAK_RECORD_DIR` | Parent folder for run folders |
-| `OUTBREAK_RECORD_INTERVAL` | Seconds between checkpoint start times (default 10) |
-| `OUTBREAK_RECORD_AUTOSTART` | Set to `0` to wait for F9 before recording |
-
-To run the debug reader from Terminal, where each line you type is saved as a marker:
-
-```sh
-cmake -S macos -B macos/terminal-build-debug-arm64 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_OSX_ARCHITECTURES=arm64 -DOUTBREAK_DEBUG_RECORDER=ON
-cmake --build macos/terminal-build-debug-arm64
-OUTBREAK_RECORD_LABEL=my-run ./macos/run.sh --debug
-```
-
-Recordings contain the game's login and network data. Keep them private.
-
-The debug recorder recognizes U.S. File 1 `SLUS-20765` / `2.00` with retail CRC
-`0245ef6d` or the alternate boot executable CRC `0244e76c`. Other fingerprints
-retain periodic full-memory recording without inferred File 1 state fields.
-
 The shared SP layout pilot uses generated `sources/layout.lua` and
 `sources/SPTracking.lua`, both included by the existing app packager. Text uses
 the same Arial Bold font as password hints. The display stays hidden until the
@@ -131,12 +95,8 @@ CONTROLS (or right-click/Tab) for tracker-styled controls; MAIN TRACKER returns 
 the map. The floor strip scrolls when more than five floor groups exist.
 
 Shared `sources/SPMapReader.h` supplies bounded SP room records through the
-existing reader connection (at most4 samples/second, supported profiles and
-loaded-code guards). The private Deck provider replaces that sample and retains
-its radar. Native renderer/reader source was C11/offline-checked on macOS; the
-Linux debug module is built on the Deck. No macOS application, Windows MSVC build
-or AppImage was produced by this presentation pass. These changes need user-run
-in-game comparison; synthetic previews establish layout, not live accuracy.
+existing reader connection (at most 4 samples/second, supported profiles and
+loaded-code guards).
 
 Map9 follow-up: both map layouts also show the SP compass/counter beside the
 clock, labelled YOU because its bearing follows the local player's facing even

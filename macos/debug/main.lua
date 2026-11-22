@@ -1,5 +1,7 @@
--- Debug build: run the macOS tracker and record full EE-RAM checkpoints like
--- tools-n-shit/record-pine-ee-run.py. Recording starts when the tracker opens.
+-- Debug build (dev branch only): run the macOS tracker and record full EE-RAM
+-- checkpoints like tools-n-shit/record-pine-ee-run.py. Recording starts when the
+-- tracker opens. macos/debug/build-app.sh and run.sh install this file as the
+-- game's main.lua, with the normal macOS override renamed main_mac.lua.
 --
 --   F9   stop the current recording, or start a new one
 --   F10  add a marker (lines typed into a launching terminal are markers too)

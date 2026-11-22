@@ -2,24 +2,15 @@
 set -eu
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
-# --debug builds a separate app whose reader also records EE-RAM checkpoints.
-debug=0
-case "${1:-}" in
-  "") ;;
-  --debug) debug=1 ;;
-  *) echo "Usage: $0 [--debug]" >&2; exit 2 ;;
-esac
-if [ "$debug" = 1 ]; then
-  app_dir="${OUTBREAK_APP_DIR:-$root_dir/Outbreak Status Tracker Debug.app}"
-  build_prefix="$root_dir/macos/build-debug"
-  build_type=RelWithDebInfo
-  recorder_option=ON
-else
-  app_dir="${OUTBREAK_APP_DIR:-$root_dir/Outbreak Status Tracker.app}"
-  build_prefix="$root_dir/macos/build"
-  build_type=Release
-  recorder_option=OFF
-fi
+# Optional environment: OUTBREAK_APP_DIR (output app), OUTBREAK_BUILD_PREFIX
+# (CMake build folders, one per architecture: <prefix>-arm64, <prefix>-x86_64),
+# OUTBREAK_BUILD_TYPE (default Release) and OUTBREAK_CMAKE_SOURCE (the CMake
+# project that builds the reader, default macos/).
+[ $# -eq 0 ] || { echo "Usage: $0" >&2; exit 2; }
+app_dir="${OUTBREAK_APP_DIR:-$root_dir/Outbreak Status Tracker.app}"
+build_prefix="${OUTBREAK_BUILD_PREFIX:-$root_dir/macos/build}"
+build_type="${OUTBREAK_BUILD_TYPE:-Release}"
+cmake_source="${OUTBREAK_CMAKE_SOURCE:-$root_dir/macos}"
 love_app="${LOVE_APP:-/Applications/love.app}"
 icon_source="$root_dir/sources/outbreak-tracker-icon-hd.png"
 [ -d "$love_app" ] || { echo "LÖVE not found: $love_app" >&2; exit 1; }
@@ -31,7 +22,7 @@ build_module() {
   pine_args=
   if [ -f "$build_dir/CMakeCache.txt" ]; then
     cached_source=$(sed -n 's#^CMAKE_HOME_DIRECTORY:INTERNAL=##p' "$build_dir/CMakeCache.txt")
-    if [ "$cached_source" != "$root_dir/macos" ]; then
+    if [ "$cached_source" != "$cmake_source" ]; then
       rm -rf "$build_dir"
     fi
   fi
@@ -39,10 +30,9 @@ build_module() {
     pine_args="-DFETCHCONTENT_SOURCE_DIR_PINE=$root_dir/macos/pine-source"
   fi
   # shellcheck disable=SC2086
-  cmake -S "$root_dir/macos" -B "$build_dir" \
+  cmake -S "$cmake_source" -B "$build_dir" \
     -DCMAKE_BUILD_TYPE="$build_type" \
     -DCMAKE_OSX_ARCHITECTURES="$arch" \
-    -DOUTBREAK_DEBUG_RECORDER="$recorder_option" \
     -DFETCHCONTENT_FULLY_DISCONNECTED="${FETCHCONTENT_FULLY_DISCONNECTED:-OFF}" \
     $pine_args
   cmake --build "$build_dir" --config "$build_type"
@@ -64,15 +54,7 @@ game_dir="$app_dir/Contents/Resources/game"
 cp "$root_dir"/sources/*.lua "$game_dir/"
 chmod -R u+w "$game_dir"
 cp "$root_dir/sources/main.lua" "$game_dir/main_base.lua"
-if [ "$debug" = 1 ]; then
-  cp "$root_dir/macos/overrides/main.lua" "$game_dir/main_mac.lua"
-  cp "$root_dir/macos/overrides/debug.lua" "$game_dir/main.lua"
-  plutil -replace CFBundleName -string "Outbreak Status Tracker Debug" "$app_dir/Contents/Info.plist"
-  plutil -replace CFBundleDisplayName -string "Outbreak Status Tracker Debug" "$app_dir/Contents/Info.plist"
-  plutil -replace CFBundleIdentifier -string "org.outbreaktracker.macos.debug" "$app_dir/Contents/Info.plist"
-else
-  cp "$root_dir/macos/overrides/main.lua" "$game_dir/main.lua"
-fi
+cp "$root_dir/macos/overrides/main.lua" "$game_dir/main.lua"
 cp -R "$root_dir/assets" "$game_dir/assets"
 # The game's own map files (sampled locally, git-ignored) are not shipped: maps
 # come from sources/MapGeometry.lua and the Evil Resource art.

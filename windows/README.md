@@ -99,12 +99,8 @@ CONTROLS (or right-click/Tab) for tracker-styled controls; MAIN TRACKER returns 
 the map. The floor strip scrolls when more than five floor groups exist.
 
 Shared `sources/SPMapReader.h` supplies bounded SP room records through the
-existing reader connection (at most4 samples/second, supported profiles and
-loaded-code guards). The private Deck provider replaces that sample and retains
-its radar. Native renderer/reader source was C11/offline-checked on macOS; the
-Linux debug module is built on the Deck. No macOS application, Windows MSVC build
-or AppImage was produced by this presentation pass. These changes need user-run
-in-game comparison; synthetic previews establish layout, not live accuracy.
+existing reader connection (at most 4 samples/second, supported profiles and
+loaded-code guards).
 
 Map9 follow-up: both map layouts also show the SP compass/counter beside the
 clock, labelled YOU because its bearing follows the local player's facing even

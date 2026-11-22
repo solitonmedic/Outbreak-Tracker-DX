@@ -9,9 +9,8 @@ The drawing bridge also handles ellipse, polygon, rotation and line-width
 commands for the shared SP counter/radar component. Its layout is generated
 from Penpot into `sources/layout.lua`; text uses the password-hint font.
 `sources/SPTracking.lua` draws the counter and player-relative compass from a
-validated reader state; the private Decky facing probe supplies that state.
-The native reader does not yet supply SP state, so this component stays hidden
-in ordinary gameplay until that data interface is implemented.
+validated reader state (the room records of `sources/SPMapReader.h`) and stays
+hidden while that state is unavailable.
 When the radar first shows an SP item after a room change, the page plays
 `assets/sp-found.wav` once; it does not play again until the room changes. The
 reader sends a play count for each sound with every frame and each open page plays
