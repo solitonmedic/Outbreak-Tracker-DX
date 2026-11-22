@@ -15,7 +15,8 @@ Inputs: --zip built plugin ZIP, or --layout to assemble the plugin files from
   the expected Decky results on a Mac. Fixtures as in tests/run_frames.py:
   --fixtures DIR, --bundle FILE.gpg with TRACKER_TEST_KEY, or --synthetic.
 Outputs: PASS/FAIL per frame with differing fields; --write-expected writes
-  expected/decky/<frame>.json; --report writes pass/fail only.
+  expected/decky/<frame>.json; --report writes pass/fail only. On GitHub
+  Actions the failures also go into one error annotation.
 Safety: temporary plugin copy and socket folder; the real PCSX2 is never
   contacted; decrypted fixtures are deleted afterwards.
 Run from repo-merged/:
@@ -169,6 +170,7 @@ def main():
         if args.frame:
             names = [n for n in names if n in args.frame]
         report, failed = {"platform": "decky", "frames": {}}, 0
+        summary = []  # failures, for the GitHub annotation
         for index, name in enumerate(names):
             # Short folder names: Unix socket paths are limited to about 104 bytes.
             run = temporary / ("r%d" % index)
@@ -194,6 +196,7 @@ def main():
             if problems:
                 failed += 1
                 print("FAIL %s (decky): %d problem(s)" % (name, len(problems)))
+                summary += ["%s: %d problem(s)" % (name, len(problems))] + ["  " + line for line in problems[:8]]
                 for line in problems[:40]:
                     print("    " + line)
             else:
@@ -201,8 +204,11 @@ def main():
         if args.report:
             args.report.write_text(json.dumps(report, indent=1) + "\n")
         print("%d of %d frames passed on decky" % (len(names) - failed, len(names)))
+        if not names:
+            summary.append("no frames were found")
+        frames.annotate("Gameplay frame tests failed on decky", summary)
         sys.exit(1 if failed or not names else 0)
 
 
 if __name__ == "__main__":
-    main()
+    frames.run_main(main, "Gameplay frame tests (decky)")

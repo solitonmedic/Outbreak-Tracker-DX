@@ -34,7 +34,8 @@ Options: --no-expected checks facts and errors only (synthetic smoke runs);
   display is asleep it stalls and this check fails; run it with the display on.
 Outputs: PASS/FAIL per frame with differing fields (path, expected, actual);
   optional --report JSON with pass/fail only; --write-expected writes the
-  expected JSON of the chosen family into --fixtures.
+  expected JSON of the chosen family into --fixtures. On GitHub Actions the
+  failures (first 8 fields per frame) also go into one error annotation.
 Safety: memory comes only from the frames; sockets and processes are temporary
   and the real PCSX2 is never contacted. Decrypted fixtures stay in a temporary
   folder that is deleted afterwards; nothing from them is uploaded.
@@ -90,8 +91,10 @@ def decrypt(bundle, folder):
     if not key:
         sys.exit("FAIL: the TRACKER_TEST_KEY secret is not set (GitHub: Settings > Secrets and variables > Actions)")
     archive = folder / "fixtures.tar.gz"
-    subprocess.run(["gpg", "--batch", "--yes", "--quiet", "--pinentry-mode", "loopback", "--passphrase-fd", "0",
-                    "--output", str(archive), "--decrypt", str(bundle)], input=key.encode(), check=True)
+    decrypted = subprocess.run(["gpg", "--batch", "--yes", "--quiet", "--pinentry-mode", "loopback", "--passphrase-fd",
+                                "0", "--output", str(archive), "--decrypt", str(bundle)], input=key.encode())
+    if decrypted.returncode != 0:
+        sys.exit("FAIL: gpg could not decrypt %s (is TRACKER_TEST_KEY the passphrase it was made with?)" % bundle.name)
     with tarfile.open(archive) as tar:
         tar.extractall(folder / "fixtures", filter="data")
     archive.unlink()
@@ -312,6 +315,7 @@ def main():
         if args.frame:
             names = [n for n in names if n in args.frame]
         report, failed = {"platform": args.platform, "family": family, "frames": {}}, 0
+        summary = []  # failures, for the GitHub annotation
         loaded = []  # frames with a game loaded, for --launch-check
         for index, name in enumerate(names):
             # Short folder names: Unix socket paths are limited to about 104 bytes.
@@ -335,6 +339,7 @@ def main():
             if problems:
                 failed += 1
                 print("FAIL %s (%s): %d problem(s)" % (name, args.platform, len(problems)))
+                summary += ["%s: %d problem(s)" % (name, len(problems))] + ["  " + line for line in problems[:8]]
                 for line in problems[:40]:
                     print("    " + line)
                 if len(problems) > 40:
@@ -349,11 +354,15 @@ def main():
             if problems:
                 failed += 1
                 print("FAIL shipped program (%s): %s" % (args.platform, "; ".join(problems)))
+                summary.append("shipped program: " + "; ".join(problems))
             else:
                 print("PASS shipped program (%s) ran %d s unchanged" % (args.platform, args.launch_check))
         if args.report:
             args.report.write_text(json.dumps(report, indent=1) + "\n")
         print("%d of %d frames passed on %s" % (len(names) - failed, len(names), args.platform))
+        if not names:
+            summary.append("no frames were found")
+        frames.annotate("Gameplay frame tests failed on %s" % args.platform, summary)
         sys.exit(1 if failed or not names else 0)
 
 
@@ -441,4 +450,4 @@ def build_test_reader(output):
 
 
 if __name__ == "__main__":
-    main()
+    frames.run_main(main, "Gameplay frame tests")

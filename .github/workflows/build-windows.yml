@@ -139,23 +139,36 @@ jobs:
         run: |
           # The runner has no GPU; LÖVE needs OpenGL 2.1. Mesa's llvmpipe is
           # copied next to the test copies only, never into the distribution.
-          $archive = Join-Path $env:RUNNER_TEMP 'mesa.7z'
-          Invoke-WebRequest `
-            -Uri 'https://github.com/pal1000/mesa-dist-win/releases/download/26.2.6/mesa3d-26.2.6-release-msvc.7z' `
-            -OutFile $archive
-          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
-          if ($hash -ne 'b2e00615feaba45942343c265cc8c5f576142ca682c1ac6661922d4b72492877') {
-            throw "Mesa archive checksum mismatch: $hash"
+          # A failure is also reported as an annotation on the run's summary page.
+          try {
+            $archive = Join-Path $env:RUNNER_TEMP 'mesa.7z'
+            Invoke-WebRequest `
+              -Uri 'https://github.com/pal1000/mesa-dist-win/releases/download/26.2.6/mesa3d-26.2.6-release-msvc.7z' `
+              -OutFile $archive
+            $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+            if ($hash -ne 'b2e00615feaba45942343c265cc8c5f576142ca682c1ac6661922d4b72492877') {
+              throw "Mesa archive checksum mismatch: $hash ($((Get-Item $archive).Length) bytes)"
+            }
+            $extract = Join-Path $env:RUNNER_TEMP 'mesa-extract'
+            $listing = 7z x $archive "-o$extract" -y 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "7z exited with $LASTEXITCODE`n$($listing | Select-Object -Last 10 | Out-String)" }
+            $mesa = Join-Path $env:RUNNER_TEMP 'mesa'
+            New-Item -ItemType Directory -Force -Path $mesa | Out-Null
+            foreach ($name in @('opengl32.dll', 'libgallium_wgl.dll', 'libglapi.dll')) {
+              $source = Join-Path $extract "x64/$name"
+              if (Test-Path $source -PathType Leaf) { Copy-Item $source $mesa }
+            }
+            if (-not (Test-Path (Join-Path $mesa 'opengl32.dll') -PathType Leaf)) {
+              $found = Get-ChildItem -Path $extract -Recurse -Filter '*.dll' | Select-Object -First 20 |
+                ForEach-Object { $_.FullName.Substring($extract.Length) }
+              throw "Mesa opengl32.dll not found in x64; DLLs found: $($found -join ', ')"
+            }
+            Get-ChildItem $mesa | ForEach-Object { "$($_.Name) $($_.Length) bytes" }
+          } catch {
+            $message = "$($_.Exception.Message)" -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
+            Write-Output "::error title=Mesa software OpenGL::$message"
+            throw
           }
-          $extract = Join-Path $env:RUNNER_TEMP 'mesa-extract'
-          7z x $archive "-o$extract" -y | Out-Null
-          $mesa = Join-Path $env:RUNNER_TEMP 'mesa'
-          New-Item -ItemType Directory -Force -Path $mesa | Out-Null
-          foreach ($name in @('opengl32.dll', 'libgallium_wgl.dll', 'libglapi.dll')) {
-            $source = Join-Path $extract "x64/$name"
-            if (Test-Path $source -PathType Leaf) { Copy-Item $source $mesa }
-          }
-          if (-not (Test-Path (Join-Path $mesa 'opengl32.dll') -PathType Leaf)) { throw 'Mesa opengl32.dll not found' }
 
       - name: Set up Python for the frame tests
         if: hashFiles('tests/run_frames.py') != ''

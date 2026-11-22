@@ -13,13 +13,17 @@ FakePine: a PINE server on <folder>/pcsx2.sock (the path pine.h uses from
   error, and returns zeros outside the 32 MiB EE RAM.
 Safety: serves synthetic or trimmed memory only, on a socket in a temporary
   folder, so the real PCSX2 is never contacted.
-Check: exercised by tests/run_frames.py --self-test.
+annotate/run_main: on GitHub Actions (GITHUB_ACTIONS=true) a failure is also
+  printed as one "::error" annotation, shown on the run's summary page.
+Check: exercised by tests/run_frames.py and tests/decky_frames.py.
 """
 import json
 import math
+import os
 import socket
 import struct
 import threading
+import traceback
 from pathlib import Path
 
 MAGIC = b"OTFRAME1"
@@ -189,3 +193,31 @@ def load_json(path):
     def constant(name):
         return {"NaN": math.nan, "Infinity": math.inf, "-Infinity": -math.inf}[name]
     return json.loads(Path(path).read_text(), parse_constant=constant)
+
+
+def annotate(title, lines):
+    """On GitHub Actions, also report lines as one error annotation, which the
+    run's summary page shows without opening the log."""
+    if os.environ.get("GITHUB_ACTIONS") != "true" or not lines:
+        return
+    def escape(text, extra=()):
+        text = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        for char, code in extra:
+            text = text.replace(char, code)
+        return text
+    message = "\n".join(lines[:150])
+    print("::error title=%s::%s" % (escape(title, ((":", "%3A"), (",", "%2C"))), escape(message)), flush=True)
+
+
+def run_main(main, title):
+    """Run a test script's main(); a FAIL exit message or an unexpected error
+    is also reported as an annotation (see annotate)."""
+    try:
+        main()
+    except SystemExit as stop:
+        if isinstance(stop.code, str):
+            annotate(title, [stop.code])
+        raise
+    except Exception:
+        annotate(title, traceback.format_exc().splitlines()[-25:])
+        raise
