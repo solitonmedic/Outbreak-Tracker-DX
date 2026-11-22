@@ -7,6 +7,12 @@
 base: lua51
 name: tracker
 globals:
+  # Lua's assert() takes an optional message; selene's Lua 5.1 table requires one.
+  assert:
+    args:
+      - type: any
+      - type: any
+        required: false
   love:
     any: true
   BossCard:
