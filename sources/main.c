@@ -986,7 +986,7 @@ unsigned short GetBleedTime(int characterID)
 
 unsigned short GetAntiVirusGTime(int characterID)
 {
-  unsigned short buffer;
+  unsigned short buffer = 0; /* File 2 has no mapped anti-virus G timer */
   int bytesRead = 0;
   if (info.CurrentFile == 1)
       ReadF1(F1_GetCharAddress(characterID) + F1_AntiVirusGTimeOffset, &buffer, 2);
