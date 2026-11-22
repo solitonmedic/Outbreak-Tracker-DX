@@ -14,6 +14,7 @@ stops after IDLE_SECONDS without one, so PCSX2 gets no PINE traffic while nobody
 Run: started/stopped by the Decky backend; standalone diagnostic mode at file end.
 Check: open the link shown in Decky, verify live status and original tracker UI.
 """
+
 import argparse
 import ipaddress
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -33,8 +34,35 @@ import os
 
 TAILSCALE = ipaddress.ip_network("100.64.0.0/10")
 IDLE_SECONDS = 15
-KEYS = {"home", "f1", "f2", "f3", "f4", "d", "h", "v", "l", "t", "i", "q", "e", "m", "b", "n", "f",
-        "1", "2", "3", "4", "a", "kp0", "kp1", "kp2", "kp3", "kp4"}
+KEYS = {
+    "home",
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "d",
+    "h",
+    "v",
+    "l",
+    "t",
+    "i",
+    "q",
+    "e",
+    "m",
+    "b",
+    "n",
+    "f",
+    "1",
+    "2",
+    "3",
+    "4",
+    "a",
+    "kp0",
+    "kp1",
+    "kp2",
+    "kp3",
+    "kp4",
+}
 
 
 def local_client(address):
@@ -52,7 +80,7 @@ def local_host(header):
     """True when the Host header names an IP literal, a single-label name or a .local name."""
     host = (header or "").strip().lower()
     if host.startswith("["):
-        host = host[1:host.find("]")] if "]" in host else ""
+        host = host[1 : host.find("]")] if "]" in host else ""
     elif host.count(":") == 1:
         host = host.split(":")[0]
     if not host:
@@ -110,7 +138,9 @@ class TrackerService:
     def reader_loop(self):
         while not self.stopping.is_set():
             if not self.watched():
-                self.publish({"state": "idle", "message": "Reader paused until a device opens the tracker", "commands": []})
+                self.publish(
+                    {"state": "idle", "message": "Reader paused until a device opens the tracker", "commands": []}
+                )
                 while not self.stopping.is_set() and not self.watched():
                     self.wake.wait(1)
                     self.wake.clear()
@@ -123,8 +153,14 @@ class TrackerService:
                     raise RuntimeError("LuaJIT is not installed on this Deck")
                 env = dict(os.environ)
                 env["XDG_RUNTIME_DIR"] = self.runtime_dir
-                process = subprocess.Popen([executable, "reader.lua"], cwd=self.plugin, env=env,
-                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                process = subprocess.Popen(
+                    [executable, "reader.lua"],
+                    cwd=self.plugin,
+                    env=env,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                )
                 self.process = process
                 while not self.stopping.is_set() and self.watched():
                     keys = []
@@ -176,7 +212,8 @@ class TrackerService:
         return {
             "running": self.server is not None,
             "phoneUrl": f"http://{address}:{self.port}/" if self.server else None,
-            "connection": frame["state"], "lastError": frame.get("message"),
+            "connection": frame["state"],
+            "lastError": frame.get("message"),
         }
 
     def start(self):
@@ -200,7 +237,10 @@ class TrackerService:
                 self.send_header("Content-Length", str(len(data)))
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("X-Content-Type-Options", "nosniff")
-                self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'")
+                self.send_header(
+                    "Content-Security-Policy",
+                    "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'",
+                )
                 self.end_headers()
                 self.wfile.write(data)
 
@@ -228,10 +268,14 @@ class TrackerService:
                 else:
                     return self.json({"error": "Not found"}, 404)
                 target = (service.plugin / relative).resolve()
-                allowed = service.plugin / ("assets" if path.startswith("/assets/") else "web/icons" if path.startswith("/icons/") else "web")
+                allowed = service.plugin / (
+                    "assets" if path.startswith("/assets/") else "web/icons" if path.startswith("/icons/") else "web"
+                )
                 if not target.is_relative_to(allowed) or not target.is_file():
                     return self.json({"error": "Not found"}, 404)
-                return self.send_data(target.read_bytes(), mimetypes.guess_type(str(target))[0] or "application/octet-stream")
+                return self.send_data(
+                    target.read_bytes(), mimetypes.guess_type(str(target))[0] or "application/octet-stream"
+                )
 
             def do_POST(self):
                 route = urlsplit(self.path).path
@@ -241,7 +285,8 @@ class TrackerService:
                     return self.json({"error": "Only devices on the local network may connect"}, 403)
                 origin = self.headers.get("Origin")
                 if self.headers.get("Content-Type", "").split(";")[0].strip().lower() != "application/json" or (
-                        origin and origin != "http://" + self.headers.get("Host", "")):
+                    origin and origin != "http://" + self.headers.get("Host", "")
+                ):
                     return self.json({"error": "Controls must come from the tracker page"}, 403)
                 try:
                     length = int(self.headers.get("Content-Length", "0"))
@@ -251,7 +296,8 @@ class TrackerService:
                     if route == "/api/map":
                         action, x, y = data["action"], data["x"], data["y"]
                         if action not in {"hover", "down", "move", "up", "in", "out", "fit"} or any(
-                                type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 10000 for v in (x, y)):
+                            type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 10000 for v in (x, y)
+                        ):
                             raise ValueError()
                         key = f"map/{action}/{x:.2f}/{y:.2f}"
                     else:

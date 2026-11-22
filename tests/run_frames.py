@@ -50,6 +50,7 @@ Run from repo-merged/, for example:
 Check: exit status 0 and one PASS line per frame; a changed frame byte or a
   broken Lua view makes it fail with the differing fields.
 """
+
 import argparse
 import json
 import os
@@ -67,26 +68,44 @@ REPO = HERE.parent
 sys.path.insert(0, str(HERE))
 import frames  # noqa: E402
 
-FAMILY = {"mac": "pine", "linux": "pine", "linux-layout": "pine", "windows": "windows", "windows-layout": "windows",
-          "windows-api": "windows"}
+FAMILY = {
+    "mac": "pine",
+    "linux": "pine",
+    "linux-layout": "pine",
+    "windows": "windows",
+    "windows-layout": "windows",
+    "windows-api": "windows",
+}
 API_ONLY = {"windows-api"}  # headless platforms that check the reader API without the UI
 AUTOMATION = ["main.lua", "frames_dump.lua", "frames_json.lua"]
 
 
 # ---------------------------------------------------------------- fixtures --
 
+
 def synthetic(folder):
     """Two generated frames: blank memory and the synthetic U.S. File 1 state
     of tools-n-shit/tracker-tests/decky/check-live.py (marker, Hive, player 1)."""
     (folder / "frames").mkdir(parents=True, exist_ok=True)
     frames.write_frame(folder / "frames" / "synthetic-blank.otf", [])
-    frames.write_frame(folder / "frames" / "synthetic-us.otf", [
-        (0x250510, b"BASLUS-20765"), (0x3243DA, struct.pack("<H", 28)), (0x4A5C30, b"\x01"),
-        (0x4BADE8, struct.pack("<I", 9000))])
-    facts = {"frames": {
-        "synthetic-blank": {"description": "no game", "facts": {"api.game.currentFile": 255}},
-        "synthetic-us": {"description": "synthetic U.S. File 1 marker", "facts": {"api.game.currentFile": 1, "api.game.release": "us"}},
-    }}
+    frames.write_frame(
+        folder / "frames" / "synthetic-us.otf",
+        [
+            (0x250510, b"BASLUS-20765"),
+            (0x3243DA, struct.pack("<H", 28)),
+            (0x4A5C30, b"\x01"),
+            (0x4BADE8, struct.pack("<I", 9000)),
+        ],
+    )
+    facts = {
+        "frames": {
+            "synthetic-blank": {"description": "no game", "facts": {"api.game.currentFile": 255}},
+            "synthetic-us": {
+                "description": "synthetic U.S. File 1 marker",
+                "facts": {"api.game.currentFile": 1, "api.game.release": "us"},
+            },
+        }
+    }
     if not (folder / "facts.json").exists():
         (folder / "facts.json").write_text(json.dumps(facts, indent=1) + "\n", encoding="utf-8")
 
@@ -96,8 +115,23 @@ def decrypt(bundle, folder):
     if not key:
         sys.exit("FAIL: the TRACKER_TEST_KEY secret is not set (GitHub: Settings > Secrets and variables > Actions)")
     archive = folder / "fixtures.tar.gz"
-    decrypted = subprocess.run(["gpg", "--batch", "--yes", "--quiet", "--pinentry-mode", "loopback", "--passphrase-fd",
-                                "0", "--output", str(archive), "--decrypt", str(bundle)], input=key.encode())
+    decrypted = subprocess.run(
+        [
+            "gpg",
+            "--batch",
+            "--yes",
+            "--quiet",
+            "--pinentry-mode",
+            "loopback",
+            "--passphrase-fd",
+            "0",
+            "--output",
+            str(archive),
+            "--decrypt",
+            str(bundle),
+        ],
+        input=key.encode(),
+    )
     if decrypted.returncode != 0:
         sys.exit("FAIL: gpg could not decrypt %s (is TRACKER_TEST_KEY the passphrase it was made with?)" % bundle.name)
     with tarfile.open(archive) as tar:
@@ -111,25 +145,46 @@ def make_bundle(fixtures, bundle):
     key = os.environ.get("TRACKER_TEST_KEY")
     if not key:
         sys.exit("set TRACKER_TEST_KEY to the passphrase")
+
     def clean(info):
         # No owner names or times in the archive (same bytes for the same content).
         info.uid = info.gid = 0
         info.uname = info.gname = ""
         info.mtime = 0
         return info
+
     with tempfile.TemporaryDirectory(prefix="ot-bundle-") as temporary:
         archive = Path(temporary) / "fixtures.tar.gz"
         with tarfile.open(archive, "w:gz") as tar:
             for name in ("facts.json", "frames", "expected"):
                 tar.add(fixtures / name, arcname=name, filter=clean)
-        subprocess.run(["gpg", "--batch", "--yes", "--quiet", "--pinentry-mode", "loopback", "--passphrase-fd", "0",
-                        # RFC 4880 packets (no AEAD) so any gpg 2.x on a runner can decrypt.
-                        "--rfc4880", "--symmetric", "--cipher-algo", "AES256", "--output", str(bundle), str(archive)],
-                       input=key.encode(), check=True)
+        subprocess.run(
+            [
+                "gpg",
+                "--batch",
+                "--yes",
+                "--quiet",
+                "--pinentry-mode",
+                "loopback",
+                "--passphrase-fd",
+                "0",
+                # RFC 4880 packets (no AEAD) so any gpg 2.x on a runner can decrypt.
+                "--rfc4880",
+                "--symmetric",
+                "--cipher-algo",
+                "AES256",
+                "--output",
+                str(bundle),
+                str(archive),
+            ],
+            input=key.encode(),
+            check=True,
+        )
     print("wrote", bundle)
 
 
 # ------------------------------------------------------------ game layout --
+
 
 def zip_offset(data):
     """Offset where a zip appended to an executable starts (fused LÖVE)."""
@@ -154,8 +209,11 @@ def unfuse(fused, game, runtime_out):
 
 
 def copy_assets(game):
-    shutil.copytree(REPO / "assets", game / "assets",
-                    ignore=lambda folder, names: ["game"] if Path(folder) == REPO / "assets" / "maps" else [])
+    shutil.copytree(
+        REPO / "assets",
+        game / "assets",
+        ignore=lambda folder, names: ["game"] if Path(folder) == REPO / "assets" / "maps" else [],
+    )
 
 
 def arrange(args, work):
@@ -218,6 +276,7 @@ def arrange(args, work):
 
 # ---------------------------------------------------------------- running --
 
+
 def run_reader_api(args, frame_path, work):
     """windows-api: the test reader under plain LuaJIT; returns ({"api": ...} or None, problems)."""
     folder = work / "reader"
@@ -227,8 +286,16 @@ def run_reader_api(args, frame_path, work):
         shutil.copy2(HERE / "automation" / name, folder / name)
     env = dict(os.environ, TRACKER_FRAME=str(frame_path))
     try:
-        dump = subprocess.run(["luajit", "-e", frames.READER_API_SCRIPT], cwd=folder, env=env, capture_output=True,
-                              text=True, encoding="utf-8", errors="replace", timeout=args.timeout)
+        dump = subprocess.run(
+            ["luajit", "-e", frames.READER_API_SCRIPT],
+            cwd=folder,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=args.timeout,
+        )
     except subprocess.TimeoutExpired:
         return None, ["timed out after %d s" % args.timeout]
     if dump.returncode != 0:
@@ -255,14 +322,27 @@ def run_frame(args, name, frame_path, work):
         elif args.platform == "windows-layout":
             env["TRACKER_FRAME"] = str(frame_path)
         elif args.platform == "windows":
-            fake = subprocess.Popen([str(args.fake_pcsx2), str(frame_path)], stdout=subprocess.PIPE, text=True,
-                                    encoding="utf-8", errors="replace")
+            fake = subprocess.Popen(
+                [str(args.fake_pcsx2), str(frame_path)],
+                stdout=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
             ready = fake.stdout.readline().strip()
             if ready != "ready":
                 problems.append("stand-in pcsx2-qt.exe did not start: %r" % ready)
                 return None, problems
-        process = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                 text=True, encoding="utf-8", errors="replace", timeout=args.timeout)
+        process = subprocess.run(
+            command,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=args.timeout,
+        )
         if process.returncode != 0:
             problems.append("exit status %d" % process.returncode)
     except subprocess.TimeoutExpired:
@@ -277,9 +357,11 @@ def run_frame(args, name, frame_path, work):
     lines = log.read_text(encoding="utf-8", errors="replace").splitlines() if log.exists() else []
     errors = [i for i, line in enumerate(lines) if line.startswith("ERROR")]
     if errors:
-        problems.append("\n    ".join(lines[errors[0]:errors[0] + 20]))
+        problems.append("\n    ".join(lines[errors[0] : errors[0] + 20]))
     if "DONE" not in lines:
-        problems.append("did not finish (%d log lines)%s" % (len(lines), ("; output: " + process.stdout[-800:]) if process else ""))
+        problems.append(
+            "did not finish (%d log lines)%s" % (len(lines), ("; output: " + process.stdout[-800:]) if process else "")
+        )
     if not out.exists():
         return None, problems
     return frames.load_json(out), problems
@@ -303,8 +385,12 @@ def main():
     parser.add_argument("--shots", type=Path, help="local review: save a PNG of every recorded view here (never in CI)")
     parser.add_argument("--timeout", type=int, default=180)
     parser.add_argument("--no-expected", action="store_true", help="check facts and errors only (no expected JSON)")
-    parser.add_argument("--launch-check", type=int, metavar="SECONDS",
-                        help="also start the real shipped program unchanged for SECONDS against the first frame")
+    parser.add_argument(
+        "--launch-check",
+        type=int,
+        metavar="SECONDS",
+        help="also start the real shipped program unchanged for SECONDS against the first frame",
+    )
     parser.add_argument("--build-test-reader", type=Path, metavar="OUTPUT.so")
     parser.add_argument("--make-bundle", type=Path, metavar="BUNDLE.gpg")
     args = parser.parse_args()
@@ -328,7 +414,9 @@ def main():
             parser.error("--platform %s needs --test-reader" % args.platform)
         if args.write_expected or args.launch_check or args.shots:
             # Its results hold no views, so they must never replace an expected result.
-            parser.error("--platform %s only compares; it cannot write expected results, shots or launch" % args.platform)
+            parser.error(
+                "--platform %s only compares; it cannot write expected results, shots or launch" % args.platform
+            )
     with tempfile.TemporaryDirectory(prefix="ot-frames-") as temporary:
         temporary = Path(temporary)
         if args.bundle:
@@ -408,6 +496,7 @@ def launch_check(args, frame_path, work):
     stays up; on macOS and Linux it must also keep reading memory (a Lua error
     leaves LÖVE on its error screen, which stops the reads)."""
     import time
+
     runtime = work / "s"
     runtime.mkdir()
     env = dict(os.environ, TMPDIR=str(runtime), XDG_RUNTIME_DIR=str(runtime))
@@ -430,8 +519,13 @@ def launch_check(args, frame_path, work):
     problems = []
     try:
         if args.platform == "windows":
-            fake = subprocess.Popen([str(args.fake_pcsx2), str(frame_path)], stdout=subprocess.PIPE, text=True,
-                                    encoding="utf-8", errors="replace")
+            fake = subprocess.Popen(
+                [str(args.fake_pcsx2), str(frame_path)],
+                stdout=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
             if fake.stdout.readline().strip() != "ready":
                 return ["stand-in pcsx2-qt.exe did not start"]
         else:
@@ -465,8 +559,12 @@ def launch_check(args, frame_path, work):
 def build_test_reader(output):
     """Build tests/reader/module.c (main.c as C with stand-in Windows headers)."""
     luajit = None
-    for candidate in [os.environ.get("LUAJIT_INCLUDE"), "/opt/homebrew/opt/luajit/include/luajit-2.1",
-                      "/usr/local/opt/luajit/include/luajit-2.1", "/usr/include/luajit-2.1"]:
+    for candidate in [
+        os.environ.get("LUAJIT_INCLUDE"),
+        "/opt/homebrew/opt/luajit/include/luajit-2.1",
+        "/usr/local/opt/luajit/include/luajit-2.1",
+        "/usr/include/luajit-2.1",
+    ]:
         if candidate and Path(candidate, "lua.h").exists():
             luajit = candidate
             break
@@ -475,8 +573,11 @@ def build_test_reader(output):
     compiler = os.environ.get("CC") or shutil.which("clang") or shutil.which("cc") or shutil.which("gcc")
     # GCC 14 makes these legacy-C diagnostics errors; MSVC and clang only warn.
     legacy = ["-Wno-incompatible-pointer-types", "-Wno-int-conversion", "-Wno-implicit-function-declaration"]
-    command = [compiler, "-shared", "-fPIC", "-x", "c", "-std=c11", "-w"] + legacy + ["-I", str(HERE / "reader"),
-               "-I", str(REPO / "sources"), "-I", luajit]
+    command = (
+        [compiler, "-shared", "-fPIC", "-x", "c", "-std=c11", "-w"]
+        + legacy
+        + ["-I", str(HERE / "reader"), "-I", str(REPO / "sources"), "-I", luajit]
+    )
     zlib = os.environ.get("ZLIB_PREFIX")  # zlib outside the compiler's default paths
     if zlib:
         command += ["-I", str(Path(zlib, "include")), "-L", str(Path(zlib, "lib"))]

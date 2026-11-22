@@ -5,6 +5,7 @@ Safety: installs only user development tools; no sudo, OS changes, PINE or recor
 Run from repo root on Deck: python3 decky/scripts/bootstrap_native.py
 Check: prints compiler/CMake versions; writes toolchain.explicit.txt to the cache.
 """
+
 import hashlib
 import io
 from pathlib import Path
@@ -28,13 +29,33 @@ def setup():
     prefix = Path.home() / ".local/share/outbreak-tracker/toolchain"
     lock = Path(__file__).resolve().parents[1] / "native-toolchain.lock"
     if not (prefix / "conda-meta/history").is_file():
-        arguments = [str(executable), "--no-rc", "--root-prefix", str(cache / "mamba"), "create", "-y", "-p", str(prefix)]
+        arguments = [
+            str(executable),
+            "--no-rc",
+            "--root-prefix",
+            str(cache / "mamba"),
+            "create",
+            "-y",
+            "-p",
+            str(prefix),
+        ]
         if lock.is_file():
             if "@EXPLICIT" not in lock.read_text().splitlines():
-                raise RuntimeError("native-toolchain.lock must be an explicit lock: a line '@EXPLICIT', then one package URL per line")
+                raise RuntimeError(
+                    "native-toolchain.lock must be an explicit lock: a line '@EXPLICIT', then one package URL per line"
+                )
             arguments += ["--file", str(lock)]
         else:
-            arguments += ["-c", "conda-forge", "gxx_linux-64=14", "cmake=3.31", "make=4.4", "luajit=2.1", "python=3.12", "pillow=11"]
+            arguments += [
+                "-c",
+                "conda-forge",
+                "gxx_linux-64=14",
+                "cmake=3.31",
+                "make=4.4",
+                "luajit=2.1",
+                "python=3.12",
+                "pillow=11",
+            ]
         subprocess.run(arguments, check=True)
     explicit = subprocess.check_output([str(executable), "--no-rc", "list", "-p", str(prefix), "--explicit"], text=True)
     (cache / "toolchain.explicit.txt").write_text(explicit)

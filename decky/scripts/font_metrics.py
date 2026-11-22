@@ -5,6 +5,7 @@ Safety: reads bundled artwork/fonts only; no PINE, recordings or shared source e
 Run: invoked by native_build.py using the user toolchain's Python.
 Check: output loads with LuaJIT and covers all fonts requested by shared assets.lua.
 """
+
 import json
 from pathlib import Path
 import sys
@@ -13,12 +14,18 @@ from PIL import Image, ImageFont
 
 def generate(assets, output):
     records = []
-    for name, size in [("arialbd.ttf", 18), ("arialbd.ttf", 15), ("arialbd.ttf", 13)] + [("arialnb.ttf", size) for size in range(9, 17)]:
+    for name, size in [("arialbd.ttf", 18), ("arialbd.ttf", 15), ("arialbd.ttf", 13)] + [
+        ("arialnb.ttf", size) for size in range(9, 17)
+    ]:
         font = ImageFont.truetype(str(assets / name), size, layout_engine=ImageFont.Layout.BASIC)
         ascent, descent = font.getmetrics()
         widths = {cp: float(font.getlength(chr(cp))) for cp in range(32, 1280)}
         records.append((f"assets/{name}:{size}", ascent + descent, ascent, widths))
-    for name, characters in [("ItemCountFont.png", "0123456789"), ("TimeFont.png", "0123456789:./"), ("VirusFont.png", "0123456789.%")]:
+    for name, characters in [
+        ("ItemCountFont.png", "0123456789"),
+        ("TimeFont.png", "0123456789:./"),
+        ("VirusFont.png", "0123456789.%"),
+    ]:
         image = Image.open(assets / name).convert("RGBA")
         separator = image.getpixel((0, 0))
         regions, start = [], None

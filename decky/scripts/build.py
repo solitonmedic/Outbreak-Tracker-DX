@@ -32,14 +32,18 @@ def build(expected):
     plugin = Path(__file__).resolve().parents[1]
     repo = plugin.parent
     commit = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
-    dirty = subprocess.check_output(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"], text=True)
+    dirty = subprocess.check_output(
+        ["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"], text=True
+    )
     ci = os.environ.get("GITHUB_ACTIONS") == "true"
     if commit != expected or dirty.strip():
         raise RuntimeError("Build requires a clean checkout at the expected commit")
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         raise RuntimeError("This build command targets x86_64 Linux (the Steam Deck or a Linux CI runner)")
 
-    node_bin = Path(shutil.which("node") or "node").parent if ci else Path.home() / f".nvm/versions/node/v{NODE_VERSION}/bin"
+    node_bin = (
+        Path(shutil.which("node") or "node").parent if ci else Path.home() / f".nvm/versions/node/v{NODE_VERSION}/bin"
+    )
     node = node_bin / "node"
     corepack = node_bin / "corepack"
     env = dict(os.environ)
@@ -59,7 +63,9 @@ def build(expected):
     for python_source in plugin.glob("*.py"):
         ast.parse(python_source.read_text(), filename=python_source.name)
     subprocess.run(["python3", str(plugin / "scripts/native_build.py")], check=True)
-    if subprocess.check_output(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"], text=True).strip():
+    if subprocess.check_output(
+        ["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"], text=True
+    ).strip():
         raise RuntimeError("Build unexpectedly changed source files")
 
     package = json.loads((plugin / "package.json").read_text())
@@ -67,28 +73,63 @@ def build(expected):
     if package["version"] != release:
         raise RuntimeError(f"decky/package.json version {package['version']} differs from VERSION {release}")
     metadata = {
-        "version": package["version"], "sourceCommit": commit,
+        "version": package["version"],
+        "sourceCommit": commit,
         "builtAtUtc": datetime.now(timezone.utc).isoformat(),
     }
     output = plugin / ".artifacts"
     output.mkdir(exist_ok=True)
     archive_name = f"outbreak-tracker-{package['version']}-{commit[:12]}.zip"
     archive_path = output / archive_name
-    required = {"dist/index.js", "main.py", "tracker_service.py", "reader.lua", "plugin.json", "package.json",
-                "LICENSE", "README.md", "build-info.json", "bin/luaoutbreaktracker.so",
-                "fontmetrics.lua", "web/index.html", "shared/main.lua", "assets/ui.png", "assets/ui-us.png"}
-    entries = [(plugin / name, name) for name in ("main.py", "tracker_service.py", "reader.lua", "plugin.json", "package.json", "LICENSE", "README.md")]
+    required = {
+        "dist/index.js",
+        "main.py",
+        "tracker_service.py",
+        "reader.lua",
+        "plugin.json",
+        "package.json",
+        "LICENSE",
+        "README.md",
+        "build-info.json",
+        "bin/luaoutbreaktracker.so",
+        "fontmetrics.lua",
+        "web/index.html",
+        "shared/main.lua",
+        "assets/ui.png",
+        "assets/ui-us.png",
+    }
+    entries = [
+        (plugin / name, name)
+        for name in (
+            "main.py",
+            "tracker_service.py",
+            "reader.lua",
+            "plugin.json",
+            "package.json",
+            "LICENSE",
+            "README.md",
+        )
+    ]
     for folder in ("dist", "web"):
-        entries += [(path, path.relative_to(plugin).as_posix()) for path in sorted((plugin / folder).rglob("*")) if path.is_file()]
+        entries += [
+            (path, path.relative_to(plugin).as_posix())
+            for path in sorted((plugin / folder).rglob("*"))
+            if path.is_file()
+        ]
     entries += [(path, "shared/" + path.name) for path in sorted((repo / "sources").glob("*.lua"))]
     # The game's own map files (sampled locally, git-ignored) are not shipped:
     # maps come from sources/MapGeometry.lua and the Evil Resource art.
     sampled = repo / "assets" / "maps" / "game"
-    entries += [(path, "assets/" + path.relative_to(repo / "assets").as_posix()) for path in sorted((repo / "assets").rglob("*"))
-                if path.is_file() and not path.is_relative_to(sampled)]
-    entries += [(plugin / ".artifacts/native/luaoutbreaktracker.so", "bin/luaoutbreaktracker.so"),
-                (plugin / ".artifacts/native/fontmetrics.lua", "fontmetrics.lua"),
-                (plugin / ".artifacts/native/PINE-LICENSE", "PINE-LICENSE")]
+    entries += [
+        (path, "assets/" + path.relative_to(repo / "assets").as_posix())
+        for path in sorted((repo / "assets").rglob("*"))
+        if path.is_file() and not path.is_relative_to(sampled)
+    ]
+    entries += [
+        (plugin / ".artifacts/native/luaoutbreaktracker.so", "bin/luaoutbreaktracker.so"),
+        (plugin / ".artifacts/native/fontmetrics.lua", "fontmetrics.lua"),
+        (plugin / ".artifacts/native/PINE-LICENSE", "PINE-LICENSE"),
+    ]
     with tempfile.NamedTemporaryFile(dir=output, suffix=".zip.partial", delete=False) as temporary:
         temporary_path = Path(temporary.name)
     try:
@@ -109,11 +150,25 @@ def build(expected):
     finally:
         temporary_path.unlink(missing_ok=True)
     report = {
-        **metadata, "platform": platform.platform(), "architecture": platform.machine(),
-        "node": actual_node, "pnpm": actual_pnpm,
-        "archive": archive_name, "sha256": hashlib.sha256(archive_path.read_bytes()).hexdigest(),
-        "checks": ["frontend typecheck", "frontend build", "native Linux reader link", "original font metrics", "Python syntax", "ZIP contents and CRC", "source commit"],
-        "installed": False, "userRun": False, "inGameVerified": False,
+        **metadata,
+        "platform": platform.platform(),
+        "architecture": platform.machine(),
+        "node": actual_node,
+        "pnpm": actual_pnpm,
+        "archive": archive_name,
+        "sha256": hashlib.sha256(archive_path.read_bytes()).hexdigest(),
+        "checks": [
+            "frontend typecheck",
+            "frontend build",
+            "native Linux reader link",
+            "original font metrics",
+            "Python syntax",
+            "ZIP contents and CRC",
+            "source commit",
+        ],
+        "installed": False,
+        "userRun": False,
+        "inGameVerified": False,
     }
     report_path = output / "build-report.json"
     partial_report = output / "build-report.json.partial"

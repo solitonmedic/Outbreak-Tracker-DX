@@ -41,7 +41,11 @@ class Plugin:
             pine_slot = None
 
         service = getattr(self, "service", None)
-        web = service.status() if service else {"running": False, "phoneUrl": None, "connection": "stopped", "lastError": None}
+        web = (
+            service.status()
+            if service
+            else {"running": False, "phoneUrl": None, "connection": "stopped", "lastError": None}
+        )
         return {
             "version": package["version"],
             "sourceCommit": metadata.get("sourceCommit", "unbuilt"),
@@ -49,7 +53,9 @@ class Plugin:
             "pcsx2Installed": (user_home / "Applications/pcsx2-Qt.AppImage").is_file(),
             "pineEnabled": pine_enabled,
             "pineSlot": pine_slot,
-            "message": getattr(self, "startup_error", None) or web.get("lastError") or "Scan the code or open the link on a device on your network. Add it to the home screen to use it like an app.",
+            "message": getattr(self, "startup_error", None)
+            or web.get("lastError")
+            or "Scan the code or open the link on a device on your network. Add it to the home screen to use it like an app.",
             **web,
         }
 

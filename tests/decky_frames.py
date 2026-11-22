@@ -24,6 +24,7 @@ Run from repo-merged/:
   python3 tests/decky_frames.py --layout --reader-so "Outbreak Status Tracker.app/Contents/Resources/game/luaoutbreaktracker.so" --fixtures /tmp/fx --write-expected
 Check: exit status 0 with one PASS line per frame.
 """
+
 import argparse
 import json
 import os
@@ -41,9 +42,46 @@ import frames  # noqa: E402
 import run_frames  # noqa: E402
 
 # The desktop steps, without the CONTROLS click (the phone page has its own menu).
-STEPS = ["main", "f1", "f1", "f2", "f2", "f2", "f3", "f3", "home", "l", "l", "i", "i", "t", "t",
-         "q", "q", "e", "e", "f4", "f4", "m", "m", "v", "h", "d", "a", "1", "2", "3", "4",
-         "kp1", "kp0", "n", "f", "f", "b", "home"]
+STEPS = [
+    "main",
+    "f1",
+    "f1",
+    "f2",
+    "f2",
+    "f2",
+    "f3",
+    "f3",
+    "home",
+    "l",
+    "l",
+    "i",
+    "i",
+    "t",
+    "t",
+    "q",
+    "q",
+    "e",
+    "e",
+    "f4",
+    "f4",
+    "m",
+    "m",
+    "v",
+    "h",
+    "d",
+    "a",
+    "1",
+    "2",
+    "3",
+    "4",
+    "kp1",
+    "kp0",
+    "n",
+    "f",
+    "f",
+    "b",
+    "home",
+]
 WARM, PER = 40, 3
 
 
@@ -65,8 +103,15 @@ def plugin_from_repo(reader_so, work):
     shutil.copy2(REPO / "decky" / "reader.lua", plugin)
     run_frames.copy_assets(plugin)
     shutil.copy2(reader_so, plugin / "bin" / "luaoutbreaktracker.so")
-    subprocess.run([sys.executable, str(REPO / "decky" / "scripts" / "font_metrics.py"),
-                    str(REPO / "assets"), str(plugin / "fontmetrics.lua")], check=True)
+    subprocess.run(
+        [
+            sys.executable,
+            str(REPO / "decky" / "scripts" / "font_metrics.py"),
+            str(REPO / "assets"),
+            str(plugin / "fontmetrics.lua"),
+        ],
+        check=True,
+    )
     return plugin
 
 
@@ -85,8 +130,16 @@ def run_plugin(plugin, work, timeout, memory=None, env_extra=None):
     fake = frames.FakePine(runtime, memory) if memory is not None else None
     problems, result = [], {"views": []}
     try:
-        api = subprocess.run(["luajit", "-e", frames.READER_API_SCRIPT], cwd=plugin, env=env, capture_output=True,
-                             text=True, encoding="utf-8", errors="replace", timeout=timeout)
+        api = subprocess.run(
+            ["luajit", "-e", frames.READER_API_SCRIPT],
+            cwd=plugin,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
         if api.returncode != 0:
             problems.append("reader API dump failed: " + api.stderr[-600:])
         else:
@@ -94,11 +147,22 @@ def run_plugin(plugin, work, timeout, memory=None, env_extra=None):
         lines = [""] * (WARM - 1)
         for step in STEPS:
             lines += [step if step != "main" else ""] + [""] * (PER - 1)
-        ui = subprocess.run(["luajit", "reader.lua"], cwd=plugin, env=env, input="\n".join(lines) + "\n",
-                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
+        ui = subprocess.run(
+            ["luajit", "reader.lua"],
+            cwd=plugin,
+            env=env,
+            input="\n".join(lines) + "\n",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
         outputs = ui.stdout.splitlines()
         if ui.returncode != 0 or len(outputs) != len(lines):
-            problems.append("reader.lua stopped after %d of %d frames: %s" % (len(outputs), len(lines), ui.stderr[-600:]))
+            problems.append(
+                "reader.lua stopped after %d of %d frames: %s" % (len(outputs), len(lines), ui.stderr[-600:])
+            )
         for index, step in enumerate(STEPS):
             line = WARM - 1 + index * PER + PER - 1
             if line >= len(outputs):
@@ -107,8 +171,14 @@ def run_plugin(plugin, work, timeout, memory=None, env_extra=None):
             if frame.get("state") == "error":
                 problems.append("step %s: %s" % (step, frame.get("message")))
             texts = [c[1] if isinstance(c[1], str) else str(c[1]) for c in frame["commands"] if c and c[0] == "text"]
-            result["views"].append({"step": step, "state": frame.get("state"), "texts": texts,
-                                    "mapview": (frame.get("game") or {}).get("mapview")})
+            result["views"].append(
+                {
+                    "step": step,
+                    "state": frame.get("state"),
+                    "texts": texts,
+                    "mapview": (frame.get("game") or {}).get("mapview"),
+                }
+            )
     except subprocess.TimeoutExpired:
         problems.append("timed out")
     finally:
@@ -177,7 +247,9 @@ def main():
             expected = fixtures / "expected" / "decky" / (name + ".json")
             if args.write_expected:
                 expected.parent.mkdir(parents=True, exist_ok=True)
-                expected.write_text(json.dumps({"views": result["views"]}, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+                expected.write_text(
+                    json.dumps({"views": result["views"]}, indent=1, sort_keys=True) + "\n", encoding="utf-8"
+                )
             elif expected.exists():
                 problems += frames.compare(frames.load_json(expected), {"views": result["views"]})
             else:

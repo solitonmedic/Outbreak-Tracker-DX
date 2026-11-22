@@ -19,6 +19,7 @@ READER_API_SCRIPT: the headless reader API dump shared by the Decky runner and
   run_frames.py --platform windows-api.
 Check: exercised by tests/run_frames.py and tests/decky_frames.py.
 """
+
 import json
 import math
 import os
@@ -36,7 +37,7 @@ EE_RAM = 32 * 1024 * 1024
 # tests/automation/frames_dump.lua, written to stdout as JSON. Run it with
 # "luajit -e" from a folder holding bin/luaoutbreaktracker.so,
 # frames_dump.lua and frames_json.lua (shared Lua files may sit in shared/).
-READER_API_SCRIPT = r'''
+READER_API_SCRIPT = r"""
 package.path = "?.lua;shared/?.lua;" .. package.path
 package.cpath = "bin/?.so;" .. package.cpath
 local tracker = require "luaoutbreaktracker"
@@ -44,7 +45,7 @@ local Dump, Json = require "frames_dump", require "frames_json"
 assert(tracker.init(), "reader init failed")
 for i = 1, 40 do tracker.updateLobby(); tracker.updateRoom(); tracker.update() end
 io.write(Json.encode(Dump.api(tracker)))
-'''
+"""
 
 
 def write_frame(path, ranges):
@@ -55,8 +56,8 @@ def write_frame(path, ranges):
             start, old = merged[-1]
             end = max(start + len(old), address + len(data))
             buf = bytearray(end - start)
-            buf[:len(old)] = old
-            buf[address - start:address - start + len(data)] = data
+            buf[: len(old)] = old
+            buf[address - start : address - start + len(data)] = data
             merged[-1] = (start, bytes(buf))
         else:
             merged.append((address, bytes(data)))
@@ -80,7 +81,7 @@ def read_frame(path):
         pos += 8
         if address + length > EE_RAM or pos + length > len(data):
             raise ValueError("damaged frame file: %s" % path)
-        memory[address:address + length] = data[pos:pos + length]
+        memory[address : address + length] = data[pos : pos + length]
         pos += length
     return memory
 
@@ -117,6 +118,7 @@ class FakePine:
                     raise ConnectionError()
                 data += part
             return data
+
         while not self.stopped.is_set():
             try:
                 client, _ = self.socket.accept()
@@ -167,7 +169,12 @@ def flatten(value, prefix="", out=None):
 
 
 def same(a, b):
-    if isinstance(a, (int, float)) and isinstance(b, (int, float)) and not isinstance(a, bool) and not isinstance(b, bool):
+    if (
+        isinstance(a, (int, float))
+        and isinstance(b, (int, float))
+        and not isinstance(a, bool)
+        and not isinstance(b, bool)
+    ):
         if math.isnan(a) or math.isnan(b):
             return math.isnan(a) and math.isnan(b)
         return abs(a - b) <= 1e-6 * max(1.0, abs(a), abs(b))
@@ -221,6 +228,7 @@ def check_facts(entry, actual, api_only=False):
 def load_json(path):
     def constant(name):
         return {"NaN": math.nan, "Infinity": math.inf, "-Infinity": -math.inf}[name]
+
     return json.loads(Path(path).read_text(encoding="utf-8"), parse_constant=constant)
 
 
@@ -229,11 +237,13 @@ def annotate(title, lines):
     run's summary page shows without opening the log."""
     if os.environ.get("GITHUB_ACTIONS") != "true" or not lines:
         return
+
     def escape(text, extra=()):
         text = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
         for char, code in extra:
             text = text.replace(char, code)
         return text
+
     message = "\n".join(lines[:150])
     print("::error title=%s::%s" % (escape(title, ((":", "%3A"), (",", "%2C"))), escape(message)), flush=True)
 
