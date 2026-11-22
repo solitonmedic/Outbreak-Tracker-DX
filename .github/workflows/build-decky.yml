@@ -54,12 +54,25 @@ jobs:
             echo "No encrypted frames yet: synthetic Decky runs need expected results; skipped."
           fi
 
-      - name: Upload the plugin ZIP
+      # GitHub zips an artifact's contents when it is downloaded. Upload the plugin
+      # folder, not the plugin ZIP, so the download is itself the installable ZIP
+      # (one outbreak-tracker/ folder at its root) instead of a ZIP inside a ZIP.
+      - name: Unpack the plugin for upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$(ls decky/.artifacts/outbreak-tracker-*.zip)"
+          cat decky/.artifacts/build-report.json
+          stage="$RUNNER_TEMP/decky-artifact"
+          rm -rf "$stage"
+          mkdir -p "$stage"
+          unzip -q "$archive" -d "$stage"
+          test "$(ls -A "$stage")" = "outbreak-tracker"
+          test -f "$stage/outbreak-tracker/plugin.json"
+
+      - name: Upload the plugin
         uses: actions/upload-artifact@v4
         with:
           name: Outbreak-Tracker-Decky-Plugin
-          include-hidden-files: true
-          path: |
-            decky/.artifacts/outbreak-tracker-*.zip
-            decky/.artifacts/build-report.json
+          path: ${{ runner.temp }}/decky-artifact/
           if-no-files-found: error
