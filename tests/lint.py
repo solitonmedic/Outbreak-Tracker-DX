@@ -450,14 +450,12 @@ def lua_syntax(root, files, problems):
     return True
 
 
-# Each tool runner adds its problems and returns (exit status, output) of its
+# Each checker adds its problems and returns (exit status, output) of its
 # checking command, so that a tool that fails without reporting a problem (a
 # broken configuration, a crash) is reported instead of passing quietly.
 
 
-def stylua(tool, root, files, fix, problems):
-    if fix:
-        run([tool, "--"] + files, cwd=root)
+def check_lua_format(tool, root, files, problems):
     status, out, err = run([tool, "--check", "--output-format=Summary", "--"] + files, cwd=root)
     for line in (out + err).splitlines():
         if line.strip() in files:
@@ -465,19 +463,16 @@ def stylua(tool, root, files, fix, problems):
     return status, out + err
 
 
-def selene(tool, root, files, fix, problems):
+def check_lua_code(tool, root, files, problems):
     config = root / "tests" / "lint" / "selene.toml"
-    status, out, err = run(
-        [tool, "--config", str(config), "--display-style=Quiet", "--no-summary", "--"] + files, cwd=root
-    )
+    command = [tool, "--config", str(config), "--display-style=Quiet", "--no-summary", "--"] + files
+    status, out, err = run(command, cwd=root)
     parse_lines(out + err, r"(?P<path>.+?\.lua):(?P<line>\d+):\d+: (?P<message>.*)", "lua-check", root, problems)
     return status, out + err
 
 
-def clang_format(tool, root, files, fix, problems):
+def check_c_format(tool, root, files, problems):
     style = "--style=file:" + str(root / ".clang-format")
-    if fix:
-        run([tool, style, "-i"] + files, cwd=root)
     for path in files:
         status, out, err = run([tool, style, path], cwd=root)
         if status != 0:
@@ -487,66 +482,81 @@ def clang_format(tool, root, files, fix, problems):
     return 0, ""
 
 
-def ruff(tool, root, files, fix, problems):
+def check_python(tool, root, files, problems):
     config = ["--config", str(root / "ruff.toml"), "--no-cache"]
-    if fix:
-        run([tool, "format"] + config + files, cwd=root)
     status, out, err = run([tool, "check", "--output-format=concise"] + config + files, cwd=root)
     parse_lines(out + err, r"(?P<path>.+?\.py):(?P<line>\d+):\d+: (?P<message>.*)", "python-check", root, problems)
-    format_status, format_out, format_err = run(
-        [tool, "format", "--check", "--output-format=concise"] + config + files, cwd=root
-    )
+    command = [tool, "format", "--check", "--output-format=concise"] + config + files
+    format_status, format_out, format_err = run(command, cwd=root)
     for line in (format_out + format_err).splitlines():
         match = re.match(r"(?P<path>.+?\.py):\d+:\d+: unformatted", line)
         if match:
-            problems.append(
-                Problem(
-                    relative(root, match.group("path")),
-                    1,
-                    "python-format",
-                    "not formatted; run python3 tests/lint.py --fix",
-                )
-            )
+            path = relative(root, match.group("path"))
+            problems.append(Problem(path, 1, "python-format", "not formatted; run python3 tests/lint.py --fix"))
     return max(status, format_status), out + err + format_out + format_err
 
 
-def shellcheck(tool, root, files, fix, problems):
+def check_shell(tool, root, files, problems):
     status, out, err = run([tool, "--format=gcc", "--"] + files, cwd=root)
     parse_lines(out + err, r"(?P<path>.+?):(?P<line>\d+):\d+: (?P<message>.*)", "shell-check", root, problems)
     return status, out + err
 
 
-def biome(tool, root, files, fix, problems):
-    """Biome runs inside decky/, where its configuration (biome.jsonc) is.
-    Its "info" suggestions are not shown; warnings and errors are problems."""
+def inside_decky(files):
+    """Biome runs inside decky/, where its configuration (biome.jsonc) is."""
+    return [path[len("decky/") :] for path in files]
+
+
+def check_web(tool, root, files, problems):
+    """Biome's "info" suggestions are not shown; its warnings and errors are problems."""
     decky = root / "decky"
-    inside = [path[len("decky/") :] for path in files]
-    options = ["--colors=off", "--diagnostic-level=warn"]
-    if fix:
-        run([tool, "format", "--write"] + options + inside, cwd=decky)
-    status, out, err = run([tool, "ci", "--reporter=github"] + options + inside, cwd=decky)
+    command = [tool, "ci", "--reporter=github", "--colors=off", "--diagnostic-level=warn"] + inside_decky(files)
+    status, out, err = run(command, cwd=decky)
     for line in (out + err).splitlines():
         match = re.match(r"::(?:error|warning) (?P<fields>[^:]*)::(?P<message>.*)", line)
         if match:
             fields = dict(part.split("=", 1) for part in match.group("fields").split(",") if "=" in part)
             path = fields.get("file", "")
             path = relative(root, path if Path(path).is_absolute() else str(decky / path))
-            problems.append(
-                Problem(
-                    path,
-                    int(fields.get("line", 1)),
-                    "web-check",
-                    "%s (%s)" % (match.group("message"), fields.get("title", "biome")),
-                )
-            )
+            message = "%s (%s)" % (match.group("message"), fields.get("title", "biome"))
+            problems.append(Problem(path, int(fields.get("line", 1)), "web-check", message))
     return status, out + err
 
 
-def actionlint(tool, root, files, fix, problems):
-    found, _ = find_tool("shellcheck")
-    status, out, err = run([tool, "-no-color", "-oneline", "-shellcheck=" + (found or "")] + files, cwd=root)
-    parse_lines(out + err, r"(?P<path>.+?\.ya?ml):(?P<line>\d+):\d+: (?P<message>.*)", "workflow-check", root, problems)
+def check_workflows(tool, root, files, problems):
+    shellcheck, _ = find_tool("shellcheck")
+    status, out, err = run([tool, "-no-color", "-oneline", "-shellcheck=" + (shellcheck or "")] + files, cwd=root)
+    pattern = r"(?P<path>.+?\.ya?ml):(?P<line>\d+):\d+: (?P<message>.*)"
+    parse_lines(out + err, pattern, "workflow-check", root, problems)
     return status, out + err
+
+
+# --fix runs these first, so that the checks afterwards see the formatted files.
+
+
+def format_lua(tool, root, files):
+    # StyLua sometimes needs a second pass to settle (a table it leaves one
+    # column too long is split on the next run), so it runs until it is done.
+    for _ in range(3):
+        run([tool, "--"] + files, cwd=root)
+        if run([tool, "--check", "--"] + files, cwd=root)[0] == 0:
+            return
+
+
+def format_c(tool, root, files):
+    style = "--style=file:" + str(root / ".clang-format")
+    for _ in range(3):
+        run([tool, style, "-i"] + files, cwd=root)
+        if all(run([tool, style, path], cwd=root)[1].encode("utf-8") == (root / path).read_bytes() for path in files):
+            return
+
+
+def format_python(tool, root, files):
+    run([tool, "format", "--config", str(root / "ruff.toml"), "--no-cache"] + files, cwd=root)
+
+
+def format_web(tool, root, files):
+    run([tool, "format", "--write", "--colors=off"] + inside_decky(files), cwd=root / "decky")
 
 
 POWERSHELL_PARSE = r"""
@@ -573,15 +583,26 @@ def powershell_syntax(root, files, problems):
     return True
 
 
-# Which tool checks which files. Generated and third-party files are left out.
+# Which tool checks which files, and the formatter --fix runs for them.
+# Generated and third-party files are left out.
 RUNNERS = [
-    ("stylua", stylua, lambda path: path.endswith(".lua")),
-    ("selene", selene, lambda path: path.endswith(".lua")),
-    ("clang-format", clang_format, lambda path: path.endswith((".c", ".cpp", ".h"))),
-    ("ruff", ruff, lambda path: path.endswith(".py")),
-    ("shellcheck", shellcheck, lambda path: path.endswith(".sh")),
-    ("biome", biome, lambda path: path.startswith("decky/") and path.endswith((".js", ".ts", ".tsx", ".css"))),
-    ("actionlint", actionlint, lambda path: path.startswith(".github/workflows/") and path.endswith((".yml", ".yaml"))),
+    ("stylua", check_lua_format, format_lua, lambda path: path.endswith(".lua")),
+    ("selene", check_lua_code, None, lambda path: path.endswith(".lua")),
+    ("clang-format", check_c_format, format_c, lambda path: path.endswith((".c", ".cpp", ".h"))),
+    ("ruff", check_python, format_python, lambda path: path.endswith(".py")),
+    ("shellcheck", check_shell, None, lambda path: path.endswith(".sh")),
+    (
+        "biome",
+        check_web,
+        format_web,
+        lambda path: path.startswith("decky/") and path.endswith((".js", ".ts", ".tsx", ".css")),
+    ),
+    (
+        "actionlint",
+        check_workflows,
+        None,
+        lambda path: path.startswith(".github/workflows/") and path.endswith((".yml", ".yaml")),
+    ),
 ]
 
 
@@ -627,25 +648,30 @@ def main():
     files = list_files(root, paths, args.changed)
     sections = read_editorconfig(root)
 
+    # Generated and third-party files get the layout and file rules, but no
+    # formatter or code checks.
+    checkable = [path for path in files if path not in settings.GENERATED and not under(path, settings.THIRD_PARTY)]
+
     if args.fix:
         for path in files:
             fix_whitespace(root, path, sections)
+        for name, _, formatter, wanted in RUNNERS:
+            selected = [path for path in checkable if wanted(path)]
+            tool, _ = find_tool(name)
+            if formatter and selected and tool:
+                formatter(tool, root, selected)
 
     problems, missing = [], []
     for path in files:
         check_file(root, path, sections, problems)
     if not paths and not args.changed:
         check_settings(root, problems)
-
-    # Generated and third-party files get the layout and file rules above, but
-    # no formatter or code checks.
-    checkable = [path for path in files if path not in settings.GENERATED and not under(path, settings.THIRD_PARTY)]
-    if not lua_syntax(root, [p for p in files if p.endswith(".lua")], problems):
+    if not lua_syntax(root, [path for path in files if path.endswith(".lua")], problems):
         missing.append("luajit is not installed, so Lua syntax was not checked")
-    ps1 = [p for p in checkable if p.endswith(".ps1")]
-    if ps1 and not powershell_syntax(root, ps1, problems):
+    scripts = [path for path in checkable if path.endswith(".ps1")]
+    if scripts and not powershell_syntax(root, scripts, problems):
         missing.append("PowerShell is not installed, so .ps1 syntax was not checked")
-    for name, runner, wanted in RUNNERS:
+    for name, checker, _, wanted in RUNNERS:
         selected = [path for path in checkable if wanted(path)]
         if not selected:
             continue
@@ -654,14 +680,11 @@ def main():
             missing.append(note + "; run python3 tests/lint.py --install-tools")
             continue
         before = len(problems)
-        status, output = runner(tool, root, selected, args.fix, problems)
+        status, output = checker(tool, root, selected, problems)
         if status != 0 and len(problems) == before:
             last = next((line for line in reversed(output.strip().splitlines()) if line.strip()), "no output")
-            problems.append(
-                Problem(
-                    ".", 1, name, "%s failed (exit status %d) without naming a file: %s" % (name, status, last.strip())
-                )
-            )
+            message = "%s failed (exit status %d) without naming a file: %s" % (name, status, last.strip())
+            problems.append(Problem(".", 1, name, message))
 
     problems.sort(key=lambda p: (p.path, p.line or 0, p.rule))
     annotate = os.environ.get("GITHUB_ACTIONS") == "true"
