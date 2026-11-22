@@ -44,7 +44,9 @@ or a recorder. Use **Stop phone view and reader** in Decky to release it.
 The plugin lives in this repository's `decky/` folder. Its native reader is built for
 Linux x86_64, so build it on the Steam Deck, on another x86_64 Linux machine, or with
 the manual GitHub workflow `.github/workflows/build-decky.yml` (`Build Decky plugin`),
-which uploads the ZIP as the `Outbreak-Tracker-Decky-Plugin` artifact.
+which uploads the plugin as the `Outbreak-Tracker-Decky-Plugin` artifact. The workflow
+uploads the `outbreak-tracker/` folder rather than the built ZIP, so the artifact GitHub
+downloads is itself the installable ZIP, with no ZIP inside it.
 
 A local build needs Git, Python 3, internet access and Node **24.19.0** with Corepack,
 installed with nvm at `~/.nvm/versions/node/v24.19.0/`. `build.py` calls that Node
