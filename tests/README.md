@@ -115,11 +115,11 @@ results, reviewed the same way.
 | U.S. File 1 (SLUS-20765 with Ver2.162) | room list, created room, Outbreak (early, J's BAR, result screen), The Hive (Cindy's bag, door attack, rooftop code), Decisions, Decisions (clock answer, code answer) |
 | Japanese File 2 (SLPM-65692) | Wild Things (before the start, Very Hard run), Desperate Times Very Hard, Underbelly, Flashback Easy (forest), Elimination 1, 2 and 3, Showdown 3 Very Hard |
 
-Not covered, because no recordings exist yet:
+Not covered yet:
 
 - Japanese File 1 Hive, Hellfire, Below Freezing Point and Decisions, Decisions.
-- U.S. Hellfire and stock U.S. v2.00.
-- File 2 End of the Road, Showdown 1, and Flashback Hard and Very Hard.
+- U.S. Hellfire, U.S. Below Freezing Point and stock U.S. v2.00.
+- File 2 End of the Road, Showdown 1 and 2, and Flashback Hard and Very Hard.
 - The Nightmare and Duplicate Characters options.
 - The live SP radar (private provider, not in public builds).
 
