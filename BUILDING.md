@@ -23,7 +23,7 @@ cmake --build macos/terminal-build-arm64 --config Release
 
 ### How the macOS build works
 
-CMake copies the shared `sources/main.c` reader, applies `macos/patch_legacy_source.cmake` to that copy and compiles it as C++17. The macOS `windows.h` shim turns the reader's memory requests into PINE reads over TCP port `28011`. The release-specific File 1 address profile is shared with Windows and Linux.
+CMake compiles the shared `sources/main.c` reader as C++17 with the two switches of the builds that read over PINE, `OUTBREAK_THROTTLE_READS` and `OUTBREAK_ROOM_ITEM_ID_BOUND` (see `macos/README.md`). The macOS `windows.h` shim turns the reader's memory requests into PINE reads over TCP port `28011`. The release-specific File 1 address profile is shared with Windows and Linux.
 
 `build-app.sh` compiles an arm64 and an x86_64 reader, combines them into one native module with `lipo`, and places that module, the shared Lua UI, assets and a copy of LÖVE inside the app bundle.
 
@@ -56,7 +56,7 @@ The output is `OutbreakStatusTracker-x86_64.AppImage` in the repository root. `L
 
 ### How the Linux build works
 
-Linux also copies and patches `sources/main.c` before compiling it as C++17. Its `windows.h` shim translates the shared reader's memory requests into PINE reads through `$XDG_RUNTIME_DIR/pcsx2.sock`. Large reads are sent as batches, and small reads in main RAM come from 4 KiB pages fetched in one batched request and reused for 25 ms, so one tracker update costs one PINE request per page it touches instead of one per field. The Lua UI and assets are the same files used on macOS and Windows. `linux/run.sh` assembles a temporary LÖVE game folder with the native module and starts LÖVE. `build-appimage.sh` instead extracts the official LÖVE AppImage, adds the game and reader, and repacks it as one executable AppImage.
+Linux also compiles `sources/main.c` as C++17 with the same two switches. Its `windows.h` shim translates the shared reader's memory requests into PINE reads through `$XDG_RUNTIME_DIR/pcsx2.sock`. Large reads are sent as batches, and small reads in main RAM come from 4 KiB pages fetched in one batched request and reused for 25 ms, so one tracker update costs one PINE request per page it touches instead of one per field. The Lua UI and assets are the same files used on macOS and Windows. `linux/run.sh` assembles a temporary LÖVE game folder with the native module and starts LÖVE. `build-appimage.sh` instead extracts the official LÖVE AppImage, adds the game and reader, and repacks it as one executable AppImage.
 
 ## Windows
 
@@ -106,7 +106,7 @@ To install, put the ZIP on the Deck. On the Deck, turn on Developer mode in Deck
 
 ### How the Decky build works
 
-`decky/main.py` is the Decky backend. It starts `decky/tracker_service.py`, a standard-library HTTP server on port `28080`, and a `luajit reader.lua` child process. `reader.lua` loads the shared `sources/` Lua UI behind a small LÖVE graphics adapter that writes drawing commands as JSON frames instead of drawing, and reads the game through the same native module built from `linux/CMakeLists.txt` and its patched copy of `sources/main.c`. `decky/web/app.js` draws those frames on a canvas with the original atlases and fonts and sends control keys back. The React panel in `decky/src/` shows the QR code and the start and stop buttons.
+`decky/main.py` is the Decky backend. It starts `decky/tracker_service.py`, a standard-library HTTP server on port `28080`, and a `luajit reader.lua` child process. `reader.lua` loads the shared `sources/` Lua UI behind a small LÖVE graphics adapter that writes drawing commands as JSON frames instead of drawing, and reads the game through the same native module built from `linux/CMakeLists.txt` and `sources/main.c`. `decky/web/app.js` draws those frames on a canvas with the original atlases and fonts and sends control keys back. The React panel in `decky/src/` shows the QR code and the start and stop buttons.
 
 The ZIP holds the native module, the shared Lua, everything in `assets/`, the web files and the backend. The home-screen icons in `decky/web/icons/` are committed PNGs made from `sources/outbreak-tracker-icon-hd.png`. The plugin keeps the original Decky template's BSD 3-Clause license in `decky/LICENSE`.
 

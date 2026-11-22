@@ -7,18 +7,14 @@ find_path(LUA_INCLUDE_DIR lua.h PATHS /opt/homebrew/opt/luajit/include/luajit-2.
 if(NOT LUA_INCLUDE_DIR)
   message(FATAL_ERROR "LuaJIT headers are required")
 endif()
-set(PATCHED_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/main_mac.cpp")
-  add_custom_command(OUTPUT "${PATCHED_SOURCE}"
-    COMMAND /bin/rm -f "${PATCHED_SOURCE}"
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/../sources/main.c" "${PATCHED_SOURCE}"
-    COMMAND /bin/chmod u+w "${PATCHED_SOURCE}"
-    COMMAND ${CMAKE_COMMAND}
-      "-DINPUT:FILEPATH=${CMAKE_CURRENT_SOURCE_DIR}/../sources/main.c"
-      "-DOUTPUT:FILEPATH=${PATCHED_SOURCE}"
-      -P "${CMAKE_CURRENT_SOURCE_DIR}/patch_legacy_source.cmake"
-    COMMAND /bin/chmod u+w "${PATCHED_SOURCE}"
-  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../sources/main.c" "${CMAKE_CURRENT_SOURCE_DIR}/patch_legacy_source.cmake")
-add_library(luaoutbreaktracker MODULE "${PATCHED_SOURCE}")
+# The shared reader sources/main.c is C, but the PINE shim in include/windows.h
+# is C++, so main.c is compiled as C++ here. The two switches select the
+# behaviour of the builds that read over PINE; main.c explains each where it is
+# used. The Windows build compiles main.c as C and sets neither.
+set(READER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../sources/main.c")
+set_source_files_properties("${READER_SOURCE}" PROPERTIES LANGUAGE CXX)
+add_library(luaoutbreaktracker MODULE "${READER_SOURCE}")
+target_compile_definitions(luaoutbreaktracker PRIVATE OUTBREAK_THROTTLE_READS OUTBREAK_ROOM_ITEM_ID_BOUND)
 target_compile_features(luaoutbreaktracker PRIVATE cxx_std_17)
 target_compile_options(luaoutbreaktracker PRIVATE -fdeclspec -fpermissive -include "${CMAKE_CURRENT_SOURCE_DIR}/include/legacy_macros.h")
 target_include_directories(luaoutbreaktracker PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include" ${pine_SOURCE_DIR}/src ${LUA_INCLUDE_DIR} ../sources)

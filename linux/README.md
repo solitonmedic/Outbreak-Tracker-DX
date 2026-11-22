@@ -2,12 +2,13 @@
 
 This folder contains the files used to build and test the Linux version of Outbreak Status Tracker.
 
-`patch_legacy_source.cmake` reads `INPUT` and writes a generated C++ reader to
-`OUTPUT`. It preserves byte offsets when casting room-item state pointers and
-keeps the shared reader's object-state filter, with an additional item-ID bounds
-check. It does not read the game or modify `sources/main.c`; the build runs it.
-U.S. File 1 room authority refreshes on each update; the legacy releases keep
-their existing room-authority polling interval.
+`CMakeLists.txt` compiles the shared reader `sources/main.c` as C++, because the
+PINE shim in `include/windows.h` is C++. It sets the two switches the builds that
+read over PINE use, both explained in `main.c` where they apply:
+`OUTBREAK_THROTTLE_READS` (room items, the enemy list and room masters are read
+less often; U.S. File 1 room masters every update) and `OUTBREAK_ROOM_ITEM_ID_BOUND`
+(room items whose ID does not fit in one byte are skipped). The Windows build
+compiles `main.c` as C without them.
 
 ## Building from Terminal
 

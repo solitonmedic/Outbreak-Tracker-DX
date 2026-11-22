@@ -30,7 +30,8 @@ For every frame, on every platform:
 
 Expected results come in three families:
 
-- `pine` is macOS, Linux and the Decky native reader, which use the patched C++ build over PINE.
+- `pine` is macOS, Linux and the Decky native reader: `main.c` built as C++ over PINE with
+  `OUTBREAK_THROTTLE_READS` and `OUTBREAK_ROOM_ITEM_ID_BOUND`.
 - `windows` is the C build that reads process memory.
 - `decky` is the phone page's own views.
 

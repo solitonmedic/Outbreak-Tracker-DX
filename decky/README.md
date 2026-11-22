@@ -126,7 +126,8 @@ LÖVE graphics adapter. It sends drawing commands and typed game status over a
 private child-process pipe. `web/app.js` draws them on Canvas using original
 textures and fonts, including image-font separators. The bridge does not export
 raw RAM, duplicate memory-address maps, or execute browser-supplied code. Native
-compilation reuses `linux/CMakeLists.txt` and its existing source patcher.
+compilation reuses `linux/CMakeLists.txt`, which compiles `sources/main.c` with
+the switches of the builds that read over PINE.
 
 New endpoints: `GET /api/frame` and `POST /api/key` with a whitelisted
 key, both restricted as described above. Decky methods `get_status` and `set_running`

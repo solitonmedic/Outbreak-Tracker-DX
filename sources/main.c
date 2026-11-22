@@ -1244,7 +1244,7 @@ void GetRoomItemF1()
 		for (int i=0; i < MAX_ITEM; i++)
 		{
 			unsigned char* ptr = buffer+i*196;
-			unsigned short* ptr2 = buffer+10+i*196;
+			unsigned short* ptr2 = (unsigned short*)(buffer+10+i*196);
 			RItems->RItem[i].ID = *ptr;
 			RItems->RItem[i].EN = *ptr2;
 			if ((*ptr) != 0x00)
@@ -1298,7 +1298,7 @@ void GetRoomItemF2()
 		for (int i=0; i < MAX_ITEM; i++)
 		{
 			unsigned char* ptr = buffer+(i)*192;
-			unsigned short* ptr2 = buffer+10+(i)*192;
+			unsigned short* ptr2 = (unsigned short*)(buffer+10+(i)*192);
 			RItems->RItem[i].ID = *ptr;
 			RItems->RItem[i].EN = *ptr2;
 			if ((*ptr) != 0x00)
@@ -1630,9 +1630,22 @@ static int LUpdate (lua_State* L)
 	info.Pass6 = GetPass6();
 	info.Difficulty = GetDifficulty();
 	UpdateHiveCodes();
+#ifdef OUTBREAK_THROTTLE_READS
+	/* Builds that read over PINE (macOS, Linux, Decky) send every read to PCSX2
+	   as a request, so they read these large tables less often: room items
+	   every 6th update, the enemy list every 15th and the room masters every
+	   30th, except on U.S. File 1, where the room masters are read every update. */
+	static unsigned int pickupUpdateCounter = 0;
+	if ((pickupUpdateCounter++ % 6) == 0) UpdatePickups();
+	static unsigned int enemyListUpdateCounter = 0;
+	if ((enemyListUpdateCounter++ % 15) == 0) UpdateEnemyList();
+	static unsigned int roomMasterUpdateCounter = 0;
+	if ((info.CurrentFile == 1 && F1_Release == F1_RELEASE_US) || (roomMasterUpdateCounter++ % 30) == 0) UpdateRoomMasters();
+#else
 	UpdatePickups();
 	UpdateEnemyList();
 	UpdateRoomMasters();
+#endif
 
 	for (int i=0; i < 4; i++)
 	{
@@ -2191,10 +2204,15 @@ static int LGetItem(lua_State* L)
 			for (int j=0; j < MAX_ITEM; j++)
 			{
 				lua_pushnumber(L, (double)j+1);
-				if (RItems->RItem[j].ID == 0x00||
-				RItems->RItem[j].Count == 0xFFFF||
-				RItems->RItem[j].EN != 0xFFFF||
-				//RItems->RItem[j].Pick > 0 && RItems->RItem[j].Present ==0||
+				/* OUTBREAK_ROOM_ITEM_ID_BOUND: the macOS, Linux and Decky builds also
+				   skip entries whose ID does not fit in one byte; the Windows build
+				   has never had this check. */
+				if (RItems->RItem[j].ID == 0x00 ||
+#ifdef OUTBREAK_ROOM_ITEM_ID_BOUND
+				RItems->RItem[j].ID > 0xFF ||
+#endif
+				RItems->RItem[j].Count == 0xFFFF ||
+				RItems->RItem[j].EN != 0xFFFF ||
 				RItems->RItem[j].Mix == 0x20)
 				{
 					CreateEmptyItemTable
@@ -2680,6 +2698,11 @@ static const struct luaL_Reg library_functions [] = {
 	{NULL, NULL}
 };
 
+/* The macOS and Linux builds compile this file as C++ (their PINE shim is C++),
+   so the Lua entry point keeps its C name there too. */
+#ifdef __cplusplus
+extern "C"
+#endif
 __declspec(dllexport) int luaopen_luaoutbreaktracker  (lua_State *L){
 	luaL_register(L, "tracker", library_functions);
 	return 1;
